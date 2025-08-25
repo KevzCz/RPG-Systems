@@ -15,7 +15,8 @@
 		"FriendlyFireMixin",
 		"EntityRelationsHelpfulGateMixin",
 		"LivingEntityDamageMixin",
-		"LivingEntityHealingMixin"
+		"LivingEntityHealMixin",
+		"PlayerEntityCritMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

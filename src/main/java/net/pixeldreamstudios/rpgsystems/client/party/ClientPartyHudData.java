@@ -29,6 +29,14 @@ public final class ClientPartyHudData {
     public static UUID partyId = null;
     public static String partyName = "";
     public static UUID leaderUuid = null;
+    public static final Set<UUID> memberUuids = new HashSet<>();
+
+    public static boolean isInMyParty(UUID id) {
+        if (id == null) return false;
+        var mc = MinecraftClient.getInstance();
+        if (mc != null && mc.player != null && id.equals(mc.player.getUuid())) return true;
+        return MEMBERS.containsKey(id);
+    }
 
     private static final Map<UUID, Member> MEMBERS = new LinkedHashMap<>();
 

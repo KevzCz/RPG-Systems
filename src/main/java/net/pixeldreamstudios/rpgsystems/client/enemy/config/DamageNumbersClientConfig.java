@@ -1,4 +1,3 @@
-// net/pixeldreamstudios/rpgsystems/client/enemy/config/DamageNumbersClientConfig.java
 package net.pixeldreamstudios.rpgsystems.client.enemy.config;
 
 import com.google.gson.Gson;
@@ -10,38 +9,38 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 
 public final class DamageNumbersClientConfig {
+    public enum ShowMode { ALL, PLAYERS_ONLY, NONE }
+
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
     private static final Path FILE = FabricLoader.getInstance().getConfigDir()
             .resolve("rpgsystems").resolve("damage_numbers_client.json");
 
-    private static DamageNumbersClientConfig INSTANCE;
-
-    // === Settings ===
     public boolean enabled = true;
-    /** View distance in blocks (client-side cull). */
-    public double viewDistance = 48.0;
-    /** If true, show damage numbers caused by the player's pets (when the server marks them). */
+    public ShowMode showMode = ShowMode.ALL;
+
     public boolean showPetDamage = true;
+    public boolean onlyShowPartyDamage = false;
+
+    public double viewDistance = 32.0;
+
+    private static DamageNumbersClientConfig INSTANCE;
 
     private DamageNumbersClientConfig() {}
 
     public static DamageNumbersClientConfig get() {
-        if (INSTANCE == null) load();
-        return INSTANCE;
-    }
-
-    public static void load() {
-        try {
-            Files.createDirectories(FILE.getParent());
-            if (Files.exists(FILE)) {
-                INSTANCE = GSON.fromJson(Files.readString(FILE), DamageNumbersClientConfig.class);
-            } else {
+        if (INSTANCE == null) {
+            try {
+                if (Files.exists(FILE)) {
+                    INSTANCE = GSON.fromJson(Files.readString(FILE), DamageNumbersClientConfig.class);
+                    if (INSTANCE.showMode == null) INSTANCE.showMode = ShowMode.ALL;
+                } else {
+                    INSTANCE = new DamageNumbersClientConfig();
+                }
+            } catch (Exception e) {
                 INSTANCE = new DamageNumbersClientConfig();
-                save();
             }
-        } catch (IOException e) {
-            INSTANCE = new DamageNumbersClientConfig();
         }
+        return INSTANCE;
     }
 
     public static void save() {

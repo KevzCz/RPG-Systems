@@ -1,4 +1,3 @@
-// net/pixeldreamstudios/rpgsystems/client/enemy/configui/DamageNumbersScreen.java
 package net.pixeldreamstudios.rpgsystems.client.enemy.configui;
 
 import net.fabricmc.api.EnvType;
@@ -15,8 +14,12 @@ import net.pixeldreamstudios.rpgsystems.client.enemy.config.DamageNumbersClientC
 public final class DamageNumbersScreen extends Screen {
     private final Screen parent;
     private CheckboxWidget enabled;
+    private ButtonWidget modeButton;
     private CheckboxWidget showPet;
-    private DistanceSlider  distance;
+    private CheckboxWidget onlyParty;
+    private DistanceSlider distance;
+
+    private DamageNumbersClientConfig.ShowMode mode;
 
     public DamageNumbersScreen(Screen parent) {
         super(Text.literal("Damage Numbers"));
@@ -27,18 +30,31 @@ public final class DamageNumbersScreen extends Screen {
     protected void init() {
         var cfg = DamageNumbersClientConfig.get();
         int cx = this.width / 2;
-        int y = 60;
+        int y = 56;
         int w = 280;
-        int h = 20;
+
+        mode = cfg.showMode;
 
         enabled = CheckboxWidget.builder(Text.literal("Enable damage numbers"), this.textRenderer)
                 .pos(cx - w/2, y).checked(cfg.enabled).build();
         this.addDrawableChild(enabled);
         y += 24;
 
+        modeButton = ButtonWidget.builder(Text.literal(modeLabel(mode)), b -> {
+            mode = nextMode(mode);
+            b.setMessage(Text.literal(modeLabel(mode)));
+        }).dimensions(cx - w/2, y, w, 20).build();
+        this.addDrawableChild(modeButton);
+        y += 24;
+
         showPet = CheckboxWidget.builder(Text.literal("Show pet damage numbers"), this.textRenderer)
                 .pos(cx - w/2, y).checked(cfg.showPetDamage).build();
         this.addDrawableChild(showPet);
+        y += 24;
+
+        onlyParty = CheckboxWidget.builder(Text.literal("Only show damage from my party"), this.textRenderer)
+                .pos(cx - w/2, y).checked(cfg.onlyShowPartyDamage).build();
+        this.addDrawableChild(onlyParty);
         y += 24;
 
         distance = new DistanceSlider(cx - w/2, y, w, 20, cfg.viewDistance);
@@ -47,37 +63,64 @@ public final class DamageNumbersScreen extends Screen {
 
         this.addDrawableChild(ButtonWidget.builder(Text.literal("Save"), b -> {
             cfg.enabled = enabled.isChecked();
+            cfg.showMode = mode;
             cfg.showPetDamage = showPet.isChecked();
+            cfg.onlyShowPartyDamage = onlyParty.isChecked();
             cfg.viewDistance = distance.getBlocks();
             DamageNumbersClientConfig.save();
             this.client.setScreen(parent);
-        }).size(100, h).position(cx - 110, y).build());
-
-        this.addDrawableChild(ButtonWidget.builder(Text.literal("Cancel"), b -> this.client.setScreen(parent))
-                .size(100, h).position(cx + 10, y).build());
+        }).dimensions(cx - 60, y, 120, 20).build());
     }
 
     @Override
     public void render(DrawContext ctx, int mouseX, int mouseY, float delta) {
-        this.renderBackground(ctx, mouseX, mouseY, delta);
+        ctx.drawCenteredTextWithShadow(this.textRenderer, "Damage Numbers", this.width / 2, 20, 0xFFFFFF);
+        ctx.drawCenteredTextWithShadow(this.textRenderer, "Display and filtering", this.width / 2, 36, 0xAAAAAA);
         super.render(ctx, mouseX, mouseY, delta);
-        ctx.drawCenteredTextWithShadow(this.textRenderer, this.title, this.width/2, 20, 0xFFFFFF);
+    }
+
+    private static String modeLabel(DamageNumbersClientConfig.ShowMode m) {
+        return switch (m) {
+            case ALL -> "Show: All sources";
+            case PLAYERS_ONLY -> "Show: Players only";
+            case NONE -> "Show: None";
+        };
+    }
+    private static DamageNumbersClientConfig.ShowMode nextMode(DamageNumbersClientConfig.ShowMode m) {
+        return switch (m) {
+            case ALL -> DamageNumbersClientConfig.ShowMode.PLAYERS_ONLY;
+            case PLAYERS_ONLY -> DamageNumbersClientConfig.ShowMode.NONE;
+            case NONE -> DamageNumbersClientConfig.ShowMode.ALL;
+        };
     }
 
     private static final class DistanceSlider extends SliderWidget {
-        DistanceSlider(int x, int y, int w, int h, double currentBlocks) {
-            super(x, y, w, h, Text.empty(), norm(currentBlocks));
-            updateMessage();
+        DistanceSlider(int x, int y, int w, int h, double blocks) {
+            super(x, y, w, h,
+                    Text.literal("View Distance: " + (int) blocks + " blocks"),
+                    clamp01(blocks / 256.0));
         }
 
-        double getBlocks() { return denorm(this.value); }
-
-        @Override protected void updateMessage() {
-            setMessage(Text.literal("View distance: " + (int)Math.round(denorm(this.value)) + " blocks"));
+        @Override
+        protected void updateMessage() {
+            setMessage(Text.literal("View Distance: " + getBlocksInt() + " blocks"));
         }
-        @Override protected void applyValue() { updateMessage(); }
 
-        private static double norm(double d) { d = Math.max(2, Math.min(256, d)); return (d - 2.0) / (256.0 - 2.0); }
-        private static double denorm(double v) { v = Math.max(0, Math.min(1, v)); return 2.0 + v * (256.0 - 2.0); }
+        @Override
+        protected void applyValue() {
+
+        }
+
+        double getBlocks() {
+            return this.value * 256.0;
+        }
+
+        int getBlocksInt() {
+            return (int) Math.round(getBlocks());
+        }
+
+        private static double clamp01(double v) {
+            return v < 0 ? 0 : (v > 1 ? 1 : v);
+        }
     }
 }

@@ -1,23 +1,19 @@
-// net/pixeldreamstudios/rpgsystems/mixin/LivingEntityDamageMixin.java
 package net.pixeldreamstudios.rpgsystems.mixin;
 
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.LivingEntity;
-import net.minecraft.entity.Tameable; // yarn 1.21.x (interface). If your mappings use TameableEntity, adjust import & code.
+import net.minecraft.entity.Tameable;
 import net.minecraft.entity.damage.DamageSource;
-import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.world.World;
 import net.pixeldreamstudios.rpgsystems.network.EnemyNet;
-import net.pixeldreamstudios.rpgsystems.party.Party;
-import net.pixeldreamstudios.rpgsystems.party.PartyPersistentState;
+import net.pixeldreamstudios.rpgsystems.party.PartyAllies;
+import net.pixeldreamstudios.rpgsystems.util.DamageColorUtil;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.UUID;
 
 @Mixin(LivingEntity.class)
@@ -32,7 +28,7 @@ public abstract class LivingEntityDamageMixin {
 
     @Inject(method = "damage", at = @At("TAIL"))
     private void rpgsystems$afterDamage(DamageSource source, float amount, CallbackInfoReturnable<Boolean> cir) {
-        if (!cir.getReturnValue()) return; // cancelled
+        if (!cir.getReturnValue()) return;
         LivingEntity self = (LivingEntity)(Object)this;
         World world = self.getWorld();
         if (world.isClient()) return;
@@ -41,49 +37,17 @@ public abstract class LivingEntityDamageMixin {
         float taken = rpgsystems$preHp - post;
         if (taken <= 0.01f) return;
 
+        int rgb = DamageColorUtil.colorOf(world, source, self);
+
         Entity attacker = source.getAttacker();
-        if (attacker == null) return;
+        boolean crit = false;
 
-        // Case A: direct player attacker (unchanged)
-        if (attacker instanceof ServerPlayerEntity sp) {
-            List<ServerPlayerEntity> viewers = new ArrayList<>();
-            viewers.add(sp);
 
-            PartyPersistentState state = PartyPersistentState.get(sp.getServer());
-            Party p = state.getPartyByMember(sp.getUuid());
-            if (p != null) {
-                for (UUID u : p.members) {
-                    ServerPlayerEntity m = sp.getServer().getPlayerManager().getPlayer(u);
-                    if (m != null && m != sp) viewers.add(m);
-                }
-            }
+        boolean isPet = attacker instanceof Tameable;
 
-            boolean crit = sp.fallDistance > 0.0f && !sp.isOnGround() && !sp.isClimbing() && !sp.isTouchingWater();
-            EnemyNet.sendDamageNumber(viewers, self, taken, crit, false);
-            return;
-        }
+        UUID owner = attacker != null ? PartyAllies.owningPlayerUuidFromAttacker(attacker) : null;
+        UUID srcUuid = owner != null ? owner : (attacker != null ? attacker.getUuid() : new UUID(0L, 0L));
 
-        // Case B: pet attacker – show to the owner + owner party
-        // (Interface name may differ in your mappings; adjust if needed.)
-        if (attacker instanceof Tameable tame) {
-            Entity owner = tame.getOwner();
-            if (owner instanceof ServerPlayerEntity ownerSp) {
-                List<ServerPlayerEntity> viewers = new ArrayList<>();
-                viewers.add(ownerSp);
-
-                PartyPersistentState state = PartyPersistentState.get(ownerSp.getServer());
-                Party p = state.getPartyByMember(ownerSp.getUuid());
-                if (p != null) {
-                    for (UUID u : p.members) {
-                        ServerPlayerEntity m = ownerSp.getServer().getPlayerManager().getPlayer(u);
-                        if (m != null && m != ownerSp) viewers.add(m);
-                    }
-                }
-
-                // Simple crit heuristic for pets: reuse owner's fall crit if present; otherwise false
-                boolean crit = false;
-                EnemyNet.sendDamageNumber(viewers, self, taken, crit, true);
-            }
-        }
+        EnemyNet.broadcastDamageNumber(self, taken, crit, isPet, rgb, srcUuid);
     }
 }

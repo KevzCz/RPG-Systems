@@ -8,28 +8,27 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
-public final class HealingNumbersClientConfig {
+public final class EnemyHudClientConfig {
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
     private static final Path FILE = FabricLoader.getInstance().getConfigDir()
-            .resolve("rpgsystems").resolve("healing_numbers_client.json");
+            .resolve("rpgsystems").resolve("enemy_hud_client.json");
 
-    public enum Mode { NONE, ALL }
+    public boolean showHealthbarOnNearbyHpChanges = true;
 
-    public Mode mode = Mode.ALL;
-    private static HealingNumbersClientConfig INSTANCE;
+    private static EnemyHudClientConfig INSTANCE;
 
-    private HealingNumbersClientConfig() {}
+    private EnemyHudClientConfig() {}
 
-    public static HealingNumbersClientConfig get() {
+    public static EnemyHudClientConfig get() {
         if (INSTANCE == null) {
             try {
                 if (Files.exists(FILE)) {
-                    INSTANCE = GSON.fromJson(Files.readString(FILE), HealingNumbersClientConfig.class);
+                    INSTANCE = GSON.fromJson(Files.readString(FILE), EnemyHudClientConfig.class);
                 } else {
-                    INSTANCE = new HealingNumbersClientConfig();
+                    INSTANCE = new EnemyHudClientConfig();
                 }
             } catch (Exception e) {
-                INSTANCE = new HealingNumbersClientConfig();
+                INSTANCE = new EnemyHudClientConfig();
             }
         }
         return INSTANCE;
@@ -39,6 +38,6 @@ public final class HealingNumbersClientConfig {
         try {
             Files.createDirectories(FILE.getParent());
             Files.writeString(FILE, GSON.toJson(get()));
-        } catch (IOException ignored) { }
+        } catch (IOException ignored) {}
     }
 }
