@@ -85,7 +85,7 @@ public final class EnemyHealthBarRenderer {
             var mc = MinecraftClient.getInstance();
             if (mc == null || mc.player != player) return ActionResult.PASS;
             if (entity instanceof LivingEntity living) {
-                if (living.hasStatusEffect(StatusEffects.INVISIBILITY)) return ActionResult.PASS;
+                if (isInvisibleToClient(living)) return ActionResult.PASS;
                 long now = world.getTime();
                 int id = entity.getId();
                 float pct = clamp01((float) (living.getHealth() / Math.max(1e-6, living.getMaxHealth())));
@@ -119,7 +119,7 @@ public final class EnemyHealthBarRenderer {
                 if (living instanceof PlayerEntity && client.player != null && living.getId() == client.player.getId()) {
                     continue;
                 }
-                if (living.hasStatusEffect(StatusEffects.INVISIBILITY)) { HUD.remove(entity.getId()); continue; }
+                if (isInvisibleToClient(living)) { HUD.remove(entity.getId()); continue; }
 
                 HudState st = HUD.get(entity.getId());
                 if (st == null) continue;
@@ -209,6 +209,15 @@ public final class EnemyHealthBarRenderer {
         });
     }
 
+    private static boolean isInvisibleToClient(LivingEntity living) {
+        var mc = MinecraftClient.getInstance();
+        var viewer = mc != null ? mc.player : null;
+        if (living.isInvisible()) return true;
+        if (viewer != null && living.isInvisibleTo(viewer)) return true;
+        if (living.hasStatusEffect(StatusEffects.INVISIBILITY)) return true;
+        return false;
+    }
+
     private static HudState setHitTime(HudState st, long now) {
         st.lastHitTick = now;
         return st;
@@ -222,7 +231,7 @@ public final class EnemyHealthBarRenderer {
         if (!(e instanceof LivingEntity living)) return;
 
         if (living instanceof PlayerEntity && living.getId() == mc.player.getId()) return;
-        if (living.hasStatusEffect(StatusEffects.INVISIBILITY)) { HUD.remove(living.getId()); return; }
+        if (isInvisibleToClient(living)) { HUD.remove(living.getId()); return; }
 
         double dSq = living.squaredDistanceTo(mc.player);
         if (dSq > MAX_DISTANCE_SQ) return;
