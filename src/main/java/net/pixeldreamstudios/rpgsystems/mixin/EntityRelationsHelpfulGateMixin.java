@@ -26,14 +26,13 @@ public abstract class EntityRelationsHelpfulGateMixin {
         if (server == null) return;
 
         if (intent == SpellTarget.Intent.HELPFUL) {
-
             if (target == caster) return;
 
             var state = net.pixeldreamstudios.rpgsystems.party.PartyPersistentState.get(server);
             var p = state.getPartyByMember(caster.getUuid());
-            if (p != null && p.settings.allowHelpfulNonMembers) {
-                return;
-            }
+
+            if (p == null) return;
+            if (p.settings.allowHelpfulNonMembers) return;
 
             if (target instanceof PlayerEntity tp) {
                 boolean same = net.pixeldreamstudios.rpgsystems.party.PartyAllies
@@ -65,9 +64,9 @@ public abstract class EntityRelationsHelpfulGateMixin {
             if (ownerUuid != null) {
                 boolean same = net.pixeldreamstudios.rpgsystems.party.PartyAllies
                         .sameParty(server, caster.getUuid(), ownerUuid);
-                if (same) { cir.setReturnValue(false); return; }
+                if (same) { cir.setReturnValue(false);
+                }
             }
         }
     }
 }
-
