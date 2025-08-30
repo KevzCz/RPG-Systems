@@ -1,4 +1,3 @@
-// net.pixeldreamstudios.rpgsystems.mixin.SpellTargetHelpfulFilterMixin (CLIENT-ONLY)
 package net.pixeldreamstudios.rpgsystems.mixin.client;
 
 import net.fabricmc.api.EnvType;
@@ -40,6 +39,7 @@ public abstract class SpellTargetHelpfulFilterMixin {
         }
         if (!helpful) return;
 
+        if (ClientPartyHudData.partyId == null) return;
         if (ClientPartyHudData.allowHelpfulNonMembers()) return;
 
         SpellTarget.SearchResult result = cir.getReturnValue();

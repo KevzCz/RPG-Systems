@@ -12,6 +12,7 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
+
 @Environment(EnvType.CLIENT)
 @Mixin(EntityRelations.class)
 public abstract class EntityRelationsHelpfulGateClientMixin {
@@ -22,20 +23,20 @@ public abstract class EntityRelationsHelpfulGateClientMixin {
                                                      Entity target,
                                                      CallbackInfoReturnable<Boolean> cir) {
         if (caster == null || target == null) return;
+
         if (intent == SpellTarget.Intent.HELPFUL) {
             if (target == caster) return;
+            if (ClientPartyHudData.partyId == null) return;
             if (ClientPartyHudData.allowHelpfulNonMembers()) return;
 
             if (target instanceof PlayerEntity tp) {
-                boolean same = ClientPartyHudData
-                        .isSameParty(caster.getUuid(), tp.getUuid());
+                boolean same = ClientPartyHudData.isSameParty(caster.getUuid(), tp.getUuid());
                 if (!same) { cir.setReturnValue(false); }
                 return;
             }
 
             java.util.UUID owner = net.pixeldreamstudios.rpgsystems.party.PartyAllies.owningPlayerUuid(target);
-            if (owner != null && !ClientPartyHudData
-                    .isSameParty(caster.getUuid(), owner)) {
+            if (owner != null && !ClientPartyHudData.isSameParty(caster.getUuid(), owner)) {
                 cir.setReturnValue(false);
             }
             return;
@@ -45,18 +46,15 @@ public abstract class EntityRelationsHelpfulGateClientMixin {
             if (target == caster) return;
 
             if (target instanceof PlayerEntity tp) {
-                boolean same = ClientPartyHudData
-                        .isSameParty(caster.getUuid(), tp.getUuid());
+                boolean same = ClientPartyHudData.isSameParty(caster.getUuid(), tp.getUuid());
                 if (same) { cir.setReturnValue(false); }
                 return;
             }
 
             java.util.UUID owner = net.pixeldreamstudios.rpgsystems.party.PartyAllies.owningPlayerUuid(target);
-            if (owner != null && ClientPartyHudData
-                    .isSameParty(caster.getUuid(), owner)) {
+            if (owner != null && ClientPartyHudData.isSameParty(caster.getUuid(), owner)) {
                 cir.setReturnValue(false);
             }
         }
     }
 }
-
