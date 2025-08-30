@@ -9,11 +9,13 @@ import java.io.Reader;
 import java.io.Writer;
 import java.nio.file.Files;
 import java.nio.file.Path;
+
 public final class RPGSystemsConfig {
 
     public static final class Systems {
         public boolean party = true;
         public boolean pet = false;
+        public boolean title = false;
     }
 
     public static final class Party {

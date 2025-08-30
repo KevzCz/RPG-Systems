@@ -23,6 +23,8 @@ public final class RPGSystemsModMenu implements ModMenuApi {
 
         private CheckboxWidget partyEnabled;
         private CheckboxWidget petEnabled;
+
+        private CheckboxWidget titleEnabled;
         private CheckboxWidget partyLogToConsole;
 
         protected ReadOnlyConfigScreen(Screen parent) {
@@ -48,6 +50,10 @@ public final class RPGSystemsModMenu implements ModMenuApi {
                     .pos(centerX - w/2, y).checked(cfg.systems.pet).build();
             this.petEnabled.active = false;
             y += 24;
+            this.titleEnabled = CheckboxWidget.builder(Text.literal("Enable Title System"), this.textRenderer)
+                    .pos(centerX - w/2, y).checked(cfg.systems.title).build();
+            this.titleEnabled.active = false;
+            y += 24;
 
             this.partyLogToConsole = CheckboxWidget.builder(Text.literal("Log Party Chat To Server Console"), this.textRenderer)
                     .pos(centerX - w/2, y).checked(cfg.party.logChatToConsole).build();
@@ -56,6 +62,7 @@ public final class RPGSystemsModMenu implements ModMenuApi {
 
             this.addDrawableChild(this.partyEnabled);
             this.addDrawableChild(this.petEnabled);
+            this.addDrawableChild(this.titleEnabled);
             this.addDrawableChild(this.partyLogToConsole);
 
             this.addDrawableChild(ButtonWidget.builder(Text.literal("Client Options…"),
