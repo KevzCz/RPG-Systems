@@ -3,15 +3,15 @@
 	"id": "rpg-systems",
 	"version": "${version}",
 	"name": "RPG Systems",
-	"description": "This is an example description! Tell everyone what your mod is about!",
+	"description": "RPG Systems but in minecraft!",
 	"authors": [
-		"Me!"
+		"KevzCz"
 	],
 	"contact": {
-		"homepage": "https://fabricmc.net/",
-		"sources": "https://github.com/FabricMC/fabric-example-mod"
+		"homepage": "www.curseforge.com/minecraft/mc-mods/rpg-systems",
+		"sources": "https://github.com/KevzCz/RPG-Systems"
 	},
-	"license": "CC0-1.0",
+	"license": "ARR",
 	"icon": "assets/rpg-systems/icon.png",
 	"environment": "*",
 	"entrypoints": {

@@ -20,8 +20,12 @@ import net.pixeldreamstudios.rpgsystems.client.party.hud.PartyInviteHud;
 import net.pixeldreamstudios.rpgsystems.client.party.hud.PartyInviteInventoryUi;
 import net.pixeldreamstudios.rpgsystems.client.party.hud.PartyJoinRequestHud;
 import net.pixeldreamstudios.rpgsystems.client.party.screen.PartyScreen;
+import net.pixeldreamstudios.rpgsystems.client.title.PlayerTitleRenderer;
+import net.pixeldreamstudios.rpgsystems.client.title.TitleTextureResolver;
 import net.pixeldreamstudios.rpgsystems.compat.showbuild.ShowBuildCompatNet;
+import net.pixeldreamstudios.rpgsystems.config.RPGSystemsConfig;
 import net.pixeldreamstudios.rpgsystems.network.EnemyNet;
+import net.pixeldreamstudios.rpgsystems.network.TitleNet;
 import org.lwjgl.glfw.GLFW;
 
 @Environment(EnvType.CLIENT)
@@ -45,7 +49,6 @@ public final class RPGSystemsClient implements ClientModInitializer {
         PartyJoinRequestHud.init();
         PartyHighlighter.init();
 
-
         ShowBuildCompatNet.initClient();
 
         EnemyNet.initClient();
@@ -53,6 +56,12 @@ public final class RPGSystemsClient implements ClientModInitializer {
         EnemyHealthBarRenderer.init();
         DamageNumbersRenderer.init();
         HealingNumbersRenderer.init();
+
+        if (RPGSystemsConfig.get().systems.title) {
+            TitleNet.registerClient();
+            PlayerTitleRenderer.init();
+        }
+
         openPartyScreen = KeyBindingHelper.registerKeyBinding(new KeyBinding(
                 "key.rpgsystems.open_party",
                 InputUtil.Type.KEYSYM,
@@ -99,6 +108,9 @@ public final class RPGSystemsClient implements ClientModInitializer {
             ClientPartyChat.clearAll();
             ClientPartyStatusEffects.clearAll();
             PartyHighlighter.disable();
+            if (RPGSystemsConfig.get().systems.title) {
+                TitleTextureResolver.clear();
+            }
         });
 
         ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> {
@@ -108,6 +120,9 @@ public final class RPGSystemsClient implements ClientModInitializer {
             ClientPartyChat.clearAll();
             ClientPartyStatusEffects.clearAll();
             PartyHighlighter.disable();
+            if (RPGSystemsConfig.get().systems.title) {
+                TitleTextureResolver.clear();
+            }
         });
     }
 }

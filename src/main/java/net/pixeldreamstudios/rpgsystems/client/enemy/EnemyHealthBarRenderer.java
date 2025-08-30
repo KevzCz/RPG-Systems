@@ -322,4 +322,34 @@ public final class EnemyHealthBarRenderer {
 
     private static float clamp01(float v) { return v < 0f ? 0f : (v > 1f ? 1f : v); }
     private static double lerp(float t, double a, double b) { return a + (b - a) * t; }
+
+    public static float getNameYOffset(LivingEntity living, float tickDelta) {
+        HudState st = HUD.get(living.getId());
+        if (st == null) return 0f;
+
+        long nowTick = living.getWorld().getTime();
+        long sinceFirst = nowTick - st.firstShownTick;
+        long sinceHit   = nowTick - st.lastHitTick;
+
+        float visAlpha;
+        if (sinceFirst <= FADE_IN_TICKS) {
+            visAlpha = clamp01(sinceFirst / (float) FADE_IN_TICKS);
+        } else if (sinceHit <= VISIBLE_TICKS) {
+            visAlpha = 1f;
+        } else if (sinceHit <= VISIBLE_TICKS + FADE_OUT_TICKS) {
+            visAlpha = clamp01(1f - (sinceHit - VISIBLE_TICKS) / (float) FADE_OUT_TICKS);
+        } else {
+            return 0f;
+        }
+
+        Box box = living.getBoundingBox();
+        int extra = Math.max(0, (int) Math.floor(box.getLengthY() - 2.0));
+        float dynScale = BASE_SCALE + extra;
+        float worldW = BASE_WORLD_W * dynScale;
+        float worldH = worldW * (BASE_H_PX / BASE_W_PX);
+
+        float padding = 0.025f;
+        return visAlpha * (worldH + padding);
+    }
+
 }

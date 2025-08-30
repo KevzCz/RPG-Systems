@@ -7,7 +7,9 @@
 		"client.MixinEntityGlowColor",
 		"client.MixinEntityGlow",
 		"client.EntityRelationsHelpfulGateClientMixin",
-		"client.SpellTargetHelpfulFilterMixin"
+		"client.SpellTargetHelpfulFilterMixin",
+		"client.HandledScreenMixin",
+		"client.EntityRendererMixin"
 	],
 	"mixins": [
 		"MobEntityPetMixin",
