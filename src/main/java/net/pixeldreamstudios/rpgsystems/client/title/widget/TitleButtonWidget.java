@@ -1,11 +1,13 @@
 package net.pixeldreamstudios.rpgsystems.client.title.widget;
 
+import net.fabricmc.api.EnvType;
+import net.fabricmc.api.Environment;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.narration.NarrationMessageBuilder;
 import net.minecraft.client.gui.widget.PressableWidget;
 import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
-
+@Environment(EnvType.CLIENT)
 public final class TitleButtonWidget extends PressableWidget {
     private final Identifier normalTexture;
     private final Identifier hoverTexture;

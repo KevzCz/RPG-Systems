@@ -1,5 +1,7 @@
 package net.pixeldreamstudios.rpgsystems.client.title.screen.box;
 
+import net.fabricmc.api.EnvType;
+import net.fabricmc.api.Environment;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.gui.DrawContext;
@@ -7,6 +9,7 @@ import net.minecraft.text.OrderedText;
 import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.Util;
+import net.pixeldreamstudios.rpgsystems.client.title.TitleStyleUtil;
 import net.pixeldreamstudios.rpgsystems.client.title.TitleClientData;
 import net.pixeldreamstudios.rpgsystems.title.Title;
 import net.pixeldreamstudios.rpgsystems.title.TitleRegistry;
@@ -15,6 +18,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
 
+@Environment(EnvType.CLIENT)
 public final class TitlesListBox {
     private static final int BOX_WIDTH = 59;
     private static final int BOX_HEIGHT = 64;
@@ -39,7 +43,7 @@ public final class TitlesListBox {
 
     private final List<Consumer<Title>> selectionListeners = new ArrayList<>();
 
-    private float textScale = 1.0f;
+    private float textScale = 0.5f;
 
     public TitlesListBox(int screenX, int screenY, int bgWidth, int bgHeight) {
         this.font = MinecraftClient.getInstance().textRenderer;
@@ -103,7 +107,9 @@ public final class TitlesListBox {
             if (index >= allTitles.size()) break;
 
             Title t = allTitles.get(index);
-            Text label = t.displayName != null ? t.displayName : Text.literal(t.id.toString());
+            String raw = t.displayName != null ? t.displayName.getString() : t.id.toString();
+            String clean = TitleStyleUtil.parse(raw).text();
+            Text label = Text.literal(clean);
 
             int partTop = boxY + Math.round(rowH * row);
             int partBottom = (row == VISIBLE_ROWS - 1) ? (boxY + BOX_HEIGHT) : (boxY + Math.round(rowH * (row + 1)));

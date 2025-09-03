@@ -1,6 +1,7 @@
 package net.pixeldreamstudios.rpgsystems.client.title;
 
 import net.minecraft.util.Identifier;
+import net.pixeldreamstudios.rpgsystems.network.title.TitlePayloads;
 
 import java.util.*;
 
@@ -11,10 +12,13 @@ public final class TitleClientData {
     private static Identifier selfActive;
     private static final Map<UUID, Identifier> othersActive = new HashMap<>();
 
+    private static final Map<Identifier, List<CondProg>> selfProgress = new HashMap<>();
+
     public static void clear() {
         selfUnlocked.clear();
         selfActive = null;
         othersActive.clear();
+        selfProgress.clear();
     }
 
     public static void setSelf(Collection<Identifier> unlocked, Identifier active) {
@@ -24,8 +28,7 @@ public final class TitleClientData {
     }
 
     public static void setActive(UUID player, Identifier active) {
-        if (active == null) othersActive.remove(player);
-        else othersActive.put(player, active);
+        othersActive.put(player, active);
     }
 
     public static Set<Identifier> getSelfUnlocked() {
@@ -39,4 +42,21 @@ public final class TitleClientData {
     public static Identifier getActive(UUID player) {
         return othersActive.get(player);
     }
+
+    public static void setProgress(List<TitlePayloads.SyncProgress.TitleProgress> list) {
+        selfProgress.clear();
+        for (TitlePayloads.SyncProgress.TitleProgress tp : list) {
+            List<CondProg> conds = new ArrayList<>(tp.conditions().size());
+            for (TitlePayloads.SyncProgress.CondProg cp : tp.conditions()) {
+                conds.add(new CondProg(cp.current(), cp.done()));
+            }
+            selfProgress.put(tp.id(), conds);
+        }
+    }
+
+    public static List<CondProg> getProgress(Identifier titleId) {
+        return selfProgress.getOrDefault(titleId, java.util.Collections.emptyList());
+    }
+
+    public record CondProg(long current, boolean done) {}
 }

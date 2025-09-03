@@ -1,21 +1,18 @@
 package net.pixeldreamstudios.rpgsystems.client.title.screen.box;
 
 import com.mojang.blaze3d.systems.RenderSystem;
+import net.fabricmc.api.EnvType;
+import net.fabricmc.api.Environment;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.gui.DrawContext;
-import net.minecraft.client.render.BufferBuilder;
-import net.minecraft.client.render.BufferRenderer;
-import net.minecraft.client.render.GameRenderer;
-import net.minecraft.client.render.Tessellator;
-import net.minecraft.client.render.VertexFormat;
-import net.minecraft.client.render.VertexFormats;
+import net.minecraft.client.render.*;
 import net.minecraft.client.util.math.MatrixStack;
-import net.minecraft.text.OrderedText;
-import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
+import net.minecraft.util.Util;
 import net.pixeldreamstudios.rpgsystems.client.title.TitleClientData;
+import net.pixeldreamstudios.rpgsystems.client.title.TitleStyleUtil;
 import net.pixeldreamstudios.rpgsystems.client.title.TitleTextureResolver;
 import net.pixeldreamstudios.rpgsystems.client.title.widget.TitleButtonWidget;
 import net.pixeldreamstudios.rpgsystems.mixin.client.ScreenAccessor;
@@ -24,6 +21,7 @@ import net.pixeldreamstudios.rpgsystems.title.Title;
 
 import java.util.Optional;
 
+@Environment(EnvType.CLIENT)
 public final class TitleBox {
     private static final int LEFT_PADDING = 7;
     private static final int RIGHT_PADDING = 6;
@@ -121,12 +119,63 @@ public final class TitleBox {
                 drawQuadGuiUV(matrices.peek().getPositionMatrix(), fi.u0, fi.v0, fi.u1, fi.v1);
                 matrices.pop();
             } else {
-                Text name = selected.displayName != null ? selected.displayName : Text.literal(selected.id.toString());
-                OrderedText centered = name.asOrderedText();
-                int textWidth = font.getWidth(centered);
-                int textX = Math.round(x + (w / 2f) - (textWidth / 2f));
-                int textY = Math.round(y + (h / 2f) - (font.fontHeight / 2f));
-                ctx.drawTextWithShadow(font, centered, textX, textY, 0xFFFFFF);
+                String raw = selected.displayName != null
+                        ? selected.displayName.getString()
+                        : selected.id.getPath();
+                TitleStyleUtil.Parsed parsed = TitleStyleUtil.parse(raw);
+
+                int textWidth = font.getWidth(parsed.text());
+                int baseX = Math.round(x + (w / 2f) - (textWidth / 2f));
+                int baseY = Math.round(y + (h / 2f) - (font.fontHeight / 2f));
+
+                long nowMs = Util.getMeasuringTimeMs();
+                float advanceX = 0f;
+                int index = 0;
+
+                for (int i = 0; i < parsed.text().length(); ) {
+                    int cp = parsed.text().codePointAt(i);
+                    String ch = new String(Character.toChars(cp));
+                    int cw = font.getWidth(ch);
+
+                    int rgb =
+                            (parsed.gradient() != null)
+                                    ? TitleStyleUtil.gradientRgb(index, parsed.text().length(), parsed.gradient())
+                                    : (parsed.rainbow()
+                                    ? TitleStyleUtil.rainbowRgb(nowMs, index, parsed.rainbowSpeed() != null ? parsed.rainbowSpeed() : 0.18f)
+                                    : TitleStyleUtil.resolveOrWhite(parsed.baseRgb()));
+
+                    if (parsed.pulseSpeed() != null)
+                        rgb = TitleStyleUtil.pulseRgb(nowMs, rgb, parsed.pulseSpeed());
+
+                    float yOff = parsed.wiggle()
+                            ? TitleStyleUtil.wiggleYOffsetPx(nowMs, index, parsed.wiggleAmp() != null ? parsed.wiggleAmp() : 2.0f)
+                            : 0f;
+
+                    float xOff = (parsed.shakeAmp() != null)
+                            ? TitleStyleUtil.shakeXOffsetPx(nowMs, index, parsed.shakeAmp())
+                            : 0f;
+
+                    if (parsed.outlineRgb() != null) {
+                        int px = Math.max(1, parsed.outlinePx() != null ? parsed.outlinePx() : 1);
+                        int oc = 0xFF000000 | (parsed.outlineRgb() & 0xFFFFFF);
+                        for (int ox = -px; ox <= px; ox++) for (int oy = -px; oy <= px; oy++) {
+                            if (ox == 0 && oy == 0) continue;
+                            ctx.drawText(font, ch,
+                                    Math.round(baseX + advanceX + xOff) + ox,
+                                    Math.round(baseY + yOff) + oy, oc, false);
+                        }
+                    }
+
+                    ctx.drawTextWithShadow(font, ch,
+                            Math.round(baseX + advanceX + xOff),
+                            Math.round(baseY + yOff),
+                            0xFF000000 | (rgb & 0xFFFFFF));
+
+
+                    advanceX += cw;
+                    index++;
+                    i += Character.charCount(cp);
+                }
             }
 
             boolean unlocked = TitleClientData.getSelfUnlocked().contains(selected.id);
@@ -198,7 +247,6 @@ public final class TitleBox {
 
         BufferRenderer.drawWithGlobalProgram(buf.end());
     }
-
 
     private int[] boxRect() {
         int boxX = screenX + LEFT_PADDING;

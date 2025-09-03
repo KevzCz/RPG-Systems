@@ -1,0 +1,11 @@
+{
+  "name": "{shake:1.5}{color:#87ceeb}Sky Drifter",
+  "description": "Proved your mettle through exploration and combat.",
+  "bonuses": [
+    { "attribute": "minecraft:generic.movement_speed", "amount": 0.02, "operation": "add_multiplied_total" },
+    { "spell": "wizards:frost_blizzard" }
+  ],
+  "conditions": [
+    { "type": "obtain_item", "item": "minecraft:iron_ingot", "hint": "You need to obtain the white ingot.", "hidden": true }
+  ]
+}

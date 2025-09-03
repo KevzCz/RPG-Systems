@@ -3,5 +3,12 @@
   "title.rpgsystems.bonuses": "Bonuses",
   "title.rpgsystems.novice": "Novice",
   "title.rpgsystems.slayer": "Slayer",
-  "title.rpgsystems.sprinter": "Sprinter"
+  "title.rpgsystems.sprinter": "Sprinter",
+  "title.rpgsystems.conditions": "Conditions",
+  "title.rpgsystems.condition.obtain_x": "Obtain %s",
+  "title.rpgsystems.condition.kill_any": "Defeat %s mobs",
+  "title.rpgsystems.condition.kill_specific": "Defeat %2$s × %1$s",
+  "title.rpgsystems.condition.advancement": "Complete advancement %s",
+  "title.rpgsystems.condition.walk": "Walk %s blocks",
+  "title.rpgsystems.bonus.spell": "Grants spell:"
 }

@@ -20,6 +20,7 @@ import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
+import net.minecraft.util.Util;
 import net.minecraft.util.math.Box;
 import net.minecraft.util.math.RotationAxis;
 import org.joml.Matrix4f;
@@ -109,7 +110,7 @@ public final class PlayerTitleRenderer {
 
             var tTitle = net.pixeldreamstudios.rpgsystems.title.TitleRegistry.get(titleId);
             Text label = tTitle != null ? tTitle.displayName : Text.literal(titleId.getPath());
-            drawCenteredText3D(context, matrices, label, finalAlpha);
+            drawStyledTitle3D(context, matrices, label, finalAlpha);
             matrices.pop();
         }
     }
@@ -128,22 +129,84 @@ public final class PlayerTitleRenderer {
         BufferRenderer.drawWithGlobalProgram(buf.end());
     }
 
-
-    private static void drawCenteredText3D(WorldRenderContext context, MatrixStack matrices, Text text, float alpha) {
+    private static void drawStyledTitle3D(WorldRenderContext context, MatrixStack matrices, Text text, float alpha) {
         TextRenderer tr = MinecraftClient.getInstance().textRenderer;
-        int w = tr.getWidth(text);
-        int a = Math.round(alpha * 255f) << 24;
-        int light = LightmapTextureManager.pack(15, 15);
+        String raw = text.getString();
+        TitleStyleUtil.Parsed parsed = TitleStyleUtil.parse(raw);
 
+        int light = LightmapTextureManager.pack(15, 15);
         float scale = 0.025f;
+
         matrices.push();
         matrices.scale(-scale, -scale, scale);
-        float x = -w / 2f;
+
+        float totalW = tr.getWidth(parsed.text());
+        float baseX = -totalW / 2f;
 
         var consumers = context.consumers();
-        if (consumers == null) consumers = MinecraftClient.getInstance().getBufferBuilders().getEntityVertexConsumers();
-        tr.draw(text, x, 0f, a | 0xFFFFFF, false, matrices.peek().getPositionMatrix(),
-                consumers, TextRenderer.TextLayerType.SEE_THROUGH, 0, light);
+        if (consumers == null) {
+            consumers = MinecraftClient.getInstance().getBufferBuilders().getEntityVertexConsumers();
+        }
+
+        long nowMs = Util.getMeasuringTimeMs();
+        float advanceX = 0f;
+        int index = 0;
+
+        for (int i = 0; i < parsed.text().length(); ) {
+            int cp = parsed.text().codePointAt(i);
+            String ch = new String(Character.toChars(cp));
+            int cw = tr.getWidth(ch);
+
+            // color selection (gradient > rainbow > solid), with optional pulse
+            int rgb =
+                    (parsed.gradient() != null)
+                            ? TitleStyleUtil.gradientRgb(index, parsed.text().length(), parsed.gradient())
+                            : (parsed.rainbow()
+                            ? TitleStyleUtil.rainbowRgb(nowMs, index, parsed.rainbowSpeed() != null ? parsed.rainbowSpeed() : 0.18f)
+                            : TitleStyleUtil.resolveOrWhite(parsed.baseRgb()));
+            if (parsed.pulseSpeed() != null) {
+                rgb = TitleStyleUtil.pulseRgb(nowMs, rgb, parsed.pulseSpeed());
+            }
+
+            int argb = ((Math.round(alpha * 255f) & 0xFF) << 24) | (rgb & 0xFFFFFF);
+
+// motion (wiggle Y + optional shake X)
+            float yOff = parsed.wiggle()
+                    ? TitleStyleUtil.wiggleYOffsetPx(nowMs, index, parsed.wiggleAmp() != null ? parsed.wiggleAmp() : 2.0f)
+                    : 0f;
+            float xOff = (parsed.shakeAmp() != null)
+                    ? TitleStyleUtil.shakeXOffsetPx(nowMs, index, parsed.shakeAmp())
+                    : 0f;
+
+// optional outline draw (before the main glyph)
+            if (parsed.outlineRgb() != null) {
+                int px = Math.max(1, parsed.outlinePx() != null ? parsed.outlinePx() : 1);
+                int outlineArgb = ((Math.round(alpha * 255f) & 0xFF) << 24) | (parsed.outlineRgb() & 0xFFFFFF);
+                var mat = matrices.peek().getPositionMatrix();
+                for (int ox = -px; ox <= px; ox++) for (int oy = -px; oy <= px; oy++) {
+                    if (ox == 0 && oy == 0) continue;
+                    tr.draw(ch,
+                            baseX + advanceX + xOff + ox,
+                            yOff + oy,
+                            outlineArgb,
+                            false, mat, consumers, TextRenderer.TextLayerType.SEE_THROUGH, 0, light);
+                }
+            }
+
+// main glyph
+            tr.draw(ch,
+                    baseX + advanceX + xOff,
+                    yOff,
+                    argb,
+                    false, matrices.peek().getPositionMatrix(),
+                    consumers, TextRenderer.TextLayerType.SEE_THROUGH, 0, light);
+
+
+            advanceX += cw;
+            index++;
+            i += Character.charCount(cp);
+        }
+
         matrices.pop();
     }
 

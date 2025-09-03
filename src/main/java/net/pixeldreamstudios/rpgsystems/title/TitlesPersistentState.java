@@ -20,6 +20,7 @@ public final class TitlesPersistentState extends PersistentState {
 
     public static final class PlayerTitles {
         public final Set<String> unlocked = new HashSet<>();
+        public final Map<String, NbtCompound> progress = new HashMap<>();
         public String active;
     }
 
@@ -42,6 +43,12 @@ public final class TitlesPersistentState extends PersistentState {
             if (row.contains("Active", NbtElement.STRING_TYPE)) {
                 pt.active = row.getString("Active");
             }
+            if (row.contains("Progress", NbtElement.COMPOUND_TYPE)) {
+                NbtCompound prog = row.getCompound("Progress");
+                for (String key : prog.getKeys()) {
+                    pt.progress.put(key, prog.getCompound(key));
+                }
+            }
             s.data.put(u, pt);
         }
         return s;
@@ -59,6 +66,15 @@ public final class TitlesPersistentState extends PersistentState {
             }
             row.put("Unlocked", unlocked);
             if (e.getValue().active != null) row.putString("Active", e.getValue().active);
+
+            if (!e.getValue().progress.isEmpty()) {
+                NbtCompound prog = new NbtCompound();
+                for (Map.Entry<String, NbtCompound> p : e.getValue().progress.entrySet()) {
+                    prog.put(p.getKey(), p.getValue());
+                }
+                row.put("Progress", prog);
+            }
+
             players.add(row);
         }
         nbt.put("Players", players);

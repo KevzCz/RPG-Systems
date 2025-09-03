@@ -1,0 +1,56 @@
+{
+  "name": "Monster Scholar",
+  "description": "Mastery through research, travel, and hard-won battles.",
+  "bonuses": [
+    { "attribute": "minecraft:generic.attack_damage", "amount": 1.0, "operation": "add_value" },
+    { "attribute": "minecraft:generic.max_health", "amount": 2.0, "operation": "add_value" }
+  ],
+  "conditions": [
+    {
+      "type": "kill_mobs",
+      "count": 5,
+      "entity": "minecraft:zombie",
+      "hint": "Study the shambling dead.",
+      "hidden": false
+    },
+    {
+      "type": "kill_mobs",
+      "count": 8,
+      "entity": "minecraft:*",
+      "hint": "Cull creatures from the Overworld.",
+      "hidden": false
+    },
+    {
+      "type": "kill_mobs",
+      "count": 3,
+      "entity": "any",
+      "nbt": "Tags:[\\\"elite\\\"]",
+      "hint": "Defeat elite-marked foes.",
+      "hidden": false
+    },
+    {
+      "type": "reach_level",
+      "level": 12,
+      "hint": "Grow your total skills level.",
+      "hidden": false
+    },
+    {
+      "type": "walk_blocks",
+      "distance": 3000,
+      "hint": "Travel to broaden your expertise.",
+      "hidden": false
+    },
+    {
+      "type": "obtain_item",
+      "item": "minecraft:enchanted_book",
+      "hint": "Secure a tome of power.",
+      "hidden": true
+    },
+    {
+      "type": "advancement",
+      "advancement": "minecraft:story/upgrade_tools",
+      "hint": "Refine your equipment.",
+      "hidden": false
+    }
+  ]
+}
