@@ -28,8 +28,6 @@ public final class TitleDescriptionBox {
     private static final int LEFT_BOX_LEFT_PADDING = 6;
     private static final int GUTTER = 8;
     private static final int BOX_HEIGHT = 64;
-
-    // Visuals
     private static final int COLOR_HEADER     = 0xFFF0F0F0;
     private static final int COLOR_DESC       = 0xFFE0E0E0;
     private static final int COLOR_BONUS_TEXT = 0xCCFFFFFF;
@@ -39,15 +37,11 @@ public final class TitleDescriptionBox {
 
     private static final int UI_MARGIN_Y = 2;
     private static final int BULLET_PAD  = 4;
-
-    // Sprites (9x9 suggested)
     private static final Identifier CHECK_OFF = Identifier.of("rpg-systems", "textures/gui/title/checkbox_todo.png");
     private static final Identifier CHECK_ON  = Identifier.of("rpg-systems", "textures/gui/title/checkbox_done.png");
     private static final Identifier INFO_ICON = Identifier.of("rpg-systems", "textures/gui/title/info.png");
-
-    // Icon baseline sizes (scaled by textScale)
-    private static final int ICON_SIZE = 9;     // checkbox + info sprite size in px
-    private static final int INFO_GAP  = 2;     // gap between text block and info icon
+    private static final int ICON_SIZE = 9;
+    private static final int INFO_GAP  = 2;
 
     private int screenX;
     private int screenY;
@@ -104,14 +98,12 @@ public final class TitleDescriptionBox {
 
         int y = boxY + 3;
 
-        // Title (no underline)
         String rawTitle = current.displayName != null ? current.displayName.getString() : current.id.toString();
         TitleStyleUtil.Parsed parsed = TitleStyleUtil.parse(rawTitle);
         int headerRgb = 0xFF000000 | TitleStyleUtil.resolveOrWhite(parsed.baseRgb());
         drawScaled(ctx, Text.literal(parsed.text()).asOrderedText(), innerX, y - scrollY, headerRgb, textScale);
         y += scaled(12) + UI_MARGIN_Y;
 
-        // Description
         if (current.description != null && !current.description.getString().isEmpty()) {
             int wrapWidth = Math.max(1, Math.round(innerW / textScale));
             List<OrderedText> lines = font.wrapLines(current.description, wrapWidth);
@@ -122,7 +114,6 @@ public final class TitleDescriptionBox {
             y += scaled(4);
         }
 
-        // Conditions: checkbox sprite + text + info sprite (never overlaps)
         if (current.conditions != null && !current.conditions.isEmpty()) {
             drawScaled(ctx, Text.translatable("title.rpgsystems.conditions").asOrderedText(), innerX, y - scrollY, COLOR_HEADER, textScale);
             y += scaled(10);
@@ -134,7 +125,6 @@ public final class TitleDescriptionBox {
             for (CondLine cl : lines) {
                 int infoReserve = (cl.hint != null ? (infoSize + scaled(INFO_GAP)) : 0);
 
-                // Wrap first so we know the block height to vertically center icons
                 int textX = innerX + checkSize + BULLET_PAD;
                 int availableTextW = innerW - (textX - innerX) - infoReserve;
                 int wrapW = Math.max(1, Math.round(availableTextW / textScale));
@@ -144,19 +134,16 @@ public final class TitleDescriptionBox {
                 int lineH = scaled(9);
                 int blockH = Math.max(checkSize, Math.max(lineH, wrapped.size() * lineH));
 
-                // Checkbox (sprite)
                 int checkY = startY - scrollY + (blockH - checkSize) / 2;
                 Identifier checkSprite = cl.done ? CHECK_ON : CHECK_OFF;
                 drawSprite(ctx, checkSprite, innerX, checkY, checkSize, checkSize);
 
-                // Text block
                 int ty = startY;
                 for (OrderedText ot : wrapped) {
                     drawScaled(ctx, ot, textX, ty - scrollY, cl.color, textScale);
                     ty += lineH;
                 }
 
-                // Info sprite (sprite; right-aligned; never overlaps)
                 if (cl.hint != null) {
                     int badgeX = innerX + innerW - infoSize;
                     int badgeY = startY - scrollY + (blockH - infoSize) / 2;
@@ -164,14 +151,12 @@ public final class TitleDescriptionBox {
                     hintSpots.add(new HintSpot(badgeX, badgeY, infoSize, infoSize, cl.hint));
                 }
 
-                // Advance
                 y += blockH + UI_MARGIN_Y;
             }
 
             y += scaled(4);
         }
 
-        // Bonuses: single bullet for stats; single star for spells (no extra left dot)
         if (!current.bonuses.isEmpty()) {
             drawScaled(ctx, Text.translatable("title.rpgsystems.bonuses").asOrderedText(), innerX, y - scrollY, COLOR_HEADER, textScale);
             y += scaled(10);
@@ -227,7 +212,6 @@ public final class TitleDescriptionBox {
         return scrollY != before;
     }
 
-    // ---------- Helpers ----------
 
     private void drawSprite(DrawContext ctx, Identifier id, int x, int y, int w, int h) {
         ctx.drawTexture(id, x, y, 0, 0, w, h, w, h);
@@ -270,7 +254,6 @@ public final class TitleDescriptionBox {
                 if (!raw.equals("spell." + id.getNamespace() + "." + id.getPath())) return t;
             }
         }
-        // nice fallback
         String nice = id.getPath().replace('_', ' ');
         String[] parts = nice.split(" ");
         StringBuilder sb = new StringBuilder();

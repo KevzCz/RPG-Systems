@@ -5,14 +5,10 @@ import net.minecraft.util.Identifier;
 import net.pixeldreamstudios.rpgsystems.title.Title;
 import net.pixeldreamstudios.rpgsystems.title.TitleRegistry;
 import net.pixeldreamstudios.rpgsystems.title.TitlesPersistentState;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.Optional;
 
 public final class TitleApi {
-    private static final Logger LOG = LoggerFactory.getLogger("RPGSystems-TitleSpells");
-
     private TitleApi() {}
 
     public static boolean grant(ServerPlayerEntity player, Identifier titleId) {
@@ -78,35 +74,28 @@ public final class TitleApi {
     private static void applyBonuses(ServerPlayerEntity player, Title t) {
         java.util.List<Identifier> spells = new java.util.ArrayList<>();
 
-        LOG.info("Applying title {} to {}", t.id, player.getGameProfile().getName());
         for (Title.Bonus b : t.bonuses) {
             if (b.spellId != null && b.spellId.isPresent()) {
                 spells.add(b.spellId.get());
                 continue;
             }
             if (b.attribute == null) {
-                LOG.warn("Title {} bonus without attribute or spell; skipping", t.id);
                 continue;
             }
             var inst = player.getAttributeInstance(b.attribute);
             if (inst == null) {
-                LOG.warn("Title {} unknown attribute instance {}; skipping", t.id, b.attribute);
                 continue;
             }
             Identifier mid = modifierId(t, b);
             inst.removeModifier(mid);
             inst.addPersistentModifier(new net.minecraft.entity.attribute.EntityAttributeModifier(mid, b.amount, b.operation));
-            LOG.info("Title {} applied attribute bonus {} amount={} op={}", t.id, b.attribute, b.amount, b.operation);
         }
-
-        LOG.info("Title {} collected {} spell bonuses: {}", t.id, spells.size(), spells);
         if (!spells.isEmpty()) {
             net.pixeldreamstudios.rpgsystems.util.TitleSpellBonusUtil.installTitleSpells(player, t.id, spells);
         }
     }
 
     private static void removeBonuses(ServerPlayerEntity player, Title t) {
-        LOG.info("Removing title {} from {}", t.id, player.getGameProfile().getName());
         for (Title.Bonus b : t.bonuses) {
             if (b.spellId != null && b.spellId.isPresent()) {
                 continue;

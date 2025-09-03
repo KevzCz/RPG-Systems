@@ -186,7 +186,7 @@ public final class TitlePayloads {
                     STRING, Def::name,
                     PacketCodecs.optional(STRING), Def::description,
                     PacketCodecs.collection(ArrayList::new, BonusDef.CODEC), Def::bonuses,
-                    PacketCodecs.collection(ArrayList::new, Identifier.PACKET_CODEC), Def::spells,   // <-- NEW
+                    PacketCodecs.collection(ArrayList::new, Identifier.PACKET_CODEC), Def::spells,
                     PacketCodecs.collection(ArrayList::new, ConditionDef.CODEC), Def::conditions,
                     Def::new
             );

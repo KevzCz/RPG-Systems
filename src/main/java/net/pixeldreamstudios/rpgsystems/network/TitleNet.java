@@ -79,7 +79,6 @@ public final class TitleNet {
 
                         Title.Builder b = Title.builder(id, name).description(desc);
 
-                        // attributes (unchanged)
                         for (TitlePayloads.SyncDefinitions.BonusDef jb : d.bonuses()) {
                             RegistryKey<EntityAttribute> key = RegistryKey.of(RegistryKeys.ATTRIBUTE, jb.attribute());
                             RegistryEntry<EntityAttribute> entry = Registries.ATTRIBUTE.getEntry(key)
@@ -87,12 +86,10 @@ public final class TitleNet {
                             b.add(entry, jb.amount(), jb.operation());
                         }
 
-                        // NEW: spells from payload
                         for (Identifier sid : d.spells()) {
                             b.addSpell(sid);
                         }
 
-                        // conditions (unchanged)
                         for (TitlePayloads.SyncDefinitions.ConditionDef cd : d.conditions()) {
                             Title.Condition.Type t = switch (cd.type()) {
                                 case OBTAIN_ITEM     -> Title.Condition.Type.OBTAIN_ITEM;
@@ -180,19 +177,16 @@ public final class TitleNet {
             String name = t.displayName == null ? id.toString() : t.displayName.getString();
             String desc = t.description == null ? "" : t.description.getString();
 
-            // Collect attribute bonuses and spell bonuses separately
             List<TitlePayloads.SyncDefinitions.BonusDef> bdefs = new ArrayList<>();
             List<Identifier> sdefs = new ArrayList<>();
             for (Title.Bonus b : t.bonuses) {
                 if (b == null) continue;
 
-                // Spell bonus?
                 if (b.spellId != null && b.spellId.isPresent()) {
                     sdefs.add(b.spellId.get());
                     continue;
                 }
 
-                // Attribute bonus?
                 if (b.attribute != null) {
                     Identifier attrId = Registries.ATTRIBUTE.getId(b.attribute.value());
                     if (attrId != null) {

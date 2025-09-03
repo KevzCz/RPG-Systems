@@ -19,8 +19,6 @@ import net.minecraft.util.profiler.Profiler;
 import net.pixeldreamstudios.rpgsystems.RPGSystems;
 import net.pixeldreamstudios.rpgsystems.title.Title;
 import net.pixeldreamstudios.rpgsystems.title.TitleRegistry;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -32,8 +30,6 @@ import java.util.Map;
  */
 public final class TitlesDataReloader extends JsonDataLoader implements IdentifiableResourceReloadListener {
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
-    private static final Logger LOG = LoggerFactory.getLogger("RPGSystems-TitlesReload");
-
     public TitlesDataReloader() {
         super(GSON, "title");
     }
@@ -41,19 +37,13 @@ public final class TitlesDataReloader extends JsonDataLoader implements Identifi
     @Override
     protected void apply(Map<Identifier, JsonElement> prepared, ResourceManager manager, Profiler profiler) {
         Map<Identifier, Title> loaded = new HashMap<>();
-
-        LOG.info("Reloading titles… found {} json entries", prepared.size());
-
         prepared.forEach((fileId, json) -> {
             try {
                 TitleData data = TitleData.CODEC.parse(JsonOps.INSTANCE, json).getOrThrow();
                 String path = fileId.getPath();
                 int slash = path.lastIndexOf('/');
-                String leaf = (slash >= 0) ? path.substring(slash + 1) : path; // path is already extensionless
+                String leaf = (slash >= 0) ? path.substring(slash + 1) : path;
                 Identifier id = Identifier.of(fileId.getNamespace(), leaf);
-
-                LOG.info("Parsing title fileId={} -> id={}", fileId, id);
-
                 Title.Builder b = Title.builder(id, Text.literal(data.name().orElse(leaf)));
                 data.description().ifPresent(desc -> b.description(Text.literal(desc)));
 
@@ -61,7 +51,6 @@ public final class TitlesDataReloader extends JsonDataLoader implements Identifi
                 for (TitleData.Bonus jb : data.bonuses()) {
                     if (jb.spell().isPresent()) {
                         Identifier spellId = jb.spell().get();
-                        LOG.info("  bonus[{}]: SPELL {}", idx, spellId);
                         b.addSpell(spellId);
                     } else {
                         Identifier attrId = jb.attribute()
@@ -73,7 +62,6 @@ public final class TitlesDataReloader extends JsonDataLoader implements Identifi
                         RegistryEntry<EntityAttribute> entry = Registries.ATTRIBUTE.getEntry(key)
                                 .orElseThrow(() -> new IllegalArgumentException("Unknown attribute: " + attrId));
 
-                        LOG.info("  bonus[{}]: ATTR {} amount={} op={}", idx, attrId, amount, op);
                         b.add(entry, amount, op);
                     }
                     idx++;
@@ -111,20 +99,16 @@ public final class TitlesDataReloader extends JsonDataLoader implements Identifi
                         ));
                         ci++;
                     }
-                    LOG.info("  added {} condition(s)", ci);
+
                 }
 
                 Title built = b.build();
-                LOG.info("Built title {}: bonuses={}, conditions={}", id, built.bonuses.size(), built.conditions.size());
                 loaded.put(id, built);
-            } catch (Exception ex) {
-                LOG.error("Failed to parse title fileId={}: {}", fileId, ex.getMessage(), ex);
-            }
+            } catch (Exception ex) {}
         });
 
         TitleRegistry.replaceAll(loaded);
         TitleRegistry.bootstrapFallback();
-        LOG.info("Title reload complete. Loaded {} titles into registry", loaded.size());
     }
 
     @Override

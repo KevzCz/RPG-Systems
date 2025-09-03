@@ -7,7 +7,6 @@ public final class TitleStyleUtil {
 
     public record Parsed(
             String text, boolean rainbow, boolean wiggle, Integer baseRgb,
-            // new:
             Float rainbowSpeed, Float wiggleAmp, Float wiggleSpeed,
             int[] gradient,
             Float pulseSpeed,
@@ -20,21 +19,21 @@ public final class TitleStyleUtil {
         boolean rainbow = containsToken(raw, "{rainbow}");
         boolean wiggle  = containsToken(raw, "{wiggle}");
 
-        Float rainbowSpeed = readFloatParam(raw, "rainbow"); // {rainbow:0.25}
-        Float wiggleAmp    = readKeyedParam(raw, "wiggle", "amp");   // {wiggle:amp=2.5,speed=6}
+        Float rainbowSpeed = readFloatParam(raw, "rainbow");
+        Float wiggleAmp    = readKeyedParam(raw, "wiggle", "amp");
         Float wiggleSpeed  = readKeyedParam(raw, "wiggle", "speed");
 
-        int[] gradient     = readGradient(raw);              // {gradient:#ff,#aa,#00}
-        Float pulseSpeed   = readFloatParam(raw, "pulse");   // {pulse} or {pulse:1.2}
+        int[] gradient     = readGradient(raw);
+        Float pulseSpeed   = readFloatParam(raw, "pulse");
         Integer outlineRgb = readColorParam(raw, "outline", 0);
         Integer outlinePx  = readIntParam(raw, "outline", 1);
-        Float shakeAmp     = readFloatParam(raw, "shake");   // {shake:1.2}
-        Integer hexColor   = readHexColor(raw);              // {color:#RRGGBB}
+        Float shakeAmp     = readFloatParam(raw, "shake");
+        Integer hexColor   = readHexColor(raw);
 
         String s = removeToken(removeToken(raw, "{rainbow}"), "{wiggle}").trim();
-        s = stripDynamicTokens(s); // remove {gradient...} {pulse...} {outline...} {shake...} {color...}
+        s = stripDynamicTokens(s);
 
-        Integer color = hexColor; // prefer {color:...} over legacy if present
+        Integer color = hexColor;
         StringBuilder out = new StringBuilder(s.length());
 
         for (int i = 0; i < s.length(); ) {
@@ -55,15 +54,14 @@ public final class TitleStyleUtil {
                 gradient, pulseSpeed, outlineRgb, outlinePx, shakeAmp);
     }
 
-    // ---- tiny parsing helpers ----
-    private static String tokenPayload(String s, String name) { // returns content after colon or "" if none
+    private static String tokenPayload(String s, String name) {
         String low = s.toLowerCase();
         String open = "{" + name.toLowerCase();
         int i = low.indexOf(open);
         if (i < 0) return null;
         int end = s.indexOf('}', i);
         if (end < 0) return null;
-        String inside = s.substring(i + 1, end); // name or name:...
+        String inside = s.substring(i + 1, end);
         int colon = inside.indexOf(':');
         return colon >= 0 ? inside.substring(colon + 1).trim() : "";
     }
@@ -220,7 +218,6 @@ public final class TitleStyleUtil {
         int bi = Math.round(bl * 255f) & 0xFF;
         return (ri << 16) | (gi << 8) | bi;
     }
-    // gradient between multiple colors
     public static int gradientRgb(int index, int length, int[] cols) {
         if (cols == null || cols.length == 0) return 0xFFFFFF;
         if (cols.length == 1) return cols[0];
@@ -238,7 +235,7 @@ public final class TitleStyleUtil {
     public static int pulseRgb(long nowMs, int baseRgb, float speed) {
         float t = (nowMs % 1_000_000L) / 1000f;
         float k = 0.5f + 0.5f*(float)Math.sin(t * (float)(Math.PI*2) * speed);
-        float mul = 0.6f + 0.4f*k; // 60%..100%
+        float mul = 0.6f + 0.4f*k;
         int r = Math.min(255, (int)(((baseRgb>>16)&255) * mul));
         int g = Math.min(255, (int)(((baseRgb>>8 )&255) * mul));
         int b = Math.min(255, (int)(((baseRgb    )&255) * mul));
@@ -250,10 +247,9 @@ public final class TitleStyleUtil {
         return (float)(Math.sin(t*9.0 + index*0.9) * ampPx);
     }
 
-    // overload rainbow with speed
     public static int rainbowRgb(long nowMs, int index, float speed) {
         float t = (nowMs % 1_000_000L) / 1000.0f;
-        float hue = wrap01(t * speed + index * 0.12f); // old speed was ~0.18
+        float hue = wrap01(t * speed + index * 0.12f);
         return hsbToRgb(hue, 1f, 1f);
     }
 

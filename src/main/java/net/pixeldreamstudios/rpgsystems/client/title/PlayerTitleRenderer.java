@@ -157,7 +157,6 @@ public final class PlayerTitleRenderer {
             String ch = new String(Character.toChars(cp));
             int cw = tr.getWidth(ch);
 
-            // color selection (gradient > rainbow > solid), with optional pulse
             int rgb =
                     (parsed.gradient() != null)
                             ? TitleStyleUtil.gradientRgb(index, parsed.text().length(), parsed.gradient())
@@ -170,7 +169,6 @@ public final class PlayerTitleRenderer {
 
             int argb = ((Math.round(alpha * 255f) & 0xFF) << 24) | (rgb & 0xFFFFFF);
 
-// motion (wiggle Y + optional shake X)
             float yOff = parsed.wiggle()
                     ? TitleStyleUtil.wiggleYOffsetPx(nowMs, index, parsed.wiggleAmp() != null ? parsed.wiggleAmp() : 2.0f)
                     : 0f;
@@ -178,7 +176,6 @@ public final class PlayerTitleRenderer {
                     ? TitleStyleUtil.shakeXOffsetPx(nowMs, index, parsed.shakeAmp())
                     : 0f;
 
-// optional outline draw (before the main glyph)
             if (parsed.outlineRgb() != null) {
                 int px = Math.max(1, parsed.outlinePx() != null ? parsed.outlinePx() : 1);
                 int outlineArgb = ((Math.round(alpha * 255f) & 0xFF) << 24) | (parsed.outlineRgb() & 0xFFFFFF);
@@ -193,7 +190,6 @@ public final class PlayerTitleRenderer {
                 }
             }
 
-// main glyph
             tr.draw(ch,
                     baseX + advanceX + xOff,
                     yOff,
