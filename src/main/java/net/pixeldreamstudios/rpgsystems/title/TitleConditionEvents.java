@@ -22,6 +22,7 @@ import net.pixeldreamstudios.rpgsystems.api.TitleApi;
 import net.pixeldreamstudios.rpgsystems.network.TitleNet;
 
 import java.lang.reflect.Method;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
@@ -92,7 +93,7 @@ public final class TitleConditionEvents {
 
         boolean changed = false;
 
-        for (Map.Entry<Identifier, Title> e : TitleRegistry.all().entrySet()) {
+        for (Map.Entry<Identifier, Title> e : snapshotTitleEntries()) {
             Identifier id = e.getKey();
             Title t = e.getValue();
             if (isAlreadyUnlocked(pt, id)) continue;
@@ -115,7 +116,7 @@ public final class TitleConditionEvents {
 
     private static boolean onDimensionChanged(MinecraftServer server, ServerPlayerEntity player, TitlesPersistentState state, TitlesPersistentState.PlayerTitles pt, RegistryKey<World> curDim) {
         boolean changed = false;
-        for (Map.Entry<Identifier, Title> e : TitleRegistry.all().entrySet()) {
+        for (Map.Entry<Identifier, Title> e : snapshotTitleEntries()) {
             Identifier id = e.getKey();
             Title t = e.getValue();
             if (isAlreadyUnlocked(pt, id)) continue;
@@ -146,7 +147,7 @@ public final class TitleConditionEvents {
         var biomeEntry = player.getWorld().getBiome(pos);
         Identifier biomeId = biomeEntry.getKey().map(k -> k.getValue()).orElse(null);
 
-        for (Map.Entry<Identifier, Title> e : TitleRegistry.all().entrySet()) {
+        for (Map.Entry<Identifier, Title> e : snapshotTitleEntries()) {
             Identifier id = e.getKey();
             Title t = e.getValue();
             if (isAlreadyUnlocked(pt, id)) continue;
@@ -206,10 +207,9 @@ public final class TitleConditionEvents {
         return tag.toString().contains(query);
     }
 
-
     private static boolean accumulateProgressWalk(TitlesPersistentState state, TitlesPersistentState.PlayerTitles pt, double distance) {
         boolean changed = false;
-        for (Map.Entry<Identifier, Title> e : TitleRegistry.all().entrySet()) {
+        for (Map.Entry<Identifier, Title> e : snapshotTitleEntries()) {
             Identifier id = e.getKey();
             Title t = e.getValue();
             if (isAlreadyUnlocked(pt, id)) continue;
@@ -228,7 +228,7 @@ public final class TitleConditionEvents {
     private static boolean checkPeriodic(MinecraftServer server, ServerPlayerEntity player, TitlesPersistentState state, TitlesPersistentState.PlayerTitles pt) {
         boolean changed = false;
 
-        for (Map.Entry<Identifier, Title> e : TitleRegistry.all().entrySet()) {
+        for (Map.Entry<Identifier, Title> e : snapshotTitleEntries()) {
             Identifier id = e.getKey();
             Title t = e.getValue();
             if (isAlreadyUnlocked(pt, id)) continue;
@@ -258,7 +258,6 @@ public final class TitleConditionEvents {
                     }
                     if (changed) state.markDirty();
                 }
-
 
                 if (c.type == Title.Condition.Type.ADVANCEMENT && c.advancement.isPresent()) {
                     Identifier advId = c.advancement.get();
@@ -327,7 +326,7 @@ public final class TitleConditionEvents {
 
     private static void checkCompletionAndGrant(MinecraftServer server, ServerPlayerEntity player,
                                                 TitlesPersistentState state, TitlesPersistentState.PlayerTitles pt) {
-        for (Map.Entry<Identifier, Title> e : TitleRegistry.all().entrySet()) {
+        for (Map.Entry<Identifier, Title> e : snapshotTitleEntries()) {
             Identifier id = e.getKey();
             Title t = e.getValue();
             if (isAlreadyUnlocked(pt, id)) continue;
@@ -406,5 +405,12 @@ public final class TitleConditionEvents {
         } catch (Throwable t) {
             return -1;
         }
+    }
+
+    private static java.util.List<Map.Entry<Identifier, Title>> snapshotTitleEntries() {
+        var map = TitleRegistry.all();
+        var list = new ArrayList<Map.Entry<Identifier, Title>>(map.size());
+        map.forEach((id, t) -> list.add(Map.entry(id, t)));
+        return list;
     }
 }
