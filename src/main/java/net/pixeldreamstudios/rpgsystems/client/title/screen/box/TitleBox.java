@@ -7,7 +7,12 @@ import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.gui.DrawContext;
-import net.minecraft.client.render.*;
+import net.minecraft.client.render.BufferBuilder;
+import net.minecraft.client.render.BufferRenderer;
+import net.minecraft.client.render.GameRenderer;
+import net.minecraft.client.render.Tessellator;
+import net.minecraft.client.render.VertexFormat;
+import net.minecraft.client.render.VertexFormats;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.Util;
@@ -137,40 +142,47 @@ public final class TitleBox {
                     String ch = new String(Character.toChars(cp));
                     int cw = font.getWidth(ch);
 
-                    int rgb =
-                            (parsed.gradient() != null)
-                                    ? TitleStyleUtil.gradientRgb(index, parsed.text().length(), parsed.gradient())
-                                    : (parsed.rainbow()
-                                    ? TitleStyleUtil.rainbowRgb(nowMs, index, parsed.rainbowSpeed() != null ? parsed.rainbowSpeed() : 0.18f)
-                                    : TitleStyleUtil.resolveOrWhite(parsed.baseRgb()));
+                    int rgb = (parsed.gradient() != null)
+                            ? TitleStyleUtil.gradientRgb(index, parsed.text().length(), parsed.gradient())
+                            : (parsed.rainbow()
+                            ? TitleStyleUtil.rainbowRgb(nowMs, index, parsed.rainbowSpeed() != null ? parsed.rainbowSpeed() : 0.18f)
+                            : TitleStyleUtil.resolveOrWhite(parsed.baseRgb()));
 
-                    if (parsed.pulseSpeed() != null)
+                    if (parsed.pulseSpeed() != null) {
                         rgb = TitleStyleUtil.pulseRgb(nowMs, rgb, parsed.pulseSpeed());
+                    }
 
-                    float yOff = parsed.wiggle()
-                            ? TitleStyleUtil.wiggleYOffsetPx(nowMs, index, parsed.wiggleAmp() != null ? parsed.wiggleAmp() : 2.0f)
-                            : 0f;
+                    float yOff = 0f;
+                    if (parsed.wiggle()) {
+                        float amp = parsed.wiggleAmp() != null ? parsed.wiggleAmp() : 2.0f;
+                        yOff += TitleStyleUtil.wiggleYOffsetPx(nowMs, index, amp);
+                    }
+                    if (parsed.bounceAmp() != null || parsed.bounceSpeed() != null) {
+                        float amp = parsed.bounceAmp() != null ? parsed.bounceAmp() : 0f;
+                        float spd = parsed.bounceSpeed() != null ? parsed.bounceSpeed() : 3.0f;
+                        yOff += TitleStyleUtil.bounceYOffsetPx(nowMs, index, amp, spd);
+                    }
 
-                    float xOff = (parsed.shakeAmp() != null)
-                            ? TitleStyleUtil.shakeXOffsetPx(nowMs, index, parsed.shakeAmp())
-                            : 0f;
+                    float xOff = 0f;
+                    if (parsed.waveAmp() != null || parsed.waveSpeed() != null) {
+                        float amp = parsed.waveAmp() != null ? parsed.waveAmp() : 0f;
+                        float spd = parsed.waveSpeed() != null ? parsed.waveSpeed() : 2.5f;
+                        xOff += TitleStyleUtil.waveXOffsetPx(nowMs, index, amp, spd);
+                    }
+                    if (parsed.shakeAmp() != null) {
+                        xOff += TitleStyleUtil.shakeXOffsetPx(nowMs, index, parsed.shakeAmp());
+                    }
 
-                    if (parsed.outlineRgb() != null) {
-                        int px = Math.max(1, parsed.outlinePx() != null ? parsed.outlinePx() : 1);
-                        int oc = 0xFF000000 | (parsed.outlineRgb() & 0xFFFFFF);
-                        for (int ox = -px; ox <= px; ox++) for (int oy = -px; oy <= px; oy++) {
-                            if (ox == 0 && oy == 0) continue;
-                            ctx.drawText(font, ch,
-                                    Math.round(baseX + advanceX + xOff) + ox,
-                                    Math.round(baseY + yOff) + oy, oc, false);
-                        }
+                    if (parsed.glitchIntensity() != null && TitleStyleUtil.glitchActive(nowMs, index, parsed.glitchIntensity())) {
+                        xOff += TitleStyleUtil.glitchJitterX(nowMs, index, parsed.glitchIntensity());
+                        yOff += TitleStyleUtil.glitchJitterY(nowMs, index, parsed.glitchIntensity());
+                        rgb = TitleStyleUtil.glitchTintRgb(nowMs, index, rgb, parsed.glitchIntensity());
                     }
 
                     ctx.drawTextWithShadow(font, ch,
                             Math.round(baseX + advanceX + xOff),
                             Math.round(baseY + yOff),
                             0xFF000000 | (rgb & 0xFFFFFF));
-
 
                     advanceX += cw;
                     index++;
