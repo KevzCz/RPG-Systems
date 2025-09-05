@@ -87,9 +87,13 @@ public final class PlayerTitleRenderer {
             float hpOffset = net.pixeldreamstudios.rpgsystems.client.enemy.EnemyHealthBarRenderer.getNameYOffset(player, tickDelta) * 0.6f;
 
             boolean isSelf = client.player != null && player.getId() == client.player.getId();
+            var titleCfg = net.pixeldreamstudios.rpgsystems.client.title.config.TitlesClientConfig.get();
+            if (isSelf && !titleCfg.showOwnTitle) continue;
+            if (!isSelf && !titleCfg.showOthersTitles) continue;
             float gapAboveName = isSelf ? 0f : NAME_GAP;
 
             matrices.push();
+
             matrices.translate(ex - camPos.x, ey - camPos.y + head + hpOffset + gapAboveName, ez - camPos.z);
             faceCamera(matrices, camera);
 

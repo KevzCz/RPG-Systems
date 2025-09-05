@@ -13,6 +13,7 @@ import net.pixeldreamstudios.rpgsystems.client.enemy.configui.EnemyHudsScreen;
 import net.pixeldreamstudios.rpgsystems.client.enemy.configui.HealingNumbersScreen;
 import net.pixeldreamstudios.rpgsystems.client.party.configui.PartyHudOptionsScreen;
 import net.pixeldreamstudios.rpgsystems.client.party.configui.PartyMemberInfoOptionsScreen;
+import net.pixeldreamstudios.rpgsystems.client.title.configui.TitlesOptionsScreen;
 
 @Environment(EnvType.CLIENT)
 public final class ClientConfigsScreen extends Screen {
@@ -63,8 +64,10 @@ public final class ClientConfigsScreen extends Screen {
         ButtonWidget healingBtn = ButtonWidget.builder(Text.literal("Healing Numbers"),
                         b -> this.client.setScreen(new HealingNumbersScreen(this)))
                 .size(colW - 8, buttonH).position(0, 0).build();
-
-        navColumn.setButtons(partyHudBtn, memberInfoBtn, enemyHudsBtn, damageBtn, healingBtn);
+        ButtonWidget titlesBtn = ButtonWidget.builder(Text.literal("Titles"),
+                        b -> this.client.setScreen(new TitlesOptionsScreen(this)))
+                .size(colW - 8, buttonH).position(0, 0).build();
+        navColumn.setButtons(partyHudBtn, memberInfoBtn, enemyHudsBtn, damageBtn, healingBtn, titlesBtn);
         this.addDrawableChild(navColumn);
     }
 
