@@ -1,6 +1,5 @@
 package net.pixeldreamstudios.rpgsystems.network.title;
 
-import io.netty.buffer.ByteBuf;
 import net.minecraft.entity.attribute.EntityAttributeModifier;
 import net.minecraft.network.RegistryByteBuf;
 import net.minecraft.network.codec.PacketCodec;
@@ -31,13 +30,18 @@ public final class TitlePayloads {
         };
     }
 
-    private static final PacketCodec<RegistryByteBuf, Integer> VAR_INT = wrap(PacketCodecs.VAR_INT);
-    private static final PacketCodec<RegistryByteBuf, Long> VAR_LONG = wrap(PacketCodecs.VAR_LONG);
-    private static final PacketCodec<RegistryByteBuf, Double> DOUBLE = wrap(PacketCodecs.DOUBLE);
-    private static final PacketCodec<RegistryByteBuf, Boolean> BOOL = wrap(PacketCodecs.BOOL);
-    private static final PacketCodec<RegistryByteBuf, String> STRING = wrap(PacketCodecs.STRING);
-    private static final PacketCodec<RegistryByteBuf, Optional<String>> OPT_STRING = PacketCodecs.optional(STRING);
-    private static final PacketCodec<ByteBuf, Optional<Identifier>> OPT_ID = PacketCodecs.optional(Identifier.PACKET_CODEC);
+    private static final PacketCodec<RegistryByteBuf, Integer> VAR_INT   = wrap(PacketCodecs.VAR_INT);
+    private static final PacketCodec<RegistryByteBuf, Long>    VAR_LONG  = wrap(PacketCodecs.VAR_LONG);
+    private static final PacketCodec<RegistryByteBuf, Double>  DOUBLE    = wrap(PacketCodecs.DOUBLE);
+    private static final PacketCodec<RegistryByteBuf, Boolean> BOOL      = wrap(PacketCodecs.BOOL);
+    private static final PacketCodec<RegistryByteBuf, String>  STRING    = wrap(PacketCodecs.STRING);
+    private static final PacketCodec<RegistryByteBuf, Optional<String>> OPT_STRING =
+            wrap(PacketCodecs.optional(PacketCodecs.STRING));
+    private static final PacketCodec<RegistryByteBuf, Identifier> ID_CODEC =
+            wrap(Identifier.PACKET_CODEC);
+    private static final PacketCodec<RegistryByteBuf, Optional<Identifier>> OPT_ID =
+            wrap(PacketCodecs.optional(Identifier.PACKET_CODEC));
+
     private static final PacketCodec<RegistryByteBuf, UUID> UUID_CODEC = new PacketCodec<RegistryByteBuf, UUID>() {
         @Override public UUID decode(RegistryByteBuf buf) { return Uuids.PACKET_CODEC.decode(buf); }
         @Override public void encode(RegistryByteBuf buf, UUID value) { Uuids.PACKET_CODEC.encode(buf, value); }
@@ -46,10 +50,11 @@ public final class TitlePayloads {
     public record SyncSelf(List<Identifier> unlocked, Optional<Identifier> active) implements CustomPayload {
         public static final Id<SyncSelf> ID = new Id<>(Identifier.of("rpg-systems", "titles_self_sync"));
         public static final PacketCodec<RegistryByteBuf, SyncSelf> CODEC = PacketCodec.tuple(
-                PacketCodecs.collection(ArrayList::new, Identifier.PACKET_CODEC), SyncSelf::unlocked,
-                PacketCodecs.optional(Identifier.PACKET_CODEC), SyncSelf::active,
+                wrap(PacketCodecs.collection(ArrayList::new, Identifier.PACKET_CODEC)), SyncSelf::unlocked,
+                wrap(PacketCodecs.optional(Identifier.PACKET_CODEC)), SyncSelf::active,
                 SyncSelf::new
         );
+
         @Override public Id<? extends CustomPayload> getId() { return ID; }
     }
 
@@ -57,7 +62,7 @@ public final class TitlePayloads {
         public static final Id<SyncActive> ID = new Id<>(Identifier.of("rpg-systems", "titles_active_sync"));
         public static final PacketCodec<RegistryByteBuf, SyncActive> CODEC = PacketCodec.tuple(
                 UUID_CODEC, SyncActive::playerUuid,
-                PacketCodecs.optional(Identifier.PACKET_CODEC), SyncActive::active,
+                wrap(PacketCodecs.optional(Identifier.PACKET_CODEC)), SyncActive::active,
                 SyncActive::new
         );
         @Override public Id<? extends CustomPayload> getId() { return ID; }
@@ -66,7 +71,7 @@ public final class TitlePayloads {
     public record RequestSetActive(Optional<Identifier> active) implements CustomPayload {
         public static final Id<RequestSetActive> ID = new Id<>(Identifier.of("rpg-systems", "titles_set_active"));
         public static final PacketCodec<RegistryByteBuf, RequestSetActive> CODEC = PacketCodec.tuple(
-                PacketCodecs.optional(Identifier.PACKET_CODEC), RequestSetActive::active,
+                wrap(PacketCodecs.optional(Identifier.PACKET_CODEC)), RequestSetActive::active,
                 RequestSetActive::new
         );
         @Override public Id<? extends CustomPayload> getId() { return ID; }
@@ -86,10 +91,18 @@ public final class TitlePayloads {
             ADVANCEMENT,
             WALK_BLOCKS,
             REACH_LEVEL,
+            REACH_LEVEL_XP,
+            REACH_LEVEL_PUFFERFISH,
             CRAFT_ITEM,
             MINE_BLOCKS,
             VISIT_BIOME,
-            ENTER_DIMENSION
+            ENTER_DIMENSION,
+            INTERACT_BLOCK,
+            INTERACT_ENTITY,
+            FIND_STRUCTURE,
+            DEAL_DAMAGE_TOTAL,
+            DEAL_DAMAGE_MAX,
+            CHECK_ATTRIBUTE
         }
 
         private static final PacketCodec<RegistryByteBuf, CondType> COND_TYPE_CODEC = new PacketCodec<RegistryByteBuf, CondType>() {
@@ -111,7 +124,10 @@ public final class TitlePayloads {
                 int level,
                 Optional<Identifier> block,
                 Optional<Identifier> biome,
-                Optional<Identifier> dimension
+                Optional<Identifier> dimension,
+                Optional<Identifier> structure,
+                Optional<Identifier> attribute,
+                double min
         ) {
             public static final PacketCodec<RegistryByteBuf, ConditionDef> CODEC = new PacketCodec<RegistryByteBuf, ConditionDef>() {
                 @Override
@@ -130,7 +146,10 @@ public final class TitlePayloads {
                     Optional<Identifier> block = OPT_ID.decode(buf);
                     Optional<Identifier> biome = OPT_ID.decode(buf);
                     Optional<Identifier> dimension = OPT_ID.decode(buf);
-                    return new ConditionDef(type, item, entityType, advancement, distance, count, hint, hidden, entitySpec, nbtQuery, level, block, biome, dimension);
+                    Optional<Identifier> structure = OPT_ID.decode(buf);
+                    Optional<Identifier> attribute = OPT_ID.decode(buf);
+                    double min = DOUBLE.decode(buf);
+                    return new ConditionDef(type, item, entityType, advancement, distance, count, hint, hidden, entitySpec, nbtQuery, level, block, biome, dimension, structure, attribute, min);
                 }
                 @Override
                 public void encode(RegistryByteBuf buf, ConditionDef v) {
@@ -148,6 +167,9 @@ public final class TitlePayloads {
                     OPT_ID.encode(buf, v.block);
                     OPT_ID.encode(buf, v.biome);
                     OPT_ID.encode(buf, v.dimension);
+                    OPT_ID.encode(buf, v.structure);
+                    OPT_ID.encode(buf, v.attribute);
+                    DOUBLE.encode(buf, v.min);
                 }
             };
         }
@@ -166,8 +188,8 @@ public final class TitlePayloads {
                         }
                     };
             public static final PacketCodec<RegistryByteBuf, BonusDef> CODEC = PacketCodec.tuple(
-                    Identifier.PACKET_CODEC, BonusDef::attribute,
-                    DOUBLE, BonusDef::amount,
+                    ID_CODEC, BonusDef::attribute,
+                    DOUBLE,  BonusDef::amount,
                     OP_CODEC, BonusDef::operation,
                     BonusDef::new
             );
@@ -179,17 +201,33 @@ public final class TitlePayloads {
                 Optional<String> description,
                 List<BonusDef> bonuses,
                 List<Identifier> spells,
+                List<Identifier> powers,
                 List<ConditionDef> conditions
         ) {
-            public static final PacketCodec<RegistryByteBuf, Def> CODEC = PacketCodec.tuple(
-                    Identifier.PACKET_CODEC, Def::id,
-                    STRING, Def::name,
-                    PacketCodecs.optional(STRING), Def::description,
-                    PacketCodecs.collection(ArrayList::new, BonusDef.CODEC), Def::bonuses,
-                    PacketCodecs.collection(ArrayList::new, Identifier.PACKET_CODEC), Def::spells,
-                    PacketCodecs.collection(ArrayList::new, ConditionDef.CODEC), Def::conditions,
-                    Def::new
-            );
+            public static final PacketCodec<RegistryByteBuf, Def> CODEC = new PacketCodec<RegistryByteBuf, Def>() {
+                @Override
+                public Def decode(RegistryByteBuf buf) {
+                    Identifier id = ID_CODEC.decode(buf);
+                    String name = STRING.decode(buf);
+                    Optional<String> description = OPT_STRING.decode(buf);
+                    List<BonusDef> bonuses = PacketCodecs.collection(ArrayList::new, BonusDef.CODEC).decode(buf);
+                    List<Identifier> spells = PacketCodecs.collection(ArrayList::new, ID_CODEC).decode(buf);
+                    List<Identifier> powers = PacketCodecs.collection(ArrayList::new, ID_CODEC).decode(buf);
+                    List<ConditionDef> conditions = PacketCodecs.collection(ArrayList::new, ConditionDef.CODEC).decode(buf);
+                    return new Def(id, name, description, bonuses, spells, powers, conditions);
+                }
+
+                @Override
+                public void encode(RegistryByteBuf buf, Def v) {
+                    ID_CODEC.encode(buf, v.id);
+                    STRING.encode(buf, v.name);
+                    OPT_STRING.encode(buf, v.description);
+                    PacketCodecs.collection(ArrayList::new, BonusDef.CODEC).encode(buf, new ArrayList<>(v.bonuses));
+                    PacketCodecs.collection(ArrayList::new, ID_CODEC).encode(buf, new ArrayList<>(v.spells));
+                    PacketCodecs.collection(ArrayList::new, ID_CODEC).encode(buf, new ArrayList<>(v.powers));
+                    PacketCodecs.collection(ArrayList::new, ConditionDef.CODEC).encode(buf, new ArrayList<>(v.conditions));
+                }
+            };
         }
     }
 
@@ -211,7 +249,7 @@ public final class TitlePayloads {
 
         public record TitleProgress(Identifier id, List<CondProg> conditions) {
             public static final PacketCodec<RegistryByteBuf, TitleProgress> CODEC = PacketCodec.tuple(
-                    Identifier.PACKET_CODEC, TitleProgress::id,
+                    ID_CODEC, TitleProgress::id,
                     PacketCodecs.collection(ArrayList::new, CondProg.CODEC), TitleProgress::conditions,
                     TitleProgress::new
             );

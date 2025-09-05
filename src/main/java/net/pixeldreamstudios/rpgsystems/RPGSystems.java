@@ -10,11 +10,13 @@ import net.pixeldreamstudios.rpgsystems.config.RPGSystemsConfig;
 import net.pixeldreamstudios.rpgsystems.network.EnemyNet;
 import net.pixeldreamstudios.rpgsystems.network.PartyNet;
 import net.pixeldreamstudios.rpgsystems.network.TitleNet;
+import net.pixeldreamstudios.rpgsystems.network.TitlePowerNet;
 import net.pixeldreamstudios.rpgsystems.party.PartyCommands;
 import net.pixeldreamstudios.rpgsystems.pet.PetCommands;
 import net.pixeldreamstudios.rpgsystems.title.TitleCommands;
 import net.pixeldreamstudios.rpgsystems.title.TitleConditionEvents;
 import net.pixeldreamstudios.rpgsystems.title.data.TitlesDataReloader;
+import net.pixeldreamstudios.rpgsystems.title.power.PowerInit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -40,6 +42,8 @@ public class RPGSystems implements ModInitializer {
 			ResourceManagerHelper.get(ResourceType.SERVER_DATA).registerReloadListener(new TitlesDataReloader());
 			TitleNet.registerServer();
 			TitleConditionEvents.register();
+			PowerInit.init();
+			TitlePowerNet.registerServer();
 		}
 
 		CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) -> {

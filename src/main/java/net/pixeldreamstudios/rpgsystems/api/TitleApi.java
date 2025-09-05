@@ -1,10 +1,13 @@
 package net.pixeldreamstudios.rpgsystems.api;
 
+import net.minecraft.entity.attribute.EntityAttributeModifier;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.util.Identifier;
 import net.pixeldreamstudios.rpgsystems.title.Title;
 import net.pixeldreamstudios.rpgsystems.title.TitleRegistry;
 import net.pixeldreamstudios.rpgsystems.title.TitlesPersistentState;
+import net.pixeldreamstudios.rpgsystems.util.TitlePowerBonusUtil;
+import net.pixeldreamstudios.rpgsystems.util.TitleSpellBonusUtil;
 
 import java.util.Optional;
 
@@ -88,10 +91,20 @@ public final class TitleApi {
             }
             Identifier mid = modifierId(t, b);
             inst.removeModifier(mid);
-            inst.addPersistentModifier(new net.minecraft.entity.attribute.EntityAttributeModifier(mid, b.amount, b.operation));
+            inst.addPersistentModifier(new EntityAttributeModifier(mid, b.amount, b.operation));
         }
         if (!spells.isEmpty()) {
-            net.pixeldreamstudios.rpgsystems.util.TitleSpellBonusUtil.installTitleSpells(player, t.id, spells);
+            TitleSpellBonusUtil.installTitleSpells(player, t.id, spells);
+        }
+
+        java.util.List<net.minecraft.util.Identifier> powers = new java.util.ArrayList<>();
+        for (Title.Bonus b : t.bonuses) {
+            if (b.powerId != null && b.powerId.isPresent()) {
+                powers.add(b.powerId.get());
+            }
+        }
+        if (!powers.isEmpty()) {
+            TitlePowerBonusUtil.installTitlePowers(player, t.id, powers);
         }
     }
 
@@ -106,7 +119,9 @@ public final class TitleApi {
             Identifier mid = modifierId(t, b);
             inst.removeModifier(mid);
         }
-        net.pixeldreamstudios.rpgsystems.util.TitleSpellBonusUtil.uninstallTitleSpells(player, t.id);
+        TitleSpellBonusUtil.uninstallTitleSpells(player, t.id);
+        TitlePowerBonusUtil.uninstallTitlePowers(player, t);
+
     }
 
     private static Identifier modifierId(Title t, Title.Bonus b) {
@@ -116,5 +131,17 @@ public final class TitleApi {
         String path = "title/" + t.id.getNamespace() + "/" + t.id.getPath()
                 + "/" + attrId.getNamespace() + "/" + attrId.getPath();
         return Identifier.of("rpg-systems", path);
+    }
+    public static void refreshActiveOnLogin(ServerPlayerEntity player) {
+        TitlesPersistentState state = TitlesPersistentState.get(player.getServer());
+        TitlesPersistentState.PlayerTitles pt = state.getOrCreate(player.getUuid());
+        if (pt.active != null) {
+            Identifier id = Identifier.of(pt.active);
+            Title t = TitleRegistry.get(id);
+            if (t != null) {
+                removeBonuses(player, t);
+                applyBonuses(player, t);
+            }
+        }
     }
 }

@@ -1,7 +1,0 @@
-{
-  "name": "Adventurer",
-  "description": "Life or death.",
-  "bonuses": [
-    { "attribute": "minecraft:generic.max_health", "amount": 2.0, "operation": "add_value" }
-  ]
-}

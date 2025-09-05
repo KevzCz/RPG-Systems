@@ -13,6 +13,7 @@ import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
 import net.pixeldreamstudios.rpgsystems.api.TitleApi;
+import net.pixeldreamstudios.rpgsystems.network.TitleNet;
 import net.pixeldreamstudios.rpgsystems.network.title.TitlePayloads;
 
 import java.util.ArrayList;
@@ -50,7 +51,89 @@ public final class TitleCommands {
                                 .suggests(TitleCommands::suggestTitles)
                                 .executes(ctx -> applySelf(ctx, IdentifierArgumentType.getIdentifier(ctx, "id"))))
                         .then(literal("none").executes(TitleCommands::clearSelf)))
+                .then(literal("condition_check")
+                        .then(argument("id", IdentifierArgumentType.identifier())
+                                .suggests(TitleCommands::suggestTitles)
+                                .executes(ctx -> conditionCheck(ctx, IdentifierArgumentType.getIdentifier(ctx, "id")))))
         );
+    }
+    private static int conditionCheck(CommandContext<ServerCommandSource> ctx, Identifier id) {
+        ServerPlayerEntity self = ctx.getSource().getPlayer();
+        MinecraftServer server = ctx.getSource().getServer();
+
+        Title t = TitleRegistry.get(id);
+        if (t == null) {
+            ctx.getSource().sendError(Text.literal("Unknown title: " + id));
+            return 0;
+        }
+
+        TitlesPersistentState state = TitlesPersistentState.get(server);
+        TitlesPersistentState.PlayerTitles pt = state.getOrCreate(self.getUuid());
+        var tag = pt.progress.get(id.toString());
+
+        ctx.getSource().sendFeedback(() -> Text.literal("§7[ titles ] Checking §f" + id), false);
+
+        boolean allMet = true;
+        for (int i = 0; i < t.conditions.size(); i++) {
+            Title.Condition c = t.conditions.get(i);
+
+            long cur   = tag == null ? 0L : tag.getLong("c" + i);
+            boolean dn = tag != null && tag.getBoolean("done_" + i);
+
+            boolean met = false;
+            switch (c.type) {
+                case OBTAIN_ITEM, ADVANCEMENT, REACH_LEVEL, REACH_LEVEL_XP, REACH_LEVEL_PUFFERFISH,
+                        VISIT_BIOME, ENTER_DIMENSION, INTERACT_BLOCK, INTERACT_ENTITY, CHECK_ATTRIBUTE, FIND_STRUCTURE -> {
+                    met = dn;
+                }
+                case KILL_MOBS ->      met = cur >= Math.max(1, c.count);
+                case WALK_BLOCKS ->    met = cur >= Math.max(1, c.distance);
+                case CRAFT_ITEM ->     met = cur >= Math.max(1, c.count);
+                case MINE_BLOCKS ->    met = cur >= Math.max(1, c.count);
+                case DEAL_DAMAGE_TOTAL, DEAL_DAMAGE_MAX -> met = cur >= Math.max(1, c.count);
+            }
+
+            allMet &= met;
+
+            String targetTxt = switch (c.type) {
+                case WALK_BLOCKS -> String.valueOf(Math.max(1, c.distance));
+                case REACH_LEVEL, REACH_LEVEL_XP, REACH_LEVEL_PUFFERFISH -> String.valueOf(Math.max(1, c.level));
+                case CHECK_ATTRIBUTE -> "≥ " + c.minValue;
+                case ADVANCEMENT, VISIT_BIOME, ENTER_DIMENSION, FIND_STRUCTURE,
+                        INTERACT_BLOCK, INTERACT_ENTITY, OBTAIN_ITEM, CRAFT_ITEM,
+                        MINE_BLOCKS, KILL_MOBS, DEAL_DAMAGE_TOTAL, DEAL_DAMAGE_MAX -> String.valueOf(Math.max(1, c.count));
+            };
+
+            String line = String.format(
+                    "§7 %2d) §f%-22s §7cur=%s  done=%s  target=%s  %s",
+                    i + 1,
+                    c.type.name().toLowerCase(java.util.Locale.ROOT),
+                    cur,
+                    dn,
+                    targetTxt,
+                    met ? "§a[OK]" : "§c[NO]"
+            );
+            ctx.getSource().sendFeedback(() -> Text.literal(line), false);
+        }
+
+        boolean hasTitle = pt.unlocked.contains(id.toString());
+        if (allMet && !hasTitle) {
+            boolean granted = TitleApi.grant(self, id);
+            if (granted) {
+                state.markDirty();
+                syncSelfTo(server, self);
+                TitleNet.syncProgressTo(server, self);
+                ctx.getSource().sendFeedback(() -> Text.literal("§aAll conditions met. Granted " + id), false);
+                return 1;
+            }
+        }
+
+        boolean finalAllMet = allMet;
+        ctx.getSource().sendFeedback(
+                () -> Text.literal(finalAllMet ? "§aAll conditions met. (already unlocked)" : "§eNot all conditions are met."),
+                false
+        );
+        return allMet ? 1 : 0;
     }
 
     private static int give(CommandContext<ServerCommandSource> ctx, ServerPlayerEntity target, Identifier id) {

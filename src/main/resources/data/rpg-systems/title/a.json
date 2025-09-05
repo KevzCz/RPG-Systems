@@ -1,12 +1,114 @@
-
 {
-  "name": "{gradient:#ff0000,#ffff00,#00ff00,#00ffff,#0000ff,#ff00ff}{pulse:1.2}Rainbow Trailblazer",
-  "description": "Proved your mettle through exploration and combat.",
+  "name": "Condition Sampler",
+  "description": "A single test title that touches every condition type.",
   "bonuses": [
-    { "attribute": "minecraft:generic.movement_speed", "amount": 0.02, "operation": "add_multiplied_total" },
-    { "spell": "wizards:frost_blizzard" }
+    {
+      "attribute": [
+        {
+          "id": "minecraft:generic.movement_speed",
+          "amount": 0.03,
+          "operation": "add_multiplied_total"
+        },
+        {
+          "id": "minecraft:generic.luck",
+          "amount": 1.0,
+          "operation": "add_value"
+        }
+      ],
+      "spell": [
+        "wizards:frost_blizzard",
+        "paladins:heal"
+      ],
+      "power": [
+        "rpg-systems:illuminate"
+      ]
+    }
   ],
   "conditions": [
-    { "type": "obtain_item", "item": "minecraft:iron_ingot", "hint": "You need to obtain the white ingot.", "hidden": true }
+    {
+      "type": "obtain_item",
+      "item": "minecraft:diamond",
+      "count": 3,
+      "hint": "Pick up some shiny rocks."
+    },
+    {
+      "type": "kill_mobs",
+      "entity_type": "minecraft:zombie",
+      "count": 5,
+      "hint": "Cull the undead."
+    },
+    {
+      "type": "advancement",
+      "advancement": "minecraft:story/enter_the_nether",
+      "hint": "Light it up."
+    },
+    {
+      "type": "walk_blocks",
+      "distance": 100,
+      "hint": "Stretch those legs."
+    },
+    {
+      "type": "reach_level",
+      "level": 5,
+      "hint": "Grow in experience."
+    },
+    {
+      "type": "craft_item",
+      "item": "minecraft:bread",
+      "count": 5,
+      "hint": "Bake your daily bread."
+    },
+    {
+      "type": "mine_blocks",
+      "block": "minecraft:stone",
+      "count": 5,
+      "hint": "Back to the mines."
+    },
+    {
+      "type": "visit_biome",
+      "biome": "minecraft:the_end",
+      "hint": "Step into the void."
+    },
+    {
+      "type": "enter_dimension",
+      "dimension": "minecraft:the_nether",
+      "hint": "Through the portal."
+    },
+    {
+      "type": "interact_block",
+      "block": "minecraft:crafting_table",
+      "count": 1,
+      "hint": "Put those hands to work."
+    },
+    {
+      "type": "interact_entity",
+      "entity": "minecraft:villager",
+      "nbt": "VillagerData",
+      "count": 1,
+      "hint": "Say hello to a villager."
+    },
+    {
+      "type": "find_structure",
+      "structure": "minecraft:village_plains",
+      "hint": "A friendly village."
+    },
+    {
+      "type": "deal_damage_total",
+      "entity": "minecraft:skeleton",
+      "count": 100,
+      "hint": "Chip away at a skeleton."
+    },
+    {
+      "type": "deal_damage_max",
+      "entity": "any",
+      "count": 20,
+      "hint": "Land a heavy single hit."
+    },
+    {
+      "type": "check_attribute",
+      "attribute": "minecraft:generic.max_health",
+      "min": 40.0,
+      "hint": "Beef up your hearts."
+    }
   ]
 }

@@ -12,19 +12,20 @@ import net.minecraft.text.Text;
 import net.minecraft.util.ActionResult;
 import net.minecraft.util.Identifier;
 import net.pixeldreamstudios.rpgsystems.network.party.PartyHudPayloads;
+import net.pixeldreamstudios.rpgsystems.network.party.PartyHudPayloads.*;
 import net.pixeldreamstudios.rpgsystems.network.party.PartyInvitePayloads;
 import net.pixeldreamstudios.rpgsystems.network.party.PartyJoinRequestPayloads;
 import net.pixeldreamstudios.rpgsystems.network.party.PartySettingsPayloads;
 import net.pixeldreamstudios.rpgsystems.party.Party;
 import net.pixeldreamstudios.rpgsystems.party.PartyPersistentState;
-import net.pixeldreamstudios.rpgsystems.network.party.PartyHudPayloads.*;
+import net.puffish.skillsmod.SkillsMod;
 
-import java.lang.reflect.Method;
 import java.util.*;
 
+import static net.pixeldreamstudios.rpgsystems.network.party.PartyChatPayloads.ChatMessage;
+import static net.pixeldreamstudios.rpgsystems.network.party.PartyChatPayloads.ChatSend;
 import static net.pixeldreamstudios.rpgsystems.network.party.PartyInvitePayloads.*;
 import static net.pixeldreamstudios.rpgsystems.network.party.PartyJoinRequestPayloads.*;
-import static net.pixeldreamstudios.rpgsystems.network.party.PartyChatPayloads.*;
 
 public final class PartyNet {
     private PartyNet() {}
@@ -444,30 +445,28 @@ public final class PartyNet {
         return FabricLoader.getInstance().isModLoaded("puffish_skills");
     }
 
-    /** Returns -1 if puffish_skills is missing or any reflection fails. */
     private static int computeTotalSkillsLevel(ServerPlayerEntity player) {
         if (!puffishLoaded()) return -1;
+
         try {
-            Class<?> skillsMod = Class.forName("net.puffish.skillsmod.SkillsMod");
-            Method getInstance = skillsMod.getMethod("getInstance");
-            Object instance = getInstance.invoke(null);
+            SkillsMod skillsMod = SkillsMod.getInstance();
+            if (skillsMod == null) {
+                return -1;
+            }
 
-            Method getUnlockedCategories = skillsMod.getMethod("getUnlockedCategories", ServerPlayerEntity.class);
-            @SuppressWarnings("unchecked")
-            Collection<Identifier> cats = (Collection<Identifier>) getUnlockedCategories.invoke(instance, player);
-
-            Method getCurrentLevel = skillsMod.getMethod("getCurrentLevel", ServerPlayerEntity.class, Identifier.class);
-
+            Collection<Identifier> cats = skillsMod.getUnlockedCategories(player);
             int total = 0;
+
             for (Identifier id : cats) {
-                @SuppressWarnings("unchecked")
-                Optional<Integer> lvlOpt = (Optional<Integer>) getCurrentLevel.invoke(instance, player, id);
+                Optional<Integer> lvlOpt = skillsMod.getCurrentLevel(player, id);
                 total += lvlOpt.orElse(0);
             }
+
             return total;
         } catch (Throwable t) {
             return -1;
         }
     }
+
 
 }

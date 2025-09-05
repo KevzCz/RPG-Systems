@@ -1,5 +1,6 @@
 package net.pixeldreamstudios.rpgsystems.title;
 
+import net.minecraft.entity.attribute.EntityAttributeModifier;
 import net.minecraft.entity.attribute.EntityAttributes;
 import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
@@ -41,7 +42,7 @@ public final class TitleRegistry {
 
         register(Title.builder(Identifier.of(RPGSystems.MOD_ID, "novice"), Text.translatable("title.rpgsystems.novice"))
                 .description(Text.translatable("title.rpgsystems.novice.desc"))
-                .add(EntityAttributes.GENERIC_MAX_HEALTH, 2.0)
+                .add(EntityAttributes.GENERIC_MAX_HEALTH, 2.0, EntityAttributeModifier.Operation.ADD_VALUE)
                 .build());
     }
 }

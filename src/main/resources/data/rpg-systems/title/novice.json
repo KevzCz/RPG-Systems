@@ -1,7 +1,0 @@
-{
-  "name": "Novice",
-  "description": "Just starting out.",
-  "bonuses": [
-    { "attribute": "minecraft:generic.armor", "amount": 2.0, "operation": "add_value" }
-  ]
-}

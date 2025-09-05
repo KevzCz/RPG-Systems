@@ -113,7 +113,8 @@ public final class TitlesListBox {
 
             int partTop = boxY + Math.round(rowH * row);
             int partBottom = (row == VISIBLE_ROWS - 1) ? (boxY + BOX_HEIGHT) : (boxY + Math.round(rowH * (row + 1)));
-            int textY = partTop + 3;
+            int textHScaled = Math.max(1, Math.round(font.fontHeight * textScale));
+            int textY = partTop + Math.max(0, Math.round(( (partBottom - partTop) - textHScaled) / 2f));
 
             if (index == selectedIndex) {
                 ctx.fill(boxX + 1, partTop + 1, boxX + BOX_WIDTH - 1, partBottom - 1, HIGHLIGHT_COLOR);

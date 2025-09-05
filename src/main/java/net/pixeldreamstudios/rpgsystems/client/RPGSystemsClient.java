@@ -21,11 +21,13 @@ import net.pixeldreamstudios.rpgsystems.client.party.hud.PartyInviteInventoryUi;
 import net.pixeldreamstudios.rpgsystems.client.party.hud.PartyJoinRequestHud;
 import net.pixeldreamstudios.rpgsystems.client.party.screen.PartyScreen;
 import net.pixeldreamstudios.rpgsystems.client.title.PlayerTitleRenderer;
+import net.pixeldreamstudios.rpgsystems.client.title.TitlePowersClient;
 import net.pixeldreamstudios.rpgsystems.client.title.TitleTextureResolver;
 import net.pixeldreamstudios.rpgsystems.compat.showbuild.ShowBuildCompatNet;
 import net.pixeldreamstudios.rpgsystems.config.RPGSystemsConfig;
 import net.pixeldreamstudios.rpgsystems.network.EnemyNet;
 import net.pixeldreamstudios.rpgsystems.network.TitleNet;
+import net.pixeldreamstudios.rpgsystems.network.TitlePowerNet;
 import org.lwjgl.glfw.GLFW;
 
 @Environment(EnvType.CLIENT)
@@ -60,6 +62,9 @@ public final class RPGSystemsClient implements ClientModInitializer {
         if (RPGSystemsConfig.get().systems.title) {
             TitleNet.registerClient();
             PlayerTitleRenderer.init();
+            TitlePowerNet.registerClient();
+            TitlePowersClient.init();
+
         }
 
         openPartyScreen = KeyBindingHelper.registerKeyBinding(new KeyBinding(

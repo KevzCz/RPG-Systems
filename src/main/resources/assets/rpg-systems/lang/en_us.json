@@ -5,10 +5,26 @@
   "title.rpgsystems.slayer": "Slayer",
   "title.rpgsystems.sprinter": "Sprinter",
   "title.rpgsystems.conditions": "Conditions",
+
   "title.rpgsystems.condition.obtain_x": "Obtain %s",
   "title.rpgsystems.condition.kill_any": "Defeat %s mobs",
   "title.rpgsystems.condition.kill_specific": "Defeat %2$s × %1$s",
   "title.rpgsystems.condition.advancement": "Complete advancement %s",
   "title.rpgsystems.condition.walk": "Walk %s blocks",
-  "title.rpgsystems.bonus.spell": "Grants spell:"
+
+  "title.rpgsystems.bonus.spell": "Grants spells:",
+  "title.rpgsystems.bonus.power": "Grants powers:",
+
+  "title.rpgsystems.condition.craft": "Craft %2$s × %1$s",
+  "title.rpgsystems.condition.mine": "Mine %2$s × %1$s",
+  "title.rpgsystems.condition.reach_xp": "Reach XP level %s",
+  "title.rpgsystems.condition.reach_pufferfish": "Reach total level %s",
+"title.rpgsystems.condition.visit_biome": "Visit biome %s",
+  "title.rpgsystems.condition.enter_dimension": "Enter dimension %s",
+  "title.rpgsystems.condition.interact_block": "Interact with block %s",
+  "title.rpgsystems.condition.interact_entity": "Interact with entity %s",
+  "title.rpgsystems.condition.find_structure": "Discover structure %s",
+  "title.rpgsystems.condition.deal_damage_total": "Deal %1$s total damage to %2$s",
+  "title.rpgsystems.condition.deal_damage_max": "Deal at least %1$s damage in a single hit to %2$s",
+  "title.rpgsystems.condition.check_attribute": "Reach attribute %1$s ≥ %2$s"
 }

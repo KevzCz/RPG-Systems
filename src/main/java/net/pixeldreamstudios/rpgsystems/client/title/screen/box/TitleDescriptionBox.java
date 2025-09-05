@@ -5,9 +5,13 @@ import net.fabricmc.api.Environment;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.gui.DrawContext;
+import net.minecraft.entity.attribute.EntityAttribute;
 import net.minecraft.entity.attribute.EntityAttributeModifier;
 import net.minecraft.item.Item;
 import net.minecraft.registry.Registries;
+import net.minecraft.registry.RegistryKey;
+import net.minecraft.registry.RegistryKeys;
+import net.minecraft.registry.entry.RegistryEntry;
 import net.minecraft.text.MutableText;
 import net.minecraft.text.OrderedText;
 import net.minecraft.text.Text;
@@ -15,6 +19,7 @@ import net.minecraft.util.Identifier;
 import net.pixeldreamstudios.rpgsystems.client.title.TitleClientData;
 import net.pixeldreamstudios.rpgsystems.client.title.TitleStyleUtil;
 import net.pixeldreamstudios.rpgsystems.title.Title;
+import net.spell_engine.client.util.SpellRender;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -34,7 +39,7 @@ public final class TitleDescriptionBox {
     private static final int COLOR_DONE       = 0xFF7BFF7B;
     private static final int COLOR_TODO       = 0xFFFFFFFF;
     private static final int COLOR_HINT_FG    = 0xFFBFE5FF;
-
+    private static final int COLOR_DIVIDER  = 0x40FFFFFF;
     private static final int UI_MARGIN_Y = 2;
     private static final int BULLET_PAD  = 4;
     private static final Identifier CHECK_OFF = Identifier.of("rpg-systems", "textures/gui/title/checkbox_todo.png");
@@ -54,7 +59,9 @@ public final class TitleDescriptionBox {
     private float textScale = 0.5f;
     private int scrollY = 0;
     private int maxScrollCached = 0;
-
+    private void drawDivider(DrawContext ctx, int x, int y, int w) {
+        ctx.fill(x, y, x + w, y + 1, COLOR_DIVIDER);
+    }
     private static final class HintSpot {
         final int x, y, w, h;
         final Text hint;
@@ -112,6 +119,8 @@ public final class TitleDescriptionBox {
                 y += scaled(9);
             }
             y += scaled(4);
+            drawDivider(ctx, innerX, y - scrollY, innerW);
+            y += scaled(6);
         }
 
         if (current.conditions != null && !current.conditions.isEmpty()) {
@@ -138,7 +147,7 @@ public final class TitleDescriptionBox {
                 Identifier checkSprite = cl.done ? CHECK_ON : CHECK_OFF;
                 drawSprite(ctx, checkSprite, innerX, checkY, checkSize, checkSize);
 
-                int ty = startY;
+                int ty = startY + 1;
                 for (OrderedText ot : wrapped) {
                     drawScaled(ctx, ot, textX, ty - scrollY, cl.color, textScale);
                     ty += lineH;
@@ -155,15 +164,20 @@ public final class TitleDescriptionBox {
             }
 
             y += scaled(4);
+            drawDivider(ctx, innerX, y - scrollY, innerW);
+            y += scaled(6);
+
         }
 
         if (!current.bonuses.isEmpty()) {
-            drawScaled(ctx, Text.translatable("title.rpgsystems.bonuses").asOrderedText(), innerX, y - scrollY, COLOR_HEADER, textScale);
+
+            drawScaled(ctx, Text.translatable("title.rpgsystems.bonuses").asOrderedText(),
+                    innerX, y - scrollY, COLOR_HEADER, textScale);
             y += scaled(10);
 
-            List<Text> bonusTexts = formatBonuses();
+            List<Text> attrLines = formatBonuses();
             int wrapWidth = Math.max(1, Math.round(innerW / textScale));
-            for (Text bt : bonusTexts) {
+            for (Text bt : attrLines) {
                 List<OrderedText> wrapped = font.wrapLines(bt, wrapWidth);
                 for (OrderedText ot : wrapped) {
                     drawScaled(ctx, ot, innerX, y - scrollY, COLOR_BONUS_TEXT, textScale);
@@ -171,7 +185,53 @@ public final class TitleDescriptionBox {
                 }
                 y += UI_MARGIN_Y;
             }
+
+            final float smallScale = Math.max(0.5f, textScale * 0.90f);
+            final int smallLineH = Math.max(1, Math.round(9 * smallScale));
+            final int textHSmall = Math.max(1, Math.round(font.fontHeight * smallScale));
+
+            List<Identifier> spells = collectSpellIds();
+            if (!spells.isEmpty()) {
+                y += scaled(2);
+                drawScaled(ctx, Text.literal("Grant spells:").asOrderedText(),
+                        innerX, y - scrollY, COLOR_HEADER, smallScale);
+                y += Math.max(1, Math.round(font.fontHeight * smallScale + 1));
+
+                final int iconSize = Math.max(1, Math.round(12 * smallScale));
+                final int gap      = Math.max(1, Math.round(BULLET_PAD * smallScale));
+
+                for (Identifier sid : spells) {
+                    Identifier icon = SpellRender.iconTexture(sid);
+                    Text name = resolveSpellName(sid);
+
+                    int blockH = Math.max(iconSize, textHSmall);
+                    int iconY  = (y - scrollY) + (blockH - iconSize) / 2;
+                    int nameY  = (y - scrollY) + (blockH - textHSmall) / 2;
+
+                    ctx.drawTexture(icon, innerX, iconY, 0, 0, iconSize, iconSize, iconSize, iconSize);
+                    drawScaled(ctx, name.asOrderedText(),
+                            innerX + iconSize + gap, nameY + 1,
+                            COLOR_BONUS_TEXT, smallScale);
+
+                    y += blockH + UI_MARGIN_Y;
+                }
+            }
+
+            List<Identifier> powers = collectPowerIds();
+            if (!powers.isEmpty()) {
+                y += scaled(2);
+                drawScaled(ctx, Text.literal("Grant powers:").asOrderedText(), innerX, y - scrollY, COLOR_HEADER, smallScale);
+                y += Math.max(1, Math.round(10 * smallScale));
+
+                for (Identifier pid : powers) {
+                    Text line = Text.literal("• ").append(resolvePowerName(pid));
+                    drawScaled(ctx, line.asOrderedText(), innerX, y - scrollY, COLOR_BONUS_TEXT, smallScale);
+                    y += smallLineH + UI_MARGIN_Y;
+                }
+            }
         }
+
+
 
         ctx.disableScissor();
 
@@ -212,7 +272,6 @@ public final class TitleDescriptionBox {
         return scrollY != before;
     }
 
-
     private void drawSprite(DrawContext ctx, Identifier id, int x, int y, int w, int h) {
         ctx.drawTexture(id, x, y, 0, 0, w, h, w, h);
     }
@@ -220,15 +279,9 @@ public final class TitleDescriptionBox {
     private List<Text> formatBonuses() {
         List<Text> out = new ArrayList<>();
         for (Title.Bonus b : current.bonuses) {
-            if (b.spellId != null && b.spellId.isPresent()) {
-                Identifier id = b.spellId.get();
-                Text nice = resolveSpellName(id);
-                out.add(Text.literal("★ ")
-                        .append(Text.translatable("title.rpgsystems.bonus.spell"))
-                        .append(Text.literal(" "))
-                        .append(nice));
-                continue;
-            }
+            if (b.spellId != null && b.spellId.isPresent()) continue;
+            if (b.powerId != null && b.powerId.isPresent()) continue;
+
             String attrKey = b.attribute.value().getTranslationKey();
             Text attrName = Text.translatable(attrKey);
             String sign = b.amount >= 0 ? "+" : "";
@@ -242,6 +295,22 @@ public final class TitleDescriptionBox {
         }
         return out;
     }
+    private List<Identifier> collectSpellIds() {
+        List<Identifier> list = new ArrayList<>();
+        for (Title.Bonus b : current.bonuses) {
+            if (b.spellId != null && b.spellId.isPresent()) list.add(b.spellId.get());
+        }
+        return list;
+    }
+
+    private List<Identifier> collectPowerIds() {
+        List<Identifier> list = new ArrayList<>();
+        for (Title.Bonus b : current.bonuses) {
+            if (b.powerId != null && b.powerId.isPresent()) list.add(b.powerId.get());
+        }
+        return list;
+    }
+
 
     private Text resolveSpellName(Identifier id) {
         var client = MinecraftClient.getInstance();
@@ -254,17 +323,25 @@ public final class TitleDescriptionBox {
                 if (!raw.equals("spell." + id.getNamespace() + "." + id.getPath())) return t;
             }
         }
-        String nice = id.getPath().replace('_', ' ');
+        return Text.literal(toTitleCase(id.getPath()));
+    }
+
+    private Text resolvePowerName(Identifier id) {
+        return Text.literal(toTitleCase(id.getPath()));
+    }
+
+    private static String toTitleCase(String path) {
+        String nice = path.replace('_', ' ');
         String[] parts = nice.split(" ");
         StringBuilder sb = new StringBuilder();
         for (int i = 0; i < parts.length; i++) {
             String p = parts[i];
             if (!p.isEmpty()) {
                 sb.append(p.substring(0,1).toUpperCase(Locale.ROOT)).append(p.substring(1));
-                if (i+1 < parts.length) sb.append(' ');
+                if (i + 1 < parts.length) sb.append(' ');
             }
         }
-        return Text.literal(sb.toString());
+        return sb.toString();
     }
 
     private static final class CondLine {
@@ -326,7 +403,7 @@ public final class TitleDescriptionBox {
                     } else {
                         line = Text.translatable("title.rpgsystems.condition.kill_any", target).append(tail);
                     }
-                    out.add(new CondLine(line, c.hint.orElse(null) == null ? null : Text.literal(c.hint.get()), color, reached));
+                    out.add(new CondLine(line, c.hint.map(Text::literal).orElse(null), color, reached));
                 }
                 case OBTAIN_ITEM -> {
                     if (c.item.isPresent()) {
@@ -337,7 +414,7 @@ public final class TitleDescriptionBox {
                         int color = reached ? COLOR_DONE : COLOR_TODO;
                         MutableText line = Text.translatable("title.rpgsystems.condition.obtain_x", it, target)
                                 .append(Text.literal(" (" + Math.min(cur, target) + "/" + target + ")"));
-                        out.add(new CondLine(line, c.hint.orElse(null) == null ? null : Text.literal(c.hint.get()), color, reached));
+                        out.add(new CondLine(line, c.hint.map(Text::literal).orElse(null), color, reached));
                     }
                 }
                 case WALK_BLOCKS -> {
@@ -346,7 +423,7 @@ public final class TitleDescriptionBox {
                     int color = reached ? COLOR_DONE : COLOR_TODO;
                     MutableText line = Text.translatable("title.rpgsystems.condition.walk", target)
                             .append(Text.literal(" (" + Math.min(cur, target) + "/" + target + ")"));
-                    out.add(new CondLine(line, c.hint.orElse(null) == null ? null : Text.literal(c.hint.get()), color, reached));
+                    out.add(new CondLine(line, c.hint.map(Text::literal).orElse(null), color, reached));
                 }
                 case CRAFT_ITEM -> {
                     int target = Math.max(1, c.count);
@@ -357,7 +434,7 @@ public final class TitleDescriptionBox {
                         Text it = Text.translatable(item.getTranslationKey());
                         MutableText line = Text.literal("Craft " + target + " ").append(it)
                                 .append(Text.literal(" (" + Math.min(cur, target) + "/" + target + ")"));
-                        out.add(new CondLine(line, c.hint.orElse(null) == null ? null : Text.literal(c.hint.get()), color, reached));
+                        out.add(new CondLine(line, c.hint.map(Text::literal).orElse(null), color, reached));
                     }
                 }
                 case MINE_BLOCKS -> {
@@ -368,16 +445,25 @@ public final class TitleDescriptionBox {
                             ? Text.literal("Mine " + target + " ").append(Text.translatable(Registries.BLOCK.get(c.block.get()).getTranslationKey()))
                             : Text.literal("Mine " + target + " blocks");
                     line = line.append(Text.literal(" (" + Math.min(cur, target) + "/" + target + ")"));
-                    out.add(new CondLine(line, c.hint.orElse(null) == null ? null : Text.literal(c.hint.get()), color, reached));
+                    out.add(new CondLine(line, c.hint.map(Text::literal).orElse(null), color, reached));
                 }
-                case REACH_LEVEL -> {
+                case REACH_LEVEL_XP -> {
                     int target = Math.max(1, c.level);
                     boolean reached = cur >= target || doneFlag;
                     int color = reached ? COLOR_DONE : COLOR_TODO;
-                    MutableText line = Text.literal("Reach total level " + target)
+                    MutableText line = Text.translatable("title.rpgsystems.condition.reach_xp", target)
                             .append(Text.literal(" (" + Math.min(cur, target) + "/" + target + ")"));
-                    out.add(new CondLine(line, c.hint.orElse(null) == null ? null : Text.literal(c.hint.get()), color, reached));
+                    out.add(new CondLine(line, c.hint.map(Text::literal).orElse(null), color, reached));
                 }
+                case REACH_LEVEL_PUFFERFISH -> {
+                    int target = Math.max(1, c.level);
+                    boolean reached = cur >= target || doneFlag;
+                    int color = reached ? COLOR_DONE : COLOR_TODO;
+                    MutableText line = Text.translatable("title.rpgsystems.condition.reach_pufferfish", target)
+                            .append(Text.literal(" (" + Math.min(cur, target) + "/" + target + ")"));
+                    out.add(new CondLine(line, c.hint.map(Text::literal).orElse(null), color, reached));
+                }
+
                 case ADVANCEMENT -> {
                     boolean reached = doneFlag;
                     int color = reached ? COLOR_DONE : COLOR_TODO;
@@ -385,8 +471,8 @@ public final class TitleDescriptionBox {
                     MutableText base = c.advancement.isPresent()
                             ? Text.translatable("title.rpgsystems.condition.advancement", c.advancement.get().toString())
                             : Text.translatable("title.rpgsystems.condition.advancement", "");
-                    MutableText line = base.append(Text.literal(" (" + (reached ? 1 : Math.min(cur, target)) + "/" + target + ")"));
-                    out.add(new CondLine(line, c.hint.orElse(null) == null ? null : Text.literal(c.hint.get()), color, reached));
+                    MutableText line = base.append(Text.literal(" (" + (reached ? 1 : Math.min(cur, target)) + "/1)"));
+                    out.add(new CondLine(line, c.hint.map(Text::literal).orElse(null), color, reached));
                 }
                 case VISIT_BIOME -> {
                     boolean reached = doneFlag;
@@ -395,7 +481,7 @@ public final class TitleDescriptionBox {
                             ? Text.literal("Visit ").append(Text.translatable("biome." + c.biome.get().getNamespace() + "." + c.biome.get().getPath()))
                             : Text.literal("Visit a biome");
                     line = line.append(Text.literal(" (" + (reached ? 1 : 0) + "/1)"));
-                    out.add(new CondLine(line, c.hint.orElse(null) == null ? null : Text.literal(c.hint.get()), color, reached));
+                    out.add(new CondLine(line, c.hint.map(Text::literal).orElse(null), color, reached));
                 }
                 case ENTER_DIMENSION -> {
                     boolean reached = doneFlag;
@@ -404,7 +490,134 @@ public final class TitleDescriptionBox {
                             ? Text.literal("Enter " + c.dimension.get())
                             : Text.literal("Enter a dimension");
                     line = line.append(Text.literal(" (" + (reached ? 1 : 0) + "/1)"));
-                    out.add(new CondLine(line, c.hint.orElse(null) == null ? null : Text.literal(c.hint.get()), color, reached));
+                    out.add(new CondLine(line, c.hint.map(Text::literal).orElse(null), color, reached));
+                }
+                case INTERACT_BLOCK -> {
+                    int target = Math.max(1, c.count);
+                    boolean reached = cur >= target || doneFlag;
+                    int color = reached ? COLOR_DONE : COLOR_TODO;
+                    MutableText line = c.block.isPresent()
+                            ? Text.literal("Interact with ").append(Text.translatable(Registries.BLOCK.get(c.block.get()).getTranslationKey()))
+                            : Text.literal("Interact with a block");
+                    line = line.append(Text.literal(" (" + Math.min(cur, target) + "/" + target + ")"));
+                    out.add(new CondLine(line, c.hint.map(Text::literal).orElse(null), color, reached));
+                }
+                case INTERACT_ENTITY -> {
+                    int target = Math.max(1, c.count);
+                    boolean reached = cur >= target || doneFlag;
+                    int color = reached ? COLOR_DONE : COLOR_TODO;
+
+                    MutableText who;
+                    if (c.entityType.isPresent()) {
+                        who = Text.translatable(Registries.ENTITY_TYPE.get(c.entityType.get()).getTranslationKey());
+                    } else if (c.entitySpec.isPresent()) {
+                        String spec = c.entitySpec.get();
+                        if ("any".equalsIgnoreCase(spec)) {
+                            who = Text.literal("any entity");
+                        } else if (spec.endsWith(":*")) {
+                            who = Text.literal(spec.substring(0, spec.indexOf(':')) + " entities");
+                        } else {
+                            Identifier mid = Identifier.tryParse(spec);
+                            if (mid != null && Registries.ENTITY_TYPE.containsId(mid)) {
+                                who = Text.translatable(Registries.ENTITY_TYPE.get(mid).getTranslationKey());
+                            } else {
+                                who = Text.literal(spec);
+                            }
+                        }
+                    } else {
+                        who = Text.literal("an entity");
+                    }
+
+                    MutableText line = Text.literal("Interact with ").append(who)
+                            .append(Text.literal(" (" + Math.min(cur, target) + "/" + target + ")"));
+                    out.add(new CondLine(line, c.hint.map(Text::literal).orElse(null), color, reached));
+                }
+                case FIND_STRUCTURE -> {
+                    boolean reached = doneFlag;
+                    int color = reached ? COLOR_DONE : COLOR_TODO;
+
+                    MutableText what;
+                    if (c.structure.isPresent()) {
+                        Identifier sid = c.structure.get();
+                        String tKey = "structure." + sid.getNamespace() + "." + sid.getPath();
+                        Text cand = Text.translatable(tKey);
+                        if (!cand.getString().equals(tKey)) {
+                            what = cand.copy();
+                        } else {
+                            what = Text.literal(toTitleCase(sid.getPath()));
+                        }
+                    } else {
+                        what = Text.literal("a structure");
+                    }
+
+                    MutableText line = Text.literal("Discover ").append(what)
+                            .append(Text.literal(" (" + (reached ? 1 : 0) + "/1)"));
+                    out.add(new CondLine(line, c.hint.map(Text::literal).orElse(null), color, reached));
+                }
+                case DEAL_DAMAGE_TOTAL -> {
+                    long target = Math.max(1, c.count);
+                    boolean reached = cur >= target || doneFlag;
+                    int color = reached ? COLOR_DONE : COLOR_TODO;
+
+                    MutableText who = c.entitySpec.isPresent()
+                            ? Text.literal(c.entitySpec.get())
+                            : c.entityType.map(t -> Text.translatable(Registries.ENTITY_TYPE.get(t).getTranslationKey()))
+                            .orElse(Text.literal("any"));
+
+                    MutableText line = Text.literal("Deal ")
+                            .append(Text.literal(String.valueOf(target)))
+                            .append(Text.literal(" total damage to "))
+                            .append(who)
+                            .append(Text.literal(" ("))
+                            .append(Text.literal(String.valueOf(Math.min(cur, target))))
+                            .append(Text.literal("/"))
+                            .append(Text.literal(String.valueOf(target)))
+                            .append(Text.literal(")"));
+                    out.add(new CondLine(line, c.hint.map(Text::literal).orElse(null), color, reached));
+                }
+                case DEAL_DAMAGE_MAX -> {
+                    long target = Math.max(1, c.count);
+                    boolean reached = cur >= target || doneFlag;
+                    int color = reached ? COLOR_DONE : COLOR_TODO;
+
+                    MutableText who = c.entitySpec.isPresent()
+                            ? Text.literal(c.entitySpec.get())
+                            : c.entityType.map(t -> Text.translatable(Registries.ENTITY_TYPE.get(t).getTranslationKey()))
+                            .orElse(Text.literal("any"));
+
+                    MutableText line = Text.literal("Deal a single hit of at least ")
+                            .append(Text.literal(String.valueOf(target)))
+                            .append(Text.literal(" to "))
+                            .append(who)
+                            .append(Text.literal(" (best: "))
+                            .append(Text.literal(String.valueOf(cur)))
+                            .append(Text.literal(")"));
+                    out.add(new CondLine(line, c.hint.map(Text::literal).orElse(null), color, reached));
+                }
+                case CHECK_ATTRIBUTE -> {
+                    boolean reached = doneFlag;
+                    int color = reached ? COLOR_DONE : COLOR_TODO;
+
+                    MutableText attrName;
+                    if (c.attributeId.isPresent()) {
+                        RegistryKey<EntityAttribute> key = RegistryKey.of(RegistryKeys.ATTRIBUTE, c.attributeId.get());
+                        RegistryEntry<EntityAttribute> entry = MinecraftClient.getInstance().world
+                                .getRegistryManager().get(RegistryKeys.ATTRIBUTE).getEntry(key).orElse(null);
+                        if (entry != null) {
+                            attrName = Text.translatable(entry.value().getTranslationKey());
+                        } else {
+                            attrName = Text.literal(c.attributeId.get().toString());
+                        }
+                    } else {
+                        attrName = Text.literal("attribute");
+                    }
+
+                    double min = c.minValue;
+                    MutableText line = Text.literal("Reach ")
+                            .append(attrName)
+                            .append(Text.literal(" ≥ " + trim(min)))
+                            .append(Text.literal(" (now: " + cur + ")"));
+                    out.add(new CondLine(line, c.hint.map(Text::literal).orElse(null), color, reached));
                 }
             }
         }

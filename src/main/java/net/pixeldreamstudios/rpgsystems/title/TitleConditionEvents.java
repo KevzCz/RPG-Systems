@@ -1,34 +1,49 @@
 package net.pixeldreamstudios.rpgsystems.title;
 
 import net.fabricmc.fabric.api.entity.event.v1.ServerEntityCombatEvents;
+import net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
+import net.fabricmc.fabric.api.event.player.UseBlockCallback;
+import net.fabricmc.fabric.api.event.player.UseEntityCallback;
+import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.advancement.AdvancementEntry;
 import net.minecraft.block.Block;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityType;
 import net.minecraft.entity.LivingEntity;
+import net.minecraft.entity.attribute.EntityAttribute;
+import net.minecraft.entity.attribute.EntityAttributeInstance;
+import net.minecraft.entity.damage.DamageTracker;
 import net.minecraft.item.Item;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.registry.Registries;
 import net.minecraft.registry.RegistryKey;
+import net.minecraft.registry.RegistryKeys;
+import net.minecraft.registry.entry.RegistryEntry;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.stat.Stats;
+import net.minecraft.util.ActionResult;
+import net.minecraft.util.Hand;
 import net.minecraft.util.Identifier;
+import net.minecraft.util.hit.BlockHitResult;
+import net.minecraft.util.hit.EntityHitResult;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.World;
+import net.minecraft.world.gen.StructureAccessor;
+import net.minecraft.world.gen.structure.Structure;
 import net.pixeldreamstudios.rpgsystems.api.TitleApi;
+import net.pixeldreamstudios.rpgsystems.mixin.DamageTrackerAccessor;
 import net.pixeldreamstudios.rpgsystems.network.TitleNet;
 
-import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
 public final class TitleConditionEvents {
-    private TitleConditionEvents(){}
+    private TitleConditionEvents() {}
 
     private static final Map<UUID, net.minecraft.util.math.Vec3d> LAST_POS = new HashMap<>();
     private static final Map<UUID, RegistryKey<World>> LAST_DIM = new HashMap<>();
@@ -38,6 +53,132 @@ public final class TitleConditionEvents {
     public static void register() {
         ServerTickEvents.START_SERVER_TICK.register(TitleConditionEvents::onServerTick);
         ServerEntityCombatEvents.AFTER_KILLED_OTHER_ENTITY.register(TitleConditionEvents::onKill);
+
+        ServerLivingEntityEvents.AFTER_DAMAGE.register((entity, source, baseDamageTaken, damageTaken, blocked) -> {
+            Entity attacker = source.getAttacker();
+            if (!(attacker instanceof ServerPlayerEntity player)) return;
+            if (!(entity instanceof LivingEntity victim)) return;
+
+            MinecraftServer server = player.getServer();
+            TitlesPersistentState state = TitlesPersistentState.get(server);
+            TitlesPersistentState.PlayerTitles pt = state.getOrCreate(player.getUuid());
+
+            boolean changed = false;
+
+            long amt = Math.max(0L, Math.round(Math.max(baseDamageTaken, damageTaken)));
+
+            for (var e : snapshotTitleEntries()) {
+                Identifier id = e.getKey();
+                Title t = e.getValue();
+                if (isAlreadyUnlocked(pt, id)) continue;
+
+                for (int idx = 0; idx < t.conditions.size(); idx++) {
+                    Title.Condition c = t.conditions.get(idx);
+                    if (c.type != Title.Condition.Type.DEAL_DAMAGE_TOTAL && c.type != Title.Condition.Type.DEAL_DAMAGE_MAX) continue;
+                    if (!matchesEntitySpec(victim, c)) continue;
+                    if (!matchesNbt(victim, c)) continue;
+
+                    NbtCompound tag = pt.progress.computeIfAbsent(id.toString(), k -> new NbtCompound());
+                    long prev = tag.getLong("c" + idx);
+                    long next = (c.type == Title.Condition.Type.DEAL_DAMAGE_TOTAL) ? prev + amt : Math.max(prev, amt);
+
+                    if (next != prev) { tag.putLong("c" + idx, next); changed = true; }
+
+                    int target = Math.max(1, c.count);
+                    boolean nowDone = next >= target;
+                    if (nowDone != tag.getBoolean("done_" + idx)) { tag.putBoolean("done_" + idx, nowDone); changed = true; }
+                }
+            }
+
+            if (changed) {
+                state.markDirty();
+                TitleNet.syncProgressTo(server, player);
+                checkCompletionAndGrant(server, player, state, pt);
+            }
+        });
+
+
+        UseBlockCallback.EVENT.register((player, world, hand, hit) -> onUseBlock(player, world, hand, hit));
+        UseEntityCallback.EVENT.register((player, world, hand, entity, hit) -> onUseEntity(player, world, hand, entity, hit));
+    }
+
+    private static ActionResult onUseBlock(net.minecraft.entity.player.PlayerEntity player, World world, Hand hand, BlockHitResult hit) {
+        if (!(player instanceof ServerPlayerEntity sp)) return ActionResult.PASS;
+        if (!(world instanceof ServerWorld sw)) return ActionResult.PASS;
+
+        MinecraftServer server = sw.getServer();
+        TitlesPersistentState state = TitlesPersistentState.get(server);
+        TitlesPersistentState.PlayerTitles pt = state.getOrCreate(sp.getUuid());
+
+        boolean changed = false;
+        BlockPos pos = hit.getBlockPos();
+        Block b = world.getBlockState(pos).getBlock();
+        Identifier bid = Registries.BLOCK.getId(b);
+
+        for (Map.Entry<Identifier, Title> e : snapshotTitleEntries()) {
+            Identifier id = e.getKey();
+            Title t = e.getValue();
+            if (isAlreadyUnlocked(pt, id)) continue;
+
+            for (int idx = 0; idx < t.conditions.size(); idx++) {
+                Title.Condition c = t.conditions.get(idx);
+                if (c.type != Title.Condition.Type.INTERACT_BLOCK) continue;
+
+                boolean match = c.block.map(bid::equals).orElse(true);
+                if (!match) continue;
+
+                NbtCompound tag = pt.progress.computeIfAbsent(id.toString(), k -> new NbtCompound());
+                long next = tag.getLong("c" + idx) + 1;
+                tag.putLong("c" + idx, next);
+                if (next >= Math.max(1, c.count)) tag.putBoolean("done_" + idx, true);
+                state.markDirty();
+                changed = true;
+            }
+        }
+
+        if (changed) {
+            TitleNet.syncProgressTo(server, sp);
+            checkCompletionAndGrant(server, sp, state, pt);
+        }
+        return ActionResult.PASS;
+    }
+
+    private static ActionResult onUseEntity(net.minecraft.entity.player.PlayerEntity player, World world, Hand hand, Entity entity, EntityHitResult hit) {
+        if (!(player instanceof ServerPlayerEntity sp)) return ActionResult.PASS;
+        if (!(entity instanceof LivingEntity le)) return ActionResult.PASS;
+
+        MinecraftServer server = sp.getServer();
+        TitlesPersistentState state = TitlesPersistentState.get(server);
+        TitlesPersistentState.PlayerTitles pt = state.getOrCreate(sp.getUuid());
+
+        boolean changed = false;
+
+        for (Map.Entry<Identifier, Title> e : snapshotTitleEntries()) {
+            Identifier id = e.getKey();
+            Title t = e.getValue();
+            if (isAlreadyUnlocked(pt, id)) continue;
+
+            for (int idx = 0; idx < t.conditions.size(); idx++) {
+                Title.Condition c = t.conditions.get(idx);
+                if (c.type != Title.Condition.Type.INTERACT_ENTITY) continue;
+
+                if (!matchesEntitySpec(le, c)) continue;
+                if (!matchesNbt(le, c)) continue;
+
+                NbtCompound tag = pt.progress.computeIfAbsent(id.toString(), k -> new NbtCompound());
+                long next = tag.getLong("c" + idx) + 1;
+                tag.putLong("c" + idx, next);
+                if (next >= Math.max(1, c.count)) tag.putBoolean("done_" + idx, true);
+                state.markDirty();
+                changed = true;
+            }
+        }
+
+        if (changed) {
+            TitleNet.syncProgressTo(server, sp);
+            checkCompletionAndGrant(server, sp, state, pt);
+        }
+        return ActionResult.PASS;
     }
 
     private static void onServerTick(MinecraftServer server) {
@@ -54,7 +195,7 @@ public final class TitleConditionEvents {
                 double dx = now.x - last.x;
                 double dy = now.y - last.y;
                 double dz = now.z - last.z;
-                double dist = Math.sqrt(dx*dx + dy*dy + dz*dz);
+                double dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
                 if (player.isOnGround()) {
                     boolean changed = accumulateProgressWalk(state, pt, dist);
                     if (changed) TitleNet.syncProgressTo(server, player);
@@ -73,6 +214,12 @@ public final class TitleConditionEvents {
 
             boolean biomeChanged = updateVisitBiome(server, player, state, pt);
             if (biomeChanged) TitleNet.syncProgressTo(server, player);
+
+            boolean attrChanged = updateAttributeChecks(server, player, state, pt);
+            if (attrChanged) TitleNet.syncProgressTo(server, player);
+
+            boolean structureChanged = updateFindStructure(server, player, state, pt);
+            if (structureChanged) TitleNet.syncProgressTo(server, player);
 
             if (tickCounter % INVENTORY_CHECK_INTERVAL == 0) {
                 boolean changed = checkPeriodic(server, player, state, pt);
@@ -93,26 +240,56 @@ public final class TitleConditionEvents {
 
         boolean changed = false;
 
+        float lastDmg = 0f;
+        DamageTracker tracker = killed.getDamageTracker();
+        if (tracker instanceof DamageTrackerAccessor acc) {
+            var list = acc.rpg$getRecentDamage();
+            if (!list.isEmpty()) lastDmg = list.get(list.size() - 1).damage();
+        }
+        long lastAmt = Math.max(0L, Math.round(lastDmg));
+
         for (Map.Entry<Identifier, Title> e : snapshotTitleEntries()) {
             Identifier id = e.getKey();
             Title t = e.getValue();
             if (isAlreadyUnlocked(pt, id)) continue;
+
             for (int idx = 0; idx < t.conditions.size(); idx++) {
                 Title.Condition c = t.conditions.get(idx);
-                if (c.type != Title.Condition.Type.KILL_MOBS) continue;
 
-                if (!matchesEntitySpec(killed, c)) continue;
-                if (!matchesNbt(killed, c)) continue;
-
-                incrementProgress(pt, id, idx, 1L);
-                state.markDirty();
-                changed = true;
+                if (c.type == Title.Condition.Type.KILL_MOBS) {
+                    if (!matchesEntitySpec(killed, c)) continue;
+                    if (!matchesNbt(killed, c)) continue;
+                    incrementProgress(pt, id, idx, 1L);
+                    state.markDirty();
+                    changed = true;
+                }
+if ((c.type == Title.Condition.Type.DEAL_DAMAGE_TOTAL || c.type == Title.Condition.Type.DEAL_DAMAGE_MAX)
+                        && lastAmt > 0
+                        && matchesEntitySpec(killed, c)
+                        && matchesNbt(killed, c)) {
+                    NbtCompound tag = pt.progress.computeIfAbsent(id.toString(), k -> new NbtCompound());
+                    long prev = tag.getLong("c" + idx);
+                    long next = (c.type == Title.Condition.Type.DEAL_DAMAGE_TOTAL) ? prev + lastAmt : Math.max(prev, lastAmt);
+                    if (next != prev) {
+                        tag.putLong("c" + idx, next);
+                        state.markDirty();
+                        changed = true;
+                    }
+                    int target = Math.max(1, c.count);
+                    boolean nowDone = next >= target;
+                    if (nowDone != tag.getBoolean("done_" + idx)) {
+                        tag.putBoolean("done_" + idx, nowDone);
+                        state.markDirty();
+                        changed = true;
+                    }
+                }
             }
         }
 
         if (changed) TitleNet.syncProgressTo(server, player);
         checkCompletionAndGrant(server, player, state, pt);
     }
+
 
     private static boolean onDimensionChanged(MinecraftServer server, ServerPlayerEntity player, TitlesPersistentState state, TitlesPersistentState.PlayerTitles pt, RegistryKey<World> curDim) {
         boolean changed = false;
@@ -172,38 +349,113 @@ public final class TitleConditionEvents {
         return changed;
     }
 
-    private static boolean matchesEntitySpec(LivingEntity killed, Title.Condition c) {
+    private static boolean updateAttributeChecks(MinecraftServer server, ServerPlayerEntity player, TitlesPersistentState state, TitlesPersistentState.PlayerTitles pt) {
+        boolean changed = false;
+        for (Map.Entry<Identifier, Title> e : snapshotTitleEntries()) {
+            Identifier id = e.getKey();
+            Title t = e.getValue();
+            if (isAlreadyUnlocked(pt, id)) continue;
+
+            for (int idx = 0; idx < t.conditions.size(); idx++) {
+                Title.Condition c = t.conditions.get(idx);
+                if (c.type != Title.Condition.Type.CHECK_ATTRIBUTE) continue;
+                if (c.attributeId.isEmpty()) continue;
+
+                RegistryKey<EntityAttribute> key = RegistryKey.of(RegistryKeys.ATTRIBUTE, c.attributeId.get());
+                RegistryEntry<EntityAttribute> entry = Registries.ATTRIBUTE.getEntry(key).orElse(null);
+                if (entry == null) continue;
+
+                EntityAttributeInstance inst = player.getAttributeInstance(entry);
+                if (inst == null) continue;
+
+                double value = inst.getValue();
+                NbtCompound tag = pt.progress.computeIfAbsent(id.toString(), k -> new NbtCompound());
+                tag.putLong("c" + idx, Math.round(value));
+
+                boolean meets = value >= c.minValue;
+                boolean prevDone = tag.getBoolean("done_" + idx);
+                if (meets != prevDone) {
+                    tag.putBoolean("done_" + idx, meets);
+                    state.markDirty();
+                    changed = true;
+                }
+            }
+        }
+        return changed;
+    }
+
+    private static boolean updateFindStructure(MinecraftServer server, ServerPlayerEntity player, TitlesPersistentState state, TitlesPersistentState.PlayerTitles pt) {
+        boolean changed = false;
+        ServerWorld sw = player.getServerWorld();
+        StructureAccessor accessor = sw.getStructureAccessor();
+
+        for (Map.Entry<Identifier, Title> e : snapshotTitleEntries()) {
+            Identifier id = e.getKey();
+            Title t = e.getValue();
+            if (isAlreadyUnlocked(pt, id)) continue;
+
+            for (int idx = 0; idx < t.conditions.size(); idx++) {
+                Title.Condition c = t.conditions.get(idx);
+                if (c.type != Title.Condition.Type.FIND_STRUCTURE) continue;
+
+                boolean inside = false;
+
+                if (c.structure.isPresent()) {
+                    RegistryKey<Structure> skey = RegistryKey.of(RegistryKeys.STRUCTURE, c.structure.get());
+                    RegistryEntry<Structure> sentry = server.getRegistryManager()
+                            .get(RegistryKeys.STRUCTURE)
+                            .getEntry(skey)
+                            .orElse(null);
+
+                    if (sentry != null) {
+                        var start = accessor.getStructureAt(player.getBlockPos(), sentry.value());
+                        inside = start != null && start.hasChildren();
+                    }
+                }
+
+                if (inside || c.structure.isEmpty()) {
+                    markDone(pt, id, idx);
+                    state.markDirty();
+                    changed = true;
+                }
+            }
+        }
+        return changed;
+    }
+
+    private static boolean matchesEntitySpec(LivingEntity target, Title.Condition c) {
         if (c.entityType.isPresent()) {
             EntityType<?> wanted = Registries.ENTITY_TYPE.get(c.entityType.get());
-            return killed.getType() == wanted;
+            return target.getType() == wanted;
         }
         if (c.entitySpec.isEmpty()) return true;
         String spec = c.entitySpec.get();
         if ("any".equalsIgnoreCase(spec)) return true;
 
-        Identifier id = Registries.ENTITY_TYPE.getId(killed.getType());
+        Identifier id = Registries.ENTITY_TYPE.getId(target.getType());
         if (id == null) return false;
 
         if (spec.endsWith(":*")) {
-            String ns = spec.substring(0, spec.indexOf(':'));
+            int idx = spec.indexOf(':');
+            String ns = idx >= 0 ? spec.substring(0, idx) : spec;
             return id.getNamespace().equals(ns);
         }
 
-        Identifier target = Identifier.tryParse(spec);
-        return target != null && id.equals(target);
+        Identifier targetId = Identifier.tryParse(spec);
+        return targetId != null && id.equals(targetId);
     }
 
-    private static boolean matchesNbt(LivingEntity killed, Title.Condition c) {
+    private static boolean matchesNbt(LivingEntity entity, Title.Condition c) {
         if (c.nbtQuery.isEmpty()) return true;
         String query = c.nbtQuery.get();
 
         if (query.startsWith("tag:")) {
             String wanted = query.substring("tag:".length());
-            return killed.getCommandTags().contains(wanted);
+            return entity.getCommandTags().contains(wanted);
         }
 
         NbtCompound tag = new NbtCompound();
-        killed.writeNbt(tag);
+        entity.writeNbt(tag);
         return tag.toString().contains(query);
     }
 
@@ -246,7 +498,8 @@ public final class TitleConditionEvents {
                     long prevBest = tag.getLong("c" + idx);
                     long newBest  = Math.max(prevBest, haveNow);
                     boolean prevDone = tag.getBoolean("done_" + idx);
-                    boolean nowDone  = haveNow >= target;
+
+                    boolean nowDone = prevDone || newBest >= target;
 
                     if (newBest != prevBest) {
                         tag.putLong("c" + idx, newBest);
@@ -259,6 +512,7 @@ public final class TitleConditionEvents {
                     if (changed) state.markDirty();
                 }
 
+
                 if (c.type == Title.Condition.Type.ADVANCEMENT && c.advancement.isPresent()) {
                     Identifier advId = c.advancement.get();
                     AdvancementEntry adv = server.getAdvancementLoader().get(advId);
@@ -269,16 +523,30 @@ public final class TitleConditionEvents {
                     }
                 }
 
-                if (c.type == Title.Condition.Type.REACH_LEVEL && c.level > 0) {
-                    int lvl = computeTotalSkillsLevel(player);
+                if (c.type == Title.Condition.Type.REACH_LEVEL_XP || c.type == Title.Condition.Type.REACH_LEVEL) {
+                    int lvl = player.experienceLevel;
                     NbtCompound tag = pt.progress.computeIfAbsent(id.toString(), k -> new NbtCompound());
                     tag.putLong("c" + idx, lvl);
                     if (lvl >= c.level) {
                         tag.putBoolean("done_" + idx, true);
+                        state.markDirty();
+                        changed = true;
                     }
-                    state.markDirty();
-                    changed = true;
                 }
+
+                if (c.type == Title.Condition.Type.REACH_LEVEL_PUFFERFISH) {
+                    int lvl = computeTotalSkillsLevel(player);
+                    NbtCompound tag = pt.progress.computeIfAbsent(id.toString(), k -> new NbtCompound());
+                    tag.putLong("c" + idx, Math.max(0, lvl));
+                    boolean meets = (lvl >= 0) && (lvl >= c.level);
+                    boolean prevDone = tag.getBoolean("done_" + idx);
+                    if (meets != prevDone) {
+                        tag.putBoolean("done_" + idx, meets);
+                        state.markDirty();
+                        changed = true;
+                    }
+                }
+
 
                 if (c.type == Title.Condition.Type.CRAFT_ITEM && c.item.isPresent()) {
                     Item it = Registries.ITEM.get(c.item.get());
@@ -302,8 +570,6 @@ public final class TitleConditionEvents {
                     if (c.block.isPresent()) {
                         Block b = Registries.BLOCK.get(c.block.get());
                         minedTotal = player.getStatHandler().getStat(Stats.MINED.getOrCreateStat(b));
-                    } else {
-                        minedTotal = 0;
                     }
                     NbtCompound tag = pt.progress.computeIfAbsent(id.toString(), k -> new NbtCompound());
                     long prev = tag.getLong("c" + idx);
@@ -352,11 +618,15 @@ public final class TitleConditionEvents {
 
         long current = tag == null ? 0L : tag.getLong("c" + idx);
         return switch (c.type) {
-            case OBTAIN_ITEM, ADVANCEMENT, REACH_LEVEL, VISIT_BIOME, ENTER_DIMENSION -> tag != null && tag.getBoolean("done_" + idx);
+            case OBTAIN_ITEM, ADVANCEMENT, REACH_LEVEL, REACH_LEVEL_XP, REACH_LEVEL_PUFFERFISH,
+                    VISIT_BIOME, ENTER_DIMENSION, INTERACT_BLOCK, INTERACT_ENTITY, CHECK_ATTRIBUTE, FIND_STRUCTURE
+                    -> tag != null && tag.getBoolean("done_" + idx);
             case KILL_MOBS -> current >= Math.max(1, c.count);
             case WALK_BLOCKS -> current >= Math.max(1, c.distance);
             case CRAFT_ITEM -> current >= Math.max(1, c.count);
             case MINE_BLOCKS -> current >= Math.max(1, c.count);
+            case DEAL_DAMAGE_TOTAL, DEAL_DAMAGE_MAX -> current >= Math.max(1, c.count);
+
         };
     }
 
@@ -376,30 +646,17 @@ public final class TitleConditionEvents {
     }
 
     private static boolean puffishLoaded() {
-        try {
-            Class.forName("net.puffish.skillsmod.SkillsMod");
-            return true;
-        } catch (Throwable t) {
-            return false;
-        }
+        return FabricLoader.getInstance().isModLoaded("puffish_skills");
     }
 
     private static int computeTotalSkillsLevel(ServerPlayerEntity player) {
         if (!puffishLoaded()) return -1;
         try {
-            Class<?> skillsMod = Class.forName("net.puffish.skillsmod.SkillsMod");
-            Method getInstance = skillsMod.getMethod("getInstance");
-            Object instance = getInstance.invoke(null);
-
-            Method getUnlockedCategories = skillsMod.getMethod("getUnlockedCategories", ServerPlayerEntity.class);
-            java.util.Collection<Identifier> cats = (java.util.Collection<Identifier>) getUnlockedCategories.invoke(instance, player);
-
-            Method getCurrentLevel = skillsMod.getMethod("getCurrentLevel", ServerPlayerEntity.class, Identifier.class);
-
+            net.puffish.skillsmod.SkillsMod mod = net.puffish.skillsmod.SkillsMod.getInstance();
+            if (mod == null) return -1;
             int total = 0;
-            for (Identifier id : cats) {
-                java.util.Optional<Integer> lvlOpt = (java.util.Optional<Integer>) getCurrentLevel.invoke(instance, player, id);
-                total += lvlOpt.orElse(0);
+            for (Identifier cat : mod.getUnlockedCategories(player)) {
+                total += mod.getCurrentLevel(player, cat).orElse(0);
             }
             return total;
         } catch (Throwable t) {

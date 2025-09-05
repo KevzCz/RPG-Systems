@@ -10,9 +10,10 @@ public final class TitleStyleUtil {
             Float rainbowSpeed, Float wiggleAmp, Float wiggleSpeed,
             int[] gradient,
             Float pulseSpeed,
-            Integer outlineRgb,
-            Integer outlinePx,
-            Float shakeAmp
+            Float shakeAmp,
+            Float bounceAmp, Float bounceSpeed,
+            Float waveAmp,   Float waveSpeed,
+            Float glitchIntensity
     ) {}
 
     public static Parsed parse(String raw) {
@@ -25,10 +26,16 @@ public final class TitleStyleUtil {
 
         int[] gradient     = readGradient(raw);
         Float pulseSpeed   = readFloatParam(raw, "pulse");
-        Integer outlineRgb = readColorParam(raw, "outline", 0);
-        Integer outlinePx  = readIntParam(raw, "outline", 1);
         Float shakeAmp     = readFloatParam(raw, "shake");
         Integer hexColor   = readHexColor(raw);
+
+        Float bounceAmp    = readKeyedParam(raw, "bounce", "amp");
+        Float bounceSpeed  = readKeyedParam(raw, "bounce", "speed");
+
+        Float waveAmp      = readKeyedParam(raw, "wave", "amp");
+        Float waveSpeed    = readKeyedParam(raw, "wave", "speed");
+
+        Float glitchIntensity = readKeyedParam(raw, "glitch", "intensity");
 
         String s = removeToken(removeToken(raw, "{rainbow}"), "{wiggle}").trim();
         s = stripDynamicTokens(s);
@@ -51,7 +58,10 @@ public final class TitleStyleUtil {
 
         return new Parsed(out.toString(), rainbow, wiggle, color,
                 rainbowSpeed, wiggleAmp, wiggleSpeed,
-                gradient, pulseSpeed, outlineRgb, outlinePx, shakeAmp);
+                gradient, pulseSpeed, shakeAmp,
+                bounceAmp, bounceSpeed,
+                waveAmp,   waveSpeed,
+                glitchIntensity);
     }
 
     private static String tokenPayload(String s, String name) {
@@ -65,8 +75,9 @@ public final class TitleStyleUtil {
         int colon = inside.indexOf(':');
         return colon >= 0 ? inside.substring(colon + 1).trim() : "";
     }
+
     private static String stripDynamicTokens(String s) {
-        String[] names = {"gradient","pulse","outline","shake","color","rainbow","wiggle"};
+        String[] names = {"gradient","pulse","shake","color","rainbow","wiggle","outline","bounce","wave","glitch"};
         for (String n : names) {
             while (true) {
                 String low = s.toLowerCase();
@@ -79,38 +90,24 @@ public final class TitleStyleUtil {
         }
         return s;
     }
+
     private static int parseHex(String hex) {
         hex = hex.replace("#","").trim();
         return (int)Long.parseLong(hex, 16) & 0xFFFFFF;
     }
+
     private static Integer readHexColor(String s) {
         String p = tokenPayload(s, "color");
         if (p == null || p.isEmpty()) return null;
         try { return parseHex(p); } catch (Exception ignore) { return null; }
     }
-    private static Integer readColorParam(String s, String name, int idx) {
-        String p = tokenPayload(s, name);
-        if (p == null || p.isEmpty()) return null;
-        String[] parts = p.split(":");
-        if (idx < parts.length && !parts[idx].isBlank()) {
-            try { return parseHex(parts[idx]); } catch (Exception ignore) {}
-        }
-        return null;
-    }
+
     private static Float readFloatParam(String s, String name) {
         String p = tokenPayload(s, name);
         if (p == null || p.isEmpty()) return null;
         try { return Float.parseFloat(p); } catch (Exception ignore) { return null; }
     }
-    private static Integer readIntParam(String s, String name, int idx) {
-        String p = tokenPayload(s, name);
-        if (p == null || p.isEmpty()) return null;
-        String[] parts = p.split(":");
-        if (idx < parts.length && !parts[idx].isBlank()) {
-            try { return Integer.parseInt(parts[idx]); } catch (Exception ignore) {}
-        }
-        return null;
-    }
+
     private static Float readKeyedParam(String s, String name, String key) {
         String p = tokenPayload(s, name);
         if (p == null) return null;
@@ -122,6 +119,7 @@ public final class TitleStyleUtil {
         }
         return null;
     }
+
     private static int[] readGradient(String s) {
         String p = tokenPayload(s, "gradient");
         if (p == null || p.isEmpty()) return null;
@@ -133,7 +131,6 @@ public final class TitleStyleUtil {
         }
         return n == 0 ? null : (n == out.length ? out : java.util.Arrays.copyOf(out, n));
     }
-
 
     public static int resolveOrWhite(Integer rgb) {
         return rgb != null ? rgb : 0xFFFFFF;
@@ -151,17 +148,24 @@ public final class TitleStyleUtil {
         return w * amplitudePx;
     }
 
+    public static float bounceYOffsetPx(long nowMs, int index, float amplitudePx, float speed) {
+        float t = (nowMs % 1000000L) / 1000.0f;
+        float v = (float)Math.sin(t * speed + index * 0.55f);
+        return Math.abs(v) * amplitudePx;
+    }
+
+    public static float waveXOffsetPx(long nowMs, int index, float amplitudePx, float speed) {
+        float t = (nowMs % 1000000L) / 1000.0f;
+        float v = (float)Math.sin(t * speed + index * 0.55f);
+        return v * amplitudePx;
+    }
+
     private static boolean containsToken(String s, String token) {
         return s.toLowerCase().contains(token.toLowerCase());
     }
 
     private static String removeToken(String s, String token) {
         return s.replace(token, "").replace(token.toUpperCase(), "");
-    }
-
-    private static Float toFormattingColor(Formatting fmt) {
-        Integer v = fmt.getColorValue();
-        return v == null ? null : v.floatValue();
     }
 
     private static Integer mapLegacyColor(char code) {
@@ -218,6 +222,7 @@ public final class TitleStyleUtil {
         int bi = Math.round(bl * 255f) & 0xFF;
         return (ri << 16) | (gi << 8) | bi;
     }
+
     public static int gradientRgb(int index, int length, int[] cols) {
         if (cols == null || cols.length == 0) return 0xFFFFFF;
         if (cols.length == 1) return cols[0];
@@ -251,6 +256,63 @@ public final class TitleStyleUtil {
         float t = (nowMs % 1_000_000L) / 1000.0f;
         float hue = wrap01(t * speed + index * 0.12f);
         return hsbToRgb(hue, 1f, 1f);
+    }
+
+    public static boolean glitchActive(long nowMs, int index, float intensity) {
+        float p = clamp01(intensity * 0.35f + 0.05f);
+        int frame = (int)(nowMs / 50L);
+        int h = fastHash(index * 374761393 + frame * 668265263);
+        float r = frac01(h);
+        return r < p;
+    }
+
+    public static float glitchJitterX(long nowMs, int index, float intensity) {
+        if (intensity <= 0f) return 0f;
+        int frame = (int)(nowMs / 50L);
+        int h = fastHash(index * 915488749 + frame * 140294673);
+        float mag = 1.0f + intensity * 2.0f;
+        return (frac01(h) - 0.5f) * 2f * mag;
+    }
+
+    public static float glitchJitterY(long nowMs, int index, float intensity) {
+        if (intensity <= 0f) return 0f;
+        int frame = (int)(nowMs / 50L);
+        int h = fastHash(index * 19990303 + frame * 636413622);
+        float mag = 0.5f + intensity * 1.5f;
+        return (frac01(h) - 0.5f) * 2f * mag;
+    }
+
+    public static int glitchTintRgb(long nowMs, int index, int baseRgb, float intensity) {
+        if (intensity <= 0f) return baseRgb;
+        int frame = (int)(nowMs / 50L);
+        int h = fastHash(index * 1103515245 + frame * 12345);
+        float hue = frac01(h * 3);
+        int tint = hsbToRgb(hue, 1f, 1f);
+        float a = 0.35f + 0.35f * clamp01(intensity);
+        return lerpRgb(baseRgb, tint, a);
+    }
+
+    private static int lerpRgb(int a, int b, float t) {
+        t = clamp01(t);
+        int ar=(a>>16)&255, ag=(a>>8)&255, ab=a&255;
+        int br=(b>>16)&255, bg=(b>>8)&255, bb=b&255;
+        int r = (int)(ar*(1f-t) + br*t);
+        int g = (int)(ag*(1f-t) + bg*t);
+        int bl= (int)(ab*(1f-t) + bb*t);
+        return (r<<16)|(g<<8)|bl;
+    }
+
+    private static int fastHash(int x) {
+        x ^= (x >>> 16);
+        x *= 0x7feb352d;
+        x ^= (x >>> 15);
+        x *= 0x846ca68b;
+        x ^= (x >>> 16);
+        return x;
+    }
+
+    private static float frac01(int h) {
+        return ((h >>> 1) & 0x7FFFFFFF) / 2147483647f;
     }
 
     private static float clamp01(float v) {
