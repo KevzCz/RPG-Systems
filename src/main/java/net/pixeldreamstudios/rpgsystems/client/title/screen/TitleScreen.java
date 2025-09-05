@@ -13,19 +13,23 @@ import net.pixeldreamstudios.rpgsystems.client.title.screen.box.TitleDescription
 import net.pixeldreamstudios.rpgsystems.client.title.screen.box.TitlesListBox;
 import net.pixeldreamstudios.rpgsystems.client.title.widget.TitleButtonWidget;
 import net.pixeldreamstudios.rpgsystems.title.TitleRegistry;
+
 @Environment(EnvType.CLIENT)
 public final class TitleScreen extends Screen {
     private static final Identifier BACKGROUND = Identifier.of("rpg-systems", "textures/gui/title/title_screen.png");
     private static final Identifier BACK_NORMAL = Identifier.of("rpg-systems", "textures/gui/title/back_normal.png");
     private static final Identifier BACK_HOVER  = Identifier.of("rpg-systems", "textures/gui/title/back_hover.png");
+
     private int x;
     private int y;
     private final int backgroundWidth = 176;
     private final int backgroundHeight = 166;
+
     private TitleButtonWidget backButton;
     private TitlesListBox titlesListBox;
     private TitleDescriptionBox descriptionBox;
     TitleBox titleBox;
+
     public TitleScreen() {
         super(Text.translatable("screen.rpgsystems.titles"));
     }
@@ -57,14 +61,15 @@ public final class TitleScreen extends Screen {
         this.descriptionBox = new TitleDescriptionBox(x, y, backgroundWidth, backgroundHeight);
         this.titleBox = new net.pixeldreamstudios.rpgsystems.client.title.screen.box.TitleBox(x, y, backgroundWidth, backgroundHeight);
         this.titleBox.attachToScreen(this);
+
         this.titlesListBox.setSelectionListener(title -> this.descriptionBox.setTitle(title));
         this.titlesListBox.setOnSelectionChanged(title -> this.titleBox.setSelectedTitle(title));
+
         if (!TitleRegistry.all().isEmpty()) {
             var first = TitleRegistry.all().values().iterator().next();
             this.descriptionBox.setTitle(first);
             this.titleBox.setSelectedTitle(first);
         }
-
     }
 
     @Override
@@ -88,7 +93,7 @@ public final class TitleScreen extends Screen {
         this.titleBox.setScreenOrigin(x, y);
         this.titleBox.setBackgroundSize(backgroundWidth, backgroundHeight);
         this.titleBox.render(context);
-        
+
         this.descriptionBox.renderHints(context, mouseX, mouseY);
     }
 
@@ -100,7 +105,7 @@ public final class TitleScreen extends Screen {
         if (this.descriptionBox != null && this.descriptionBox.mouseScrolled(mouseX, mouseY, verticalAmount)) {
             return true;
         }
-        return super.mouseScrolled(mouseX, mouseY, horizontalAmount,verticalAmount);
+        return super.mouseScrolled(mouseX, mouseY, horizontalAmount, verticalAmount);
     }
 
     @Override
@@ -108,12 +113,12 @@ public final class TitleScreen extends Screen {
         if (this.titlesListBox != null && this.titlesListBox.mouseClicked(mouseX, mouseY, button)) {
             return true;
         }
-
         return super.mouseClicked(mouseX, mouseY, button);
     }
 
     @Override
     public void renderBackground(DrawContext context, int mouseX, int mouseY, float delta) {
+        super.renderBackground(context, mouseX, mouseY, delta);
         context.drawTexture(BACKGROUND, x, y, 0, 0, backgroundWidth, backgroundHeight, backgroundWidth, backgroundHeight);
     }
 

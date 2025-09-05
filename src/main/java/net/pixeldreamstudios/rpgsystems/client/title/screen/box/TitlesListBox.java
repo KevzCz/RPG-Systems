@@ -9,10 +9,11 @@ import net.minecraft.text.OrderedText;
 import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.Util;
-import net.pixeldreamstudios.rpgsystems.client.title.TitleStyleUtil;
 import net.pixeldreamstudios.rpgsystems.client.title.TitleClientData;
+import net.pixeldreamstudios.rpgsystems.client.title.TitleStyleUtil;
 import net.pixeldreamstudios.rpgsystems.title.Title;
 import net.pixeldreamstudios.rpgsystems.title.TitleRegistry;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
@@ -24,19 +25,30 @@ public final class TitlesListBox {
     private static final int LEFT_PADDING = 7;
     private static final int BOTTOM_PADDING = 12;
     private static final int VISIBLE_ROWS = 4;
+
     private static final Identifier LOCKED_ICON = Identifier.of("rpg-systems", "textures/gui/title/locked.png");
     private static final int LOCK_SIZE = 8;
     private static final int LOCK_RIGHT_INSET = 4;
+
     private static final int HIGHLIGHT_COLOR = 0x44FFFFFF;
+
+    private static final int ROW_INNER_PAD_L = 4;
+    private static final int ROW_INNER_PAD_R = 6;
+
+    private static final float MARQUEE_SPEED_PX_PER_SEC = 42f;
+    private static final float MARQUEE_HOLD_SECONDS = 1.5f;
+
     private int screenX;
     private int screenY;
     private int bgWidth;
     private int bgHeight;
+
     private final TextRenderer font;
     private int scrollOffset = 0;
     private int selectedIndex = -1;
     private final List<Consumer<Title>> selectionListeners = new ArrayList<>();
     private float textScale = 0.5f;
+
     public TitlesListBox(int screenX, int screenY, int bgWidth, int bgHeight) {
         this.font = MinecraftClient.getInstance().textRenderer;
         this.screenX = screenX;
@@ -87,9 +99,8 @@ public final class TitlesListBox {
         if (scrollOffset > maxOffset) scrollOffset = maxOffset;
         if (selectedIndex >= allTitles.size()) selectedIndex = -1;
 
-        int innerLeft = boxX + 4;
-        int innerRight = boxX + BOX_WIDTH - 6;
-        int innerWidth = innerRight - innerLeft;
+        int innerLeft = boxX + ROW_INNER_PAD_L;
+        int innerRight = boxX + BOX_WIDTH - ROW_INNER_PAD_R;
 
         long now = Util.getMeasuringTimeMs();
         float rowH = BOX_HEIGHT / (float) VISIBLE_ROWS;
@@ -102,45 +113,60 @@ public final class TitlesListBox {
             String raw = t.displayName != null ? t.displayName.getString() : t.id.toString();
             String clean = TitleStyleUtil.parse(raw).text();
             Text label = Text.literal(clean);
+            OrderedText ordered = label.asOrderedText();
 
             int partTop = boxY + Math.round(rowH * row);
             int partBottom = (row == VISIBLE_ROWS - 1) ? (boxY + BOX_HEIGHT) : (boxY + Math.round(rowH * (row + 1)));
             int textHScaled = Math.max(1, Math.round(font.fontHeight * textScale));
-            int textY = partTop + Math.max(0, Math.round(( (partBottom - partTop) - textHScaled) / 2f));
+            int textY = partTop + Math.max(0, Math.round(((partBottom - partTop) - textHScaled) / 2f));
 
             if (index == selectedIndex) {
                 ctx.fill(boxX + 1, partTop + 1, boxX + BOX_WIDTH - 1, partBottom - 1, HIGHLIGHT_COLOR);
             }
 
+            boolean unlocked = TitleClientData.getSelfUnlocked().contains(t.id);
+            int lockReserve = unlocked ? 0 : (LOCK_RIGHT_INSET + LOCK_SIZE);
+            int contentLeft = innerLeft;
+            int contentRight = innerRight - lockReserve;
+            int contentWidth = Math.max(1, contentRight - contentLeft);
+
             int rowClipTop = partTop + 1;
             int rowClipBottom = partBottom - 1;
-            ctx.enableScissor(innerLeft, rowClipTop, innerRight, rowClipBottom);
+            ctx.enableScissor(contentLeft, rowClipTop, contentRight, rowClipBottom);
 
-            int wrapWidthForScale = Math.max(1, Math.round(innerWidth / textScale));
-            List<OrderedText> lines = font.wrapLines(label, wrapWidthForScale);
-            OrderedText line = lines.isEmpty() ? Text.empty().asOrderedText() : lines.get(0);
+            int fullWidth = font.getWidth(ordered);
+            int fullWidthScaled = Math.round(fullWidth * textScale);
+            boolean marquee = fullWidthScaled > contentWidth;
 
-            int fullWidthScaled = Math.round(font.getWidth(line) * textScale);
-
-            if (fullWidthScaled <= innerWidth) {
-                drawScaled(ctx, line, innerLeft, textY, 0xFFFFFFFF, textScale);
+            if (!marquee) {
+                drawScaled(ctx, ordered, contentLeft, textY, 0xFFFFFFFF, textScale);
             } else {
-                int overflow = fullWidthScaled - innerWidth;
-                int maxScrollPx = Math.max(1, overflow + 4);
-                int pxPerSecond = 40;
-                long phase = row * 250L;
-                long elapsed = Math.max(0L, now + phase);
-                int period = 2 * maxScrollPx * 1000 / pxPerSecond;
-                int pos = (int) (elapsed % period);
-                int backAndForth = pos > period / 2 ? period - pos : pos;
-                int offset = (int) Math.round(backAndForth * (pxPerSecond / 1000.0));
-                int drawX = innerLeft - offset;
-                drawScaled(ctx, line, drawX, textY, 0xFFFFFFFF, textScale);
+                float overflow = Math.max(1f, fullWidthScaled - contentWidth);
+                float travelTime = overflow / MARQUEE_SPEED_PX_PER_SEC;
+                float cycle = MARQUEE_HOLD_SECONDS + travelTime + MARQUEE_HOLD_SECONDS + travelTime;
+
+                float seconds = (now % 1_000_000L) / 1000f;
+                float phaseOffset = row * 0.27f;
+                float ts = (seconds + phaseOffset) % cycle;
+
+                float offsetPx;
+                if (ts < MARQUEE_HOLD_SECONDS) {
+                    offsetPx = 0f;
+                } else if (ts < MARQUEE_HOLD_SECONDS + travelTime) {
+                    offsetPx = (ts - MARQUEE_HOLD_SECONDS) * MARQUEE_SPEED_PX_PER_SEC;
+                } else if (ts < MARQUEE_HOLD_SECONDS + travelTime + MARQUEE_HOLD_SECONDS) {
+                    offsetPx = overflow;
+                } else {
+                    float backT = ts - (MARQUEE_HOLD_SECONDS + travelTime + MARQUEE_HOLD_SECONDS);
+                    offsetPx = overflow - backT * MARQUEE_SPEED_PX_PER_SEC;
+                }
+
+                int drawX = contentLeft - Math.round(offsetPx);
+                drawScaled(ctx, ordered, drawX, textY, 0xFFFFFFFF, textScale);
             }
 
             ctx.disableScissor();
 
-            boolean unlocked = TitleClientData.getSelfUnlocked().contains(t.id);
             if (!unlocked) {
                 int iconX = boxX + BOX_WIDTH - LOCK_RIGHT_INSET - LOCK_SIZE;
                 int iconY = partTop + Math.max(0, Math.round((rowH - LOCK_SIZE) / 2f));

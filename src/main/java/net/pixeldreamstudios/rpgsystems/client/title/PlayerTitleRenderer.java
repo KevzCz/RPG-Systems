@@ -132,7 +132,8 @@ public final class PlayerTitleRenderer {
     private static void drawStyledTitle3D(WorldRenderContext context, MatrixStack matrices, Text text, float alpha) {
         TextRenderer tr = MinecraftClient.getInstance().textRenderer;
         String raw = text.getString();
-        TitleStyleUtil.Parsed parsed = TitleStyleUtil.parse(raw);
+        java.util.List<net.pixeldreamstudios.rpgsystems.client.title.TitleStyleUtil.Span> spans =
+                net.pixeldreamstudios.rpgsystems.client.title.TitleStyleUtil.parseSpans(raw);
 
         int light = LightmapTextureManager.pack(15, 15);
         float scale = 0.025f;
@@ -140,7 +141,8 @@ public final class PlayerTitleRenderer {
         matrices.push();
         matrices.scale(-scale, -scale, scale);
 
-        float totalW = tr.getWidth(parsed.text());
+        float totalW = 0f;
+        for (var sp : spans) totalW += tr.getWidth(sp.text());
         float baseX = -totalW / 2f;
 
         var consumers = context.consumers();
@@ -150,66 +152,75 @@ public final class PlayerTitleRenderer {
 
         long nowMs = Util.getMeasuringTimeMs();
         float advanceX = 0f;
-        int index = 0;
+        int globalIndex = 0;
 
-        for (int i = 0; i < parsed.text().length(); ) {
-            int cp = parsed.text().codePointAt(i);
-            String ch = new String(Character.toChars(cp));
-            int cw = tr.getWidth(ch);
+        for (var span : spans) {
+            String t = span.text();
+            int localLen = t.codePointCount(0, t.length());
+            int localIndex = 0;
 
-            int rgb = (parsed.gradient() != null)
-                    ? TitleStyleUtil.gradientRgb(index, parsed.text().length(), parsed.gradient())
-                    : (parsed.rainbow()
-                    ? TitleStyleUtil.rainbowRgb(nowMs, index, parsed.rainbowSpeed() != null ? parsed.rainbowSpeed() : 0.18f)
-                    : TitleStyleUtil.resolveOrWhite(parsed.baseRgb()));
+            for (int i = 0; i < t.length(); ) {
+                int cp = t.codePointAt(i);
+                String ch = new String(Character.toChars(cp));
+                int cw = tr.getWidth(ch);
 
-            if (parsed.pulseSpeed() != null) {
-                rgb = TitleStyleUtil.pulseRgb(nowMs, rgb, parsed.pulseSpeed());
+                int rgb = span.gradient() != null
+                        ? net.pixeldreamstudios.rpgsystems.client.title.TitleStyleUtil.gradientRgb(localIndex, localLen, span.gradient())
+                        : (span.rainbow()
+                        ? net.pixeldreamstudios.rpgsystems.client.title.TitleStyleUtil.rainbowRgb(nowMs, globalIndex, span.rainbowSpeed() != null ? span.rainbowSpeed() : 0.18f)
+                        : net.pixeldreamstudios.rpgsystems.client.title.TitleStyleUtil.resolveOrWhite(span.baseRgb()));
+
+                if (span.pulseSpeed() != null) {
+                    rgb = net.pixeldreamstudios.rpgsystems.client.title.TitleStyleUtil.pulseRgb(nowMs, rgb, span.pulseSpeed());
+                }
+
+                float yOff = 0f;
+                if (span.wiggle()) {
+                    float amp = span.wiggleAmp() != null ? span.wiggleAmp() : 2.0f;
+                    yOff += net.pixeldreamstudios.rpgsystems.client.title.TitleStyleUtil.wiggleYOffsetPx(nowMs, globalIndex, amp);
+                }
+                if (span.bounceAmp() != null || span.bounceSpeed() != null) {
+                    float amp = span.bounceAmp() != null ? span.bounceAmp() : 0f;
+                    float spd = span.bounceSpeed() != null ? span.bounceSpeed() : 3.0f;
+                    yOff += net.pixeldreamstudios.rpgsystems.client.title.TitleStyleUtil.bounceYOffsetPx(nowMs, globalIndex, amp, spd);
+                }
+
+                float xOff = 0f;
+                if (span.waveAmp() != null || span.waveSpeed() != null) {
+                    float amp = span.waveAmp() != null ? span.waveAmp() : 0f;
+                    float spd = span.waveSpeed() != null ? span.waveSpeed() : 2.5f;
+                    xOff += net.pixeldreamstudios.rpgsystems.client.title.TitleStyleUtil.waveXOffsetPx(nowMs, globalIndex, amp, spd);
+                }
+                if (span.shakeAmp() != null) {
+                    xOff += net.pixeldreamstudios.rpgsystems.client.title.TitleStyleUtil.shakeXOffsetPx(nowMs, globalIndex, span.shakeAmp());
+                }
+
+                if (span.glitchIntensity() != null && net.pixeldreamstudios.rpgsystems.client.title.TitleStyleUtil.glitchActive(nowMs, globalIndex, span.glitchIntensity())) {
+                    xOff += net.pixeldreamstudios.rpgsystems.client.title.TitleStyleUtil.glitchJitterX(nowMs, globalIndex, span.glitchIntensity());
+                    yOff += net.pixeldreamstudios.rpgsystems.client.title.TitleStyleUtil.glitchJitterY(nowMs, globalIndex, span.glitchIntensity());
+                    rgb = net.pixeldreamstudios.rpgsystems.client.title.TitleStyleUtil.glitchTintRgb(nowMs, globalIndex, rgb, span.glitchIntensity());
+                }
+
+                int argb = ((Math.round(alpha * 255f) & 0xFF) << 24) | (rgb & 0xFFFFFF);
+
+                tr.draw(ch,
+                        baseX + advanceX + xOff,
+                        yOff,
+                        argb,
+                        false, matrices.peek().getPositionMatrix(),
+                        consumers, TextRenderer.TextLayerType.SEE_THROUGH, 0, light);
+
+                advanceX += cw;
+                globalIndex++;
+                localIndex++;
+                i += Character.charCount(cp);
             }
-
-            float yOff = 0f;
-            if (parsed.wiggle()) {
-                float amp = parsed.wiggleAmp() != null ? parsed.wiggleAmp() : 2.0f;
-                yOff += TitleStyleUtil.wiggleYOffsetPx(nowMs, index, amp);
-            }
-            if (parsed.bounceAmp() != null || parsed.bounceSpeed() != null) {
-                float amp = parsed.bounceAmp() != null ? parsed.bounceAmp() : 0f;
-                float spd = parsed.bounceSpeed() != null ? parsed.bounceSpeed() : 3.0f;
-                yOff += TitleStyleUtil.bounceYOffsetPx(nowMs, index, amp, spd);
-            }
-
-            float xOff = 0f;
-            if (parsed.waveAmp() != null || parsed.waveSpeed() != null) {
-                float amp = parsed.waveAmp() != null ? parsed.waveAmp() : 0f;
-                float spd = parsed.waveSpeed() != null ? parsed.waveSpeed() : 2.5f;
-                xOff += TitleStyleUtil.waveXOffsetPx(nowMs, index, amp, spd);
-            }
-            if (parsed.shakeAmp() != null) {
-                xOff += TitleStyleUtil.shakeXOffsetPx(nowMs, index, parsed.shakeAmp());
-            }
-
-            if (parsed.glitchIntensity() != null && TitleStyleUtil.glitchActive(nowMs, index, parsed.glitchIntensity())) {
-                xOff += TitleStyleUtil.glitchJitterX(nowMs, index, parsed.glitchIntensity());
-                yOff += TitleStyleUtil.glitchJitterY(nowMs, index, parsed.glitchIntensity());
-                rgb = TitleStyleUtil.glitchTintRgb(nowMs, index, rgb, parsed.glitchIntensity());
-            }
-
-            int argb = ((Math.round(alpha * 255f) & 0xFF) << 24) | (rgb & 0xFFFFFF);
-
-            tr.draw(ch,
-                    baseX + advanceX + xOff,
-                    yOff,
-                    argb,
-                    false, matrices.peek().getPositionMatrix(),
-                    consumers, TextRenderer.TextLayerType.SEE_THROUGH, 0, light);
-
-            advanceX += cw;
-            index++;
-            i += Character.charCount(cp);
         }
 
         matrices.pop();
     }
+
+
 
     private static boolean isOnScreen(WorldRenderContext context, Box box) {
         var frustum = context.frustum();

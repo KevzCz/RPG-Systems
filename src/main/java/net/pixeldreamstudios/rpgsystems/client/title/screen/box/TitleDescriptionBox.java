@@ -365,7 +365,10 @@ public final class TitleDescriptionBox {
 
             if (c.hidden && c.hint.isPresent()) {
                 int color = doneFlag ? COLOR_DONE : COLOR_TODO;
-                out.add(new CondLine(Text.literal(c.hint.get()), null, color, doneFlag));
+                MutableText line = Text.literal(c.hint.get())
+                        .append(Text.literal(" "))
+                        .append(progressTail(c, cur, doneFlag));
+                out.add(new CondLine(line, null, color, doneFlag));
                 continue;
             }
 
@@ -458,15 +461,13 @@ public final class TitleDescriptionBox {
                             .append(Text.literal(" (" + Math.min(cur, target) + "/" + target + ")"));
                     out.add(new CondLine(line, c.hint.map(Text::literal).orElse(null), color, reached));
                 }
-
                 case ADVANCEMENT -> {
                     boolean reached = doneFlag;
                     int color = reached ? COLOR_DONE : COLOR_TODO;
-                    int target = 1;
                     MutableText base = c.advancement.isPresent()
                             ? Text.translatable("title.rpgsystems.condition.advancement", c.advancement.get().toString())
                             : Text.translatable("title.rpgsystems.condition.advancement", "");
-                    MutableText line = base.append(Text.literal(" (" + (reached ? 1 : Math.min(cur, target)) + "/1)"));
+                    MutableText line = base.append(Text.literal(" (" + (reached ? 1 : 0) + "/1)"));
                     out.add(new CondLine(line, c.hint.map(Text::literal).orElse(null), color, reached));
                 }
                 case VISIT_BIOME -> {
@@ -618,6 +619,40 @@ public final class TitleDescriptionBox {
         }
         return out;
     }
+
+    private static Text progressTail(Title.Condition c, long cur, boolean doneFlag) {
+        switch (c.type) {
+            case KILL_MOBS, OBTAIN_ITEM, CRAFT_ITEM, MINE_BLOCKS, INTERACT_BLOCK, INTERACT_ENTITY -> {
+                int target = Math.max(1, c.count);
+                return Text.literal("(" + Math.min(cur, target) + "/" + target + ")");
+            }
+            case WALK_BLOCKS -> {
+                long target = Math.max(1, c.distance);
+                return Text.literal("(" + Math.min(cur, target) + "/" + target + ")");
+            }
+            case REACH_LEVEL_XP, REACH_LEVEL_PUFFERFISH -> {
+                int target = Math.max(1, c.level);
+                return Text.literal("(" + Math.min(cur, target) + "/" + target + ")");
+            }
+            case ADVANCEMENT, VISIT_BIOME, ENTER_DIMENSION, FIND_STRUCTURE -> {
+                return Text.literal("(" + (doneFlag ? 1 : 0) + "/1)");
+            }
+            case DEAL_DAMAGE_TOTAL -> {
+                long target = Math.max(1, c.count);
+                return Text.literal("(" + Math.min(cur, target) + "/" + target + ")");
+            }
+            case DEAL_DAMAGE_MAX -> {
+                return Text.literal("(best: " + cur + ")");
+            }
+            case CHECK_ATTRIBUTE -> {
+                return Text.literal("(now: " + cur + ")");
+            }
+            default -> {
+                return Text.literal("");
+            }
+        }
+    }
+
 
     private static String trim(double v) {
         String s = String.format(java.util.Locale.ROOT, "%.2f", v);

@@ -24,6 +24,7 @@ import net.pixeldreamstudios.rpgsystems.mixin.client.ScreenAccessor;
 import net.pixeldreamstudios.rpgsystems.network.title.TitlePayloads;
 import net.pixeldreamstudios.rpgsystems.title.Title;
 
+import java.util.List;
 import java.util.Optional;
 
 @Environment(EnvType.CLIENT)
@@ -121,66 +122,76 @@ public final class TitleBox {
                 String raw = selected.displayName != null
                         ? selected.displayName.getString()
                         : selected.id.getPath();
-                TitleStyleUtil.Parsed parsed = TitleStyleUtil.parse(raw);
 
-                int textWidth = font.getWidth(parsed.text());
+                List<TitleStyleUtil.Span> spans = TitleStyleUtil.parseSpans(raw);
+
+                int textWidth = 0;
+                for (TitleStyleUtil.Span sp : spans) textWidth += font.getWidth(sp.text());
+
                 int baseX = Math.round(x + (w / 2f) - (textWidth / 2f));
                 int baseY = Math.round(y + (h / 2f) - (font.fontHeight / 2f));
 
                 long nowMs = Util.getMeasuringTimeMs();
                 float advanceX = 0f;
-                int index = 0;
+                int globalIndex = 0;
 
-                for (int i = 0; i < parsed.text().length(); ) {
-                    int cp = parsed.text().codePointAt(i);
-                    String ch = new String(Character.toChars(cp));
-                    int cw = font.getWidth(ch);
+                for (TitleStyleUtil.Span span : spans) {
+                    String t = span.text();
+                    int localLen = t.codePointCount(0, t.length());
+                    int localIndex = 0;
 
-                    int rgb = (parsed.gradient() != null)
-                            ? TitleStyleUtil.gradientRgb(index, parsed.text().length(), parsed.gradient())
-                            : (parsed.rainbow()
-                            ? TitleStyleUtil.rainbowRgb(nowMs, index, parsed.rainbowSpeed() != null ? parsed.rainbowSpeed() : 0.18f)
-                            : TitleStyleUtil.resolveOrWhite(parsed.baseRgb()));
+                    for (int i = 0; i < t.length(); ) {
+                        int cp = t.codePointAt(i);
+                        String ch = new String(Character.toChars(cp));
+                        int cw = font.getWidth(ch);
 
-                    if (parsed.pulseSpeed() != null) {
-                        rgb = TitleStyleUtil.pulseRgb(nowMs, rgb, parsed.pulseSpeed());
+                        int rgb = span.gradient() != null
+                                ? TitleStyleUtil.gradientRgb(localIndex, localLen, span.gradient())
+                                : (span.rainbow()
+                                ? TitleStyleUtil.rainbowRgb(nowMs, globalIndex, span.rainbowSpeed() != null ? span.rainbowSpeed() : 0.18f)
+                                : TitleStyleUtil.resolveOrWhite(span.baseRgb()));
+
+                        if (span.pulseSpeed() != null) {
+                            rgb = TitleStyleUtil.pulseRgb(nowMs, rgb, span.pulseSpeed());
+                        }
+
+                        float yOff = 0f;
+                        if (span.wiggle()) {
+                            float amp = span.wiggleAmp() != null ? span.wiggleAmp() : 2.0f;
+                            yOff += TitleStyleUtil.wiggleYOffsetPx(nowMs, globalIndex, amp);
+                        }
+                        if (span.bounceAmp() != null || span.bounceSpeed() != null) {
+                            float amp = span.bounceAmp() != null ? span.bounceAmp() : 0f;
+                            float spd = span.bounceSpeed() != null ? span.bounceSpeed() : 3.0f;
+                            yOff += TitleStyleUtil.bounceYOffsetPx(nowMs, globalIndex, amp, spd);
+                        }
+
+                        float xOff = 0f;
+                        if (span.waveAmp() != null || span.waveSpeed() != null) {
+                            float amp = span.waveAmp() != null ? span.waveAmp() : 0f;
+                            float spd = span.waveSpeed() != null ? span.waveSpeed() : 2.5f;
+                            xOff += TitleStyleUtil.waveXOffsetPx(nowMs, globalIndex, amp, spd);
+                        }
+                        if (span.shakeAmp() != null) {
+                            xOff += TitleStyleUtil.shakeXOffsetPx(nowMs, globalIndex, span.shakeAmp());
+                        }
+
+                        if (span.glitchIntensity() != null && TitleStyleUtil.glitchActive(nowMs, globalIndex, span.glitchIntensity())) {
+                            xOff += TitleStyleUtil.glitchJitterX(nowMs, globalIndex, span.glitchIntensity());
+                            yOff += TitleStyleUtil.glitchJitterY(nowMs, globalIndex, span.glitchIntensity());
+                            rgb = TitleStyleUtil.glitchTintRgb(nowMs, globalIndex, rgb, span.glitchIntensity());
+                        }
+
+                        ctx.drawTextWithShadow(font, ch,
+                                Math.round(baseX + advanceX + xOff),
+                                Math.round(baseY + yOff),
+                                0xFF000000 | (rgb & 0xFFFFFF));
+
+                        advanceX += cw;
+                        globalIndex++;
+                        localIndex++;
+                        i += Character.charCount(cp);
                     }
-
-                    float yOff = 0f;
-                    if (parsed.wiggle()) {
-                        float amp = parsed.wiggleAmp() != null ? parsed.wiggleAmp() : 2.0f;
-                        yOff += TitleStyleUtil.wiggleYOffsetPx(nowMs, index, amp);
-                    }
-                    if (parsed.bounceAmp() != null || parsed.bounceSpeed() != null) {
-                        float amp = parsed.bounceAmp() != null ? parsed.bounceAmp() : 0f;
-                        float spd = parsed.bounceSpeed() != null ? parsed.bounceSpeed() : 3.0f;
-                        yOff += TitleStyleUtil.bounceYOffsetPx(nowMs, index, amp, spd);
-                    }
-
-                    float xOff = 0f;
-                    if (parsed.waveAmp() != null || parsed.waveSpeed() != null) {
-                        float amp = parsed.waveAmp() != null ? parsed.waveAmp() : 0f;
-                        float spd = parsed.waveSpeed() != null ? parsed.waveSpeed() : 2.5f;
-                        xOff += TitleStyleUtil.waveXOffsetPx(nowMs, index, amp, spd);
-                    }
-                    if (parsed.shakeAmp() != null) {
-                        xOff += TitleStyleUtil.shakeXOffsetPx(nowMs, index, parsed.shakeAmp());
-                    }
-
-                    if (parsed.glitchIntensity() != null && TitleStyleUtil.glitchActive(nowMs, index, parsed.glitchIntensity())) {
-                        xOff += TitleStyleUtil.glitchJitterX(nowMs, index, parsed.glitchIntensity());
-                        yOff += TitleStyleUtil.glitchJitterY(nowMs, index, parsed.glitchIntensity());
-                        rgb = TitleStyleUtil.glitchTintRgb(nowMs, index, rgb, parsed.glitchIntensity());
-                    }
-
-                    ctx.drawTextWithShadow(font, ch,
-                            Math.round(baseX + advanceX + xOff),
-                            Math.round(baseY + yOff),
-                            0xFF000000 | (rgb & 0xFFFFFF));
-
-                    advanceX += cw;
-                    index++;
-                    i += Character.charCount(cp);
                 }
             }
 

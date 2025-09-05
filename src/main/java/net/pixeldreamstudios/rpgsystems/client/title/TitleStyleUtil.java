@@ -2,6 +2,11 @@ package net.pixeldreamstudios.rpgsystems.client.title;
 
 import net.minecraft.util.Formatting;
 
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Deque;
+import java.util.List;
+
 public final class TitleStyleUtil {
     private TitleStyleUtil() {}
 
@@ -16,9 +21,273 @@ public final class TitleStyleUtil {
             Float glitchIntensity
     ) {}
 
+    public record Span(
+            String text,
+            boolean rainbow, Float rainbowSpeed,
+            boolean wiggle,  Float wiggleAmp, Float wiggleSpeed,
+            int[] gradient,
+            Integer baseRgb,
+            Float pulseSpeed,
+            Float shakeAmp,
+            Float bounceAmp, Float bounceSpeed,
+            Float waveAmp,   Float waveSpeed,
+            Float glitchIntensity
+    ) {}
+
+    private static final class Wiggle { final Float amp, speed; Wiggle(Float a, Float s){amp=a;speed=s;} }
+    private static final class Wave   { final Float amp, speed; Wave  (Float a, Float s){amp=a;speed=s;} }
+    private static final class Bounce { final Float amp, speed; Bounce(Float a, Float s){amp=a;speed=s;} }
+
+    private static final class Stacks {
+        final Deque<Float>  rainbow = new ArrayDeque<>();
+        final Deque<Wiggle> wiggle  = new ArrayDeque<>();
+        final Deque<int[]>  gradient= new ArrayDeque<>();
+        final Deque<Integer>color   = new ArrayDeque<>();
+        final Deque<Float>  pulse   = new ArrayDeque<>();
+        final Deque<Float>  shake   = new ArrayDeque<>();
+        final Deque<Bounce> bounce  = new ArrayDeque<>();
+        final Deque<Wave>   wave    = new ArrayDeque<>();
+        final Deque<Float>  glitch  = new ArrayDeque<>();
+
+        void clearAll() {
+            rainbow.clear(); wiggle.clear(); gradient.clear(); color.clear();
+            pulse.clear(); shake.clear(); bounce.clear(); wave.clear(); glitch.clear();
+        }
+
+        Span toSpan(String text) {
+            boolean rainbowOn = !rainbow.isEmpty();
+            boolean wiggleOn  = !wiggle.isEmpty();
+            Float  rainbowSpd = rainbowOn ? rainbow.peekLast() : null;
+
+            Wiggle w  = wiggleOn ? wiggle.peekLast() : null;
+            Bounce b  = bounce.isEmpty() ? null : bounce.peekLast();
+            Wave   wa = wave.isEmpty()   ? null : wave.peekLast();
+
+            return new Span(
+                    text,
+                    rainbowOn, rainbowSpd,
+                    wiggleOn,  w == null ? null : w.amp, w == null ? null : w.speed,
+                    gradient.isEmpty() ? null : gradient.peekLast(),
+                    color.isEmpty()    ? null : color.peekLast(),
+                    pulse.isEmpty()    ? null : pulse.peekLast(),
+                    shake.isEmpty()    ? null : shake.peekLast(),
+                    b == null ? null : b.amp, b == null ? null : b.speed,
+                    wa == null ? null : wa.amp, wa == null ? null : wa.speed,
+                    glitch.isEmpty()   ? null : glitch.peekLast()
+            );
+        }
+
+        void openRainbow(Float speed) { rainbow.addLast(speed); }
+        void closeRainbow() { if(!rainbow.isEmpty()) rainbow.removeLast(); }
+
+        void openWiggle(Float amp, Float speed) { wiggle.addLast(new Wiggle(amp, speed)); }
+        void closeWiggle() { if(!wiggle.isEmpty()) wiggle.removeLast(); }
+
+        void openGradient(int[] cols) { gradient.addLast(cols); }
+        void closeGradient() { if(!gradient.isEmpty()) gradient.removeLast(); }
+
+        void openPulse(Float s) { pulse.addLast(s); }
+        void closePulse() { if(!pulse.isEmpty()) pulse.removeLast(); }
+
+        void openShake(Float a) { shake.addLast(a); }
+        void closeShake() { if(!shake.isEmpty()) shake.removeLast(); }
+
+        void openColor(Integer c) { color.addLast(c); }
+        void closeColor() { if(!color.isEmpty()) color.removeLast(); }
+
+        void openBounce(Float amp, Float speed) { bounce.addLast(new Bounce(amp, speed)); }
+        void closeBounce() { if(!bounce.isEmpty()) bounce.removeLast(); }
+
+        void openWave(Float amp, Float speed) { wave.addLast(new Wave(amp, speed)); }
+        void closeWave() { if(!wave.isEmpty()) wave.removeLast(); }
+
+        void openGlitch(Float intensity) { glitch.addLast(intensity); }
+        void closeGlitch() { if(!glitch.isEmpty()) glitch.removeLast(); }
+    }
+
+    public static List<Span> parseSpans(String raw) {
+        if (raw == null || raw.isEmpty()) {
+            List<Span> only = new ArrayList<>();
+            only.add(new Span("", false,null, false,null,null, null, null, null,null, null,null, null,null, null));
+            return only;
+        }
+
+        Stacks st = new Stacks();
+        List<Span> out = new ArrayList<>();
+        StringBuilder sb = new StringBuilder();
+
+        int i = 0;
+        while (i < raw.length()) {
+            char ch = raw.charAt(i);
+
+            if (ch == '{') {
+                int close = raw.indexOf('}', i);
+                if (close > i) {
+                    String inside = raw.substring(i + 1, close).trim();
+                    boolean isClose = inside.startsWith("/");
+                    String namePayload = isClose ? inside.substring(1).trim() : inside;
+                    int colon = namePayload.indexOf(':');
+                    String name = (colon >= 0 ? namePayload.substring(0, colon) : namePayload).trim().toLowerCase();
+                    String payload = (colon >= 0 ? namePayload.substring(colon + 1) : "").trim();
+
+                    if (isKnownName(name)) {
+                        if (sb.length() > 0) {
+                            out.add(st.toSpan(sb.toString()));
+                            sb.setLength(0);
+                        }
+                        if (isClose) {
+                            applyClose(st, name);      // stray closers are ignored by design
+                        } else {
+                            applyOpen(st, name, payload);
+                        }
+                        i = close + 1;
+                        continue;
+                    }
+                }
+            }
+
+            if (ch == '&' && i + 1 < raw.length()) {
+                char code = Character.toLowerCase(raw.charAt(i + 1));
+                if (code == 'r') {
+                    if (sb.length() > 0) { out.add(st.toSpan(sb.toString())); sb.setLength(0); }
+                    st.color.clear();
+                    i += 2;
+                    continue;
+                }
+                Integer mapped = mapLegacyColor(code);
+                if (mapped != null) {
+                    if (sb.length() > 0) { out.add(st.toSpan(sb.toString())); sb.setLength(0); }
+                    st.openColor(mapped);
+                    i += 2;
+                    continue;
+                }
+            }
+
+            sb.append(ch);
+            i++;
+        }
+
+        if (sb.length() > 0) {
+            out.add(st.toSpan(sb.toString()));
+        }
+        if (out.isEmpty()) {
+            out.add(new Span("", false,null, false,null,null, null, null, null,null, null,null, null,null, null));
+        }
+        return out;
+    }
+
+    private static boolean isKnownName(String n) {
+        return n.equals("rainbow") || n.startsWith("rainbow")
+                || n.equals("wiggle")  || n.startsWith("wiggle")
+                || n.equals("gradient")|| n.startsWith("gradient")
+                || n.equals("pulse")   || n.startsWith("pulse")
+                || n.equals("shake")   || n.startsWith("shake")
+                || n.equals("color")   || n.startsWith("color")
+                || n.equals("bounce")  || n.startsWith("bounce")
+                || n.equals("wave")    || n.startsWith("wave")
+                || n.equals("glitch")  || n.startsWith("glitch")
+                || n.equals("clear")   || n.equals("reset");
+    }
+
+    private static void applyOpen(Stacks st, String name, String payload) {
+        if (name.startsWith("rainbow")) {
+            st.openRainbow(parseFloatSafe(payload));
+            return;
+        }
+        if (name.startsWith("wiggle")) {
+            st.openWiggle(readKeyedFloat(payload, "amp"), readKeyedFloat(payload, "speed"));
+            return;
+        }
+        if (name.startsWith("gradient")) {
+            st.openGradient(parseGradient(payload));
+            return;
+        }
+        if (name.startsWith("pulse")) {
+            st.openPulse(parseFloatSafe(payload));
+            return;
+        }
+        if (name.startsWith("shake")) {
+            st.openShake(parseFloatSafe(payload));
+            return;
+        }
+        if (name.startsWith("color")) {
+            st.openColor(parseHexSafe(payload));
+            return;
+        }
+        if (name.startsWith("bounce")) {
+            st.openBounce(readKeyedFloat(payload, "amp"), readKeyedFloat(payload, "speed"));
+            return;
+        }
+        if (name.startsWith("wave")) {
+            st.openWave(readKeyedFloat(payload, "amp"), readKeyedFloat(payload, "speed"));
+            return;
+        }
+        if (name.startsWith("glitch")) {
+            st.openGlitch(readKeyedFloat(payload, "intensity"));
+            return;
+        }
+        if (name.equals("clear") || name.equals("reset")) {
+            st.clearAll();
+        }
+    }
+
+    private static void applyClose(Stacks st, String name) {
+        if (name.equals("rainbow")) { st.closeRainbow(); return; }
+        if (name.equals("wiggle"))  { st.closeWiggle();  return; }
+        if (name.equals("gradient")){ st.closeGradient();return; }
+        if (name.equals("pulse"))   { st.closePulse();   return; }
+        if (name.equals("shake"))   { st.closeShake();   return; }
+        if (name.equals("color"))   { st.closeColor();   return; }
+        if (name.equals("bounce"))  { st.closeBounce();  return; }
+        if (name.equals("wave"))    { st.closeWave();    return; }
+        if (name.equals("glitch"))  { st.closeGlitch();  return; }
+        if (name.equals("clear") || name.equals("reset")) {
+            st.clearAll();
+        }
+    }
+
+    private static Float parseFloatSafe(String s) {
+        try { return s == null || s.isEmpty() ? null : Float.parseFloat(s.trim()); }
+        catch (Exception ignored) { return null; }
+    }
+
+    private static Integer parseHexSafe(String s) {
+        if (s == null) return null;
+        String v = s.replace("#","").trim();
+        try { return (int)Long.parseLong(v, 16) & 0xFFFFFF; }
+        catch (Exception ignored) { return null; }
+    }
+
+    private static Float readKeyedFloat(String payload, String key) {
+        if (payload == null) return null;
+        for (String kv : payload.split(",")) {
+            int eq = kv.indexOf('=');
+            if (eq > 0 && key.equalsIgnoreCase(kv.substring(0, eq).trim())) {
+                try { return Float.parseFloat(kv.substring(eq+1).trim()); } catch (Exception ignored) {}
+            }
+        }
+        return null;
+    }
+
+    private static int[] parseGradient(String payload) {
+        if (payload == null || payload.isEmpty()) return null;
+        String[] cols = payload.split(",");
+        int[] out = new int[cols.length];
+        int n = 0;
+        for (String c : cols) {
+            Integer v = parseHexSafe(c);
+            if (v != null) out[n++] = v;
+        }
+        if (n == 0) return null;
+        if (n == out.length) return out;
+        int[] shrunk = new int[n];
+        System.arraycopy(out, 0, shrunk, 0, n);
+        return shrunk;
+    }
+
     public static Parsed parse(String raw) {
-        boolean rainbow = containsToken(raw, "{rainbow}");
-        boolean wiggle  = containsToken(raw, "{wiggle}");
+        boolean rainbow = tokenPayload(raw, "rainbow") != null;
+        boolean wiggle  = tokenPayload(raw, "wiggle")  != null;
 
         Float rainbowSpeed = readFloatParam(raw, "rainbow");
         Float wiggleAmp    = readKeyedParam(raw, "wiggle", "amp");
@@ -37,7 +306,7 @@ public final class TitleStyleUtil {
 
         Float glitchIntensity = readKeyedParam(raw, "glitch", "intensity");
 
-        String s = removeToken(removeToken(raw, "{rainbow}"), "{wiggle}").trim();
+        String s = raw.trim();
         s = stripDynamicTokens(s);
 
         Integer color = hexColor;
@@ -88,18 +357,18 @@ public final class TitleStyleUtil {
                 s = s.substring(0, i) + s.substring(end+1);
             }
         }
+        while (true) {
+            int i = s.indexOf("{/"); if (i < 0) break;
+            int end = s.indexOf('}', i); if (end < 0) break;
+            s = s.substring(0, i) + s.substring(end+1);
+        }
         return s;
-    }
-
-    private static int parseHex(String hex) {
-        hex = hex.replace("#","").trim();
-        return (int)Long.parseLong(hex, 16) & 0xFFFFFF;
     }
 
     private static Integer readHexColor(String s) {
         String p = tokenPayload(s, "color");
         if (p == null || p.isEmpty()) return null;
-        try { return parseHex(p); } catch (Exception ignore) { return null; }
+        try { return (int)Long.parseLong(p.replace("#","").trim(), 16) & 0xFFFFFF; } catch (Exception ignore) { return null; }
     }
 
     private static Float readFloatParam(String s, String name) {
@@ -127,19 +396,23 @@ public final class TitleStyleUtil {
         int[] out = new int[cols.length];
         int n = 0;
         for (String c : cols) {
-            try { out[n++] = parseHex(c); } catch (Exception ignore) {}
+            try { out[n++] = (int)Long.parseLong(c.replace("#","").trim(), 16) & 0xFFFFFF; } catch (Exception ignore) {}
         }
         return n == 0 ? null : (n == out.length ? out : java.util.Arrays.copyOf(out, n));
     }
 
-    public static int resolveOrWhite(Integer rgb) {
-        return rgb != null ? rgb : 0xFFFFFF;
-    }
+    public static int resolveOrWhite(Integer rgb) { return rgb != null ? rgb : 0xFFFFFF; }
 
     public static int rainbowRgb(long nowMs, int index) {
         float t = (nowMs % 1000000L) / 1000.0f;
         float hue = wrap01(t * 0.18f + index * 0.12f);
         return hsbToRgb(hue, 1.0f, 1.0f);
+    }
+
+    public static int rainbowRgb(long nowMs, int index, float speed) {
+        float t = (nowMs % 1_000_000L) / 1000.0f;
+        float hue = wrap01(t * speed + index * 0.12f);
+        return hsbToRgb(hue, 1f, 1f);
     }
 
     public static float wiggleYOffsetPx(long nowMs, int index, float amplitudePx) {
@@ -158,14 +431,6 @@ public final class TitleStyleUtil {
         float t = (nowMs % 1000000L) / 1000.0f;
         float v = (float)Math.sin(t * speed + index * 0.55f);
         return v * amplitudePx;
-    }
-
-    private static boolean containsToken(String s, String token) {
-        return s.toLowerCase().contains(token.toLowerCase());
-    }
-
-    private static String removeToken(String s, String token) {
-        return s.replace(token, "").replace(token.toUpperCase(), "");
     }
 
     private static Integer mapLegacyColor(char code) {
@@ -250,12 +515,6 @@ public final class TitleStyleUtil {
     public static float shakeXOffsetPx(long nowMs, int index, float ampPx) {
         float t = (nowMs % 1_000_000L) / 1000f;
         return (float)(Math.sin(t*9.0 + index*0.9) * ampPx);
-    }
-
-    public static int rainbowRgb(long nowMs, int index, float speed) {
-        float t = (nowMs % 1_000_000L) / 1000.0f;
-        float hue = wrap01(t * speed + index * 0.12f);
-        return hsbToRgb(hue, 1f, 1f);
     }
 
     public static boolean glitchActive(long nowMs, int index, float intensity) {
