@@ -32,26 +32,20 @@ public final class TitleBox {
     private static final int RIGHT_PADDING = 6;
     private static final int TOP_PADDING = 20;
     private static final int BOX_HEIGHT = 61;
-
     private static final int BUTTON_PADDING = 5;
     private static final int BUTTON_SIZE = 16;
-
     private static final Identifier APPLY_NORMAL = Identifier.of("rpg-systems", "textures/gui/title/apply_title_normal.png");
     private static final Identifier APPLY_HOVER  = Identifier.of("rpg-systems", "textures/gui/title/apply_title_hover.png");
     private static final Identifier DISABLE_NORMAL = Identifier.of("rpg-systems", "textures/gui/title/disable_title_normal.png");
     private static final Identifier DISABLE_HOVER  = Identifier.of("rpg-systems", "textures/gui/title/disable_title_hover.png");
-
     private static final Identifier LOCKED_ICON = Identifier.of("rpg-systems", "textures/gui/title/locked.png");
     private static final int LOCK_SIZE = 8;
-
     private int screenX;
     private int screenY;
     private int bgWidth;
     private int bgHeight;
-
     private final TextRenderer font;
     private Title selected;
-
     private TitleButtonWidget applyButton;
     private TitleButtonWidget disableButton;
 

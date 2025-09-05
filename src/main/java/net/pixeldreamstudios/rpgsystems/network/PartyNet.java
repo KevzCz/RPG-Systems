@@ -38,52 +38,32 @@ public final class PartyNet {
         PayloadTypeRegistry.playS2C().register(InviteAccepted.ID, InviteAccepted.CODEC);
         PayloadTypeRegistry.playS2C().register(InviteDeclined.ID, InviteDeclined.CODEC);
         PayloadTypeRegistry.playC2S().register(InviteRespond.ID, InviteRespond.CODEC);
-        PayloadTypeRegistry.playS2C().register(PartyInvitePayloads.InviteJoinConfirmed.ID,
-                PartyInvitePayloads.InviteJoinConfirmed.CODEC);
-        PayloadTypeRegistry.playS2C().register(PartyInvitePayloads.PartyLeft.ID,
-                PartyInvitePayloads.PartyLeft.CODEC);
-        PayloadTypeRegistry.playS2C().register(PartyInvitePayloads.PartyKicked.ID,
-                PartyInvitePayloads.PartyKicked.CODEC);
+        PayloadTypeRegistry.playS2C().register(PartyInvitePayloads.InviteJoinConfirmed.ID, PartyInvitePayloads.InviteJoinConfirmed.CODEC);
+        PayloadTypeRegistry.playS2C().register(PartyInvitePayloads.PartyLeft.ID, PartyInvitePayloads.PartyLeft.CODEC);
+        PayloadTypeRegistry.playS2C().register(PartyInvitePayloads.PartyKicked.ID, PartyInvitePayloads.PartyKicked.CODEC);
         PayloadTypeRegistry.playS2C().register(PartyRosterClear.ID, PartyRosterClear.CODEC);
         PayloadTypeRegistry.playS2C().register(PartyRosterAdd.ID, PartyRosterAdd.CODEC);
         PayloadTypeRegistry.playS2C().register(PartyMemberVitals.ID, PartyMemberVitals.CODEC);
         PayloadTypeRegistry.playS2C().register(PartyRosterReset.ID, PartyRosterReset.CODEC);
         PayloadTypeRegistry.playS2C().register(PartyMemberLevel.ID, PartyMemberLevel.CODEC);
         PayloadTypeRegistry.playS2C().register(PartyMemberOnline.ID, PartyMemberOnline.CODEC);
-
         PayloadTypeRegistry.playS2C().register(JoinReqAdded.ID, JoinReqAdded.CODEC);
         PayloadTypeRegistry.playS2C().register(JoinReqRemoved.ID, JoinReqRemoved.CODEC);
         PayloadTypeRegistry.playC2S().register(JoinReqRespond.ID, JoinReqRespond.CODEC);
-        PayloadTypeRegistry.playS2C().register(PartyJoinRequestPayloads.JoinAccepted.ID,
-                PartyJoinRequestPayloads.JoinAccepted.CODEC);
-        PayloadTypeRegistry.playS2C().register(PartyJoinRequestPayloads.JoinDeclined.ID,
-                PartyJoinRequestPayloads.JoinDeclined.CODEC);
-
+        PayloadTypeRegistry.playS2C().register(PartyJoinRequestPayloads.JoinAccepted.ID, PartyJoinRequestPayloads.JoinAccepted.CODEC);
+        PayloadTypeRegistry.playS2C().register(PartyJoinRequestPayloads.JoinDeclined.ID, PartyJoinRequestPayloads.JoinDeclined.CODEC);
         PayloadTypeRegistry.playC2S().register(ChatSend.ID, ChatSend.CODEC);
         PayloadTypeRegistry.playS2C().register(ChatMessage.ID, ChatMessage.CODEC);
-
-        PayloadTypeRegistry.playC2S().register(
-                PartySettingsPayloads.SetAllowHelpfulNonMembers.ID,
-                PartySettingsPayloads.SetAllowHelpfulNonMembers.CODEC
-        );
-        PayloadTypeRegistry.playS2C().register(
-                PartySettingsPayloads.Sync.ID,
-                PartySettingsPayloads.Sync.CODEC
-        );
-        PayloadTypeRegistry.playC2S().register(
-                PartyInvitePayloads.EligibleInviteesRequest.ID,
-                PartyInvitePayloads.EligibleInviteesRequest.CODEC);
-        PayloadTypeRegistry.playS2C().register(
-                PartyInvitePayloads.EligibleInviteesResponse.ID,
-                PartyInvitePayloads.EligibleInviteesResponse.CODEC);
-
+        PayloadTypeRegistry.playC2S().register(PartySettingsPayloads.SetAllowHelpfulNonMembers.ID, PartySettingsPayloads.SetAllowHelpfulNonMembers.CODEC);
+        PayloadTypeRegistry.playS2C().register(PartySettingsPayloads.Sync.ID, PartySettingsPayloads.Sync.CODEC);
+        PayloadTypeRegistry.playC2S().register(PartyInvitePayloads.EligibleInviteesRequest.ID, PartyInvitePayloads.EligibleInviteesRequest.CODEC);
+        PayloadTypeRegistry.playS2C().register(PartyInvitePayloads.EligibleInviteesResponse.ID, PartyInvitePayloads.EligibleInviteesResponse.CODEC);
 
         ServerPlayNetworking.registerGlobalReceiver(
                 PartyInvitePayloads.EligibleInviteesRequest.ID, (payload, ctx) -> {
                     ServerPlayerEntity who = ctx.player();
                     MinecraftServer server = who.getServer();
                     PartyPersistentState state = PartyPersistentState.get(server);
-
                     List<UUID> uuids = new ArrayList<>();
                     List<String> names = new ArrayList<>();
                     for (ServerPlayerEntity sp : server.getPlayerManager().getPlayerList()) {
@@ -103,7 +83,6 @@ public final class PartyNet {
                     var p      = state.getPartyByMember(player.getUuid());
                     if (p == null) return;
                     if (!p.leader.equals(player.getUuid())) return;
-
                     p.settings.allowHelpfulNonMembers = payload.allow();
                     state.markDirty();
 
@@ -120,7 +99,6 @@ public final class PartyNet {
             if (world.isClient) return ActionResult.PASS;
             var server = world.getServer();
             if (server == null) return ActionResult.PASS;
-
             var a = net.pixeldreamstudios.rpgsystems.party.PartyAllies.owningPlayerUuid(player);
             var b = net.pixeldreamstudios.rpgsystems.party.PartyAllies.owningPlayerUuid(target);
             if (a != null && b != null &&
@@ -136,7 +114,6 @@ public final class PartyNet {
             Party p = state.getPartyByMember(handler.player.getUuid());
             if (p != null) {
                 sendRosterTo(server, handler.player, p);
-
                 for (UUID u : p.members) {
                     if (!u.equals(handler.player.getUuid())) {
                         ServerPlayerEntity sp = server.getPlayerManager().getPlayer(u);
@@ -155,9 +132,7 @@ public final class PartyNet {
             ServerPlayerEntity self = handler.player;
             Party p = state.getPartyByMember(self.getUuid());
             if (p == null) return;
-
             state.rememberName(self.getUuid(), self.getName().getString());
-
             if (PERSIST_PARTIES_ON_DISCONNECT) {
                 for (UUID u : p.members) {
                     if (!u.equals(self.getUuid())) {
@@ -176,7 +151,6 @@ public final class PartyNet {
             Set<UUID> members = new HashSet<>(p.members);
             boolean ok = state.leave(self.getUuid());
             if (!ok) return;
-
             if (isLeader) {
                 for (UUID u : members) {
                     if (!u.equals(self.getUuid())) {
@@ -200,7 +174,6 @@ public final class PartyNet {
                 }
             }
         });
-
 
         ServerTickEvents.END_SERVER_TICK.register(server -> {
             if ((++tickCounter % 20) == 0) pushAllPartyVitals(server);
@@ -248,7 +221,6 @@ public final class PartyNet {
                             }
                         }
                     }
-
                     player.sendMessage(Text.literal("Joined party " + partyName));
                     Party updated = state.getParty(payload.partyId());
                     if (updated != null) broadcastRoster(player.getServer(), updated);
@@ -267,7 +239,6 @@ public final class PartyNet {
                 player.sendMessage(Text.literal("Declined invite to " + partyName));
             }
         });
-
 
         ServerPlayNetworking.registerGlobalReceiver(JoinReqRespond.ID, (payload, context) -> {
             ServerPlayerEntity leader = context.player();
@@ -329,11 +300,7 @@ public final class PartyNet {
                 }
             }
         });
-
-
-
     }
-
     private static void pushAllPartyVitals(MinecraftServer server) {
         PartyPersistentState state = PartyPersistentState.get(server);
         for (ServerPlayerEntity viewer : server.getPlayerManager().getPlayerList()) {
@@ -349,7 +316,6 @@ public final class PartyNet {
                             ));
                     continue;
                 }
-
                 float hp = subject.getHealth();
                 float max = subject.getMaxHealth();
                 int hunger = subject.getHungerManager().getFoodLevel();
@@ -402,7 +368,6 @@ public final class PartyNet {
                 if (lvl >= 0) {
                     ServerPlayNetworking.send(recipient, new PartyHudPayloads.PartyMemberLevel(memberId, lvl));
                 }
-
                 java.util.List<String> effIds =
                         net.pixeldreamstudios.rpgsystems.network.party.PartyStatusEffectsSync.snapshotEffectIds(subject);
                 ServerPlayNetworking.send(recipient,
@@ -417,13 +382,9 @@ public final class PartyNet {
             }
         }
     }
-
-
-
     public static void sendRosterWipeTo(ServerPlayerEntity player) {
         ServerPlayNetworking.send(player, new PartyRosterReset());
     }
-
     private static String getName(MinecraftServer server, PartyPersistentState state, UUID u) {
         ServerPlayerEntity sp = server.getPlayerManager().getPlayer(u);
         if (sp != null) {

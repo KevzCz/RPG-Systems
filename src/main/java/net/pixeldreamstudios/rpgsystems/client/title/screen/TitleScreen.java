@@ -18,17 +18,14 @@ public final class TitleScreen extends Screen {
     private static final Identifier BACKGROUND = Identifier.of("rpg-systems", "textures/gui/title/title_screen.png");
     private static final Identifier BACK_NORMAL = Identifier.of("rpg-systems", "textures/gui/title/back_normal.png");
     private static final Identifier BACK_HOVER  = Identifier.of("rpg-systems", "textures/gui/title/back_hover.png");
-
     private int x;
     private int y;
     private final int backgroundWidth = 176;
     private final int backgroundHeight = 166;
-    TitleBox titleBox;
-
     private TitleButtonWidget backButton;
     private TitlesListBox titlesListBox;
     private TitleDescriptionBox descriptionBox;
-
+    TitleBox titleBox;
     public TitleScreen() {
         super(Text.translatable("screen.rpgsystems.titles"));
     }

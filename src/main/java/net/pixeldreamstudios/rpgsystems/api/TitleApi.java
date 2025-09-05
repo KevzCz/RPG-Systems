@@ -13,7 +13,6 @@ import java.util.Optional;
 
 public final class TitleApi {
     private TitleApi() {}
-
     public static boolean grant(ServerPlayerEntity player, Identifier titleId) {
         Title t = TitleRegistry.get(titleId);
         if (t == null) return false;
@@ -121,7 +120,6 @@ public final class TitleApi {
         }
         TitleSpellBonusUtil.uninstallTitleSpells(player, t.id);
         TitlePowerBonusUtil.uninstallTitlePowers(player, t);
-
     }
 
     private static Identifier modifierId(Title t, Title.Bonus b) {

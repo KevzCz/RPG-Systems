@@ -20,7 +20,6 @@ import net.pixeldreamstudios.rpgsystems.client.title.TitleClientData;
 import net.pixeldreamstudios.rpgsystems.client.title.TitleStyleUtil;
 import net.pixeldreamstudios.rpgsystems.title.Title;
 import net.spell_engine.client.util.SpellRender;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -47,15 +46,12 @@ public final class TitleDescriptionBox {
     private static final Identifier INFO_ICON = Identifier.of("rpg-systems", "textures/gui/title/info.png");
     private static final int ICON_SIZE = 9;
     private static final int INFO_GAP  = 2;
-
     private int screenX;
     private int screenY;
     private int bgWidth;
     private int bgHeight;
-
     private final TextRenderer font;
     private Title current;
-
     private float textScale = 0.5f;
     private int scrollY = 0;
     private int maxScrollCached = 0;
@@ -69,7 +65,6 @@ public final class TitleDescriptionBox {
         boolean contains(double mx, double my) { return mx>=x && mx<=x+w && my>=y && my<=y+h; }
     }
     private final List<HintSpot> hintSpots = new ArrayList<>();
-
     public TitleDescriptionBox(int screenX, int screenY, int bgWidth, int bgHeight) {
         this.font = MinecraftClient.getInstance().textRenderer;
         this.screenX = screenX;

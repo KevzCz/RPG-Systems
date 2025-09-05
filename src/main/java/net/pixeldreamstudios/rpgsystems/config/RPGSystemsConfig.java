@@ -17,11 +17,9 @@ public final class RPGSystemsConfig {
         public boolean pet = false;
         public boolean title = false;
     }
-
     public static final class Party {
         public boolean logChatToConsole = true;
     }
-
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
     private static final String FILE_NAME = "rpgsystems.json";
     private static RPGSystemsConfig INSTANCE;

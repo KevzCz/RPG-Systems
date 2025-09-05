@@ -11,7 +11,6 @@ import java.util.UUID;
 
 public final class PartyChatPayloads {
     private PartyChatPayloads() {}
-
     public record ChatSend(UUID partyId, String message) implements CustomPayload {
         public static final Id<ChatSend> ID = new Id<>(Identifier.of("rpg-systems","party_chat_send"));
         public static final PacketCodec<RegistryByteBuf, ChatSend> CODEC = PacketCodec.tuple(
@@ -21,7 +20,6 @@ public final class PartyChatPayloads {
         );
         @Override public Id<? extends CustomPayload> getId() { return ID; }
     }
-
     public record ChatMessage(UUID partyId, UUID senderUuid, String senderName, String message, long epochMillis) implements CustomPayload {
         public static final Id<ChatMessage> ID = new Id<>(Identifier.of("rpg-systems","party_chat_msg"));
         public static final PacketCodec<RegistryByteBuf, ChatMessage> CODEC = PacketCodec.tuple(

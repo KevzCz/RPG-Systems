@@ -14,7 +14,6 @@ import java.util.UUID;
 
 public final class PartyAllies {
     private PartyAllies() {}
-
     public static boolean sameParty(MinecraftServer server, UUID a, UUID b) {
         if (a == null || b == null) return false;
         if (server == null) return false;
@@ -23,7 +22,6 @@ public final class PartyAllies {
         var pb = state.getPartyByMember(b);
         return pa != null && pb != null && pa.id.equals(pb.id);
     }
-
     public static UUID owningPlayerUuid(Entity e) {
         if (e == null) return null;
 

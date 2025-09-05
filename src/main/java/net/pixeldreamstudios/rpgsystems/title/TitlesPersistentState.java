@@ -12,22 +12,16 @@ import java.util.*;
 
 public final class TitlesPersistentState extends PersistentState {
     public static final String KEY = "rpgsystems_titles";
-
-    public static final PersistentState.Type<TitlesPersistentState> TYPE =
-            new PersistentState.Type<>(TitlesPersistentState::new, TitlesPersistentState::fromNbt, null);
-
+    public static final PersistentState.Type<TitlesPersistentState> TYPE = new PersistentState.Type<>(TitlesPersistentState::new, TitlesPersistentState::fromNbt, null);
     private final Map<UUID, PlayerTitles> data = new HashMap<>();
-
     public static final class PlayerTitles {
         public final Set<String> unlocked = new HashSet<>();
         public final Map<String, NbtCompound> progress = new HashMap<>();
         public String active;
     }
-
     public static TitlesPersistentState get(MinecraftServer server) {
         return server.getWorld(World.OVERWORLD).getPersistentStateManager().getOrCreate(TYPE, KEY);
     }
-
     private static TitlesPersistentState fromNbt(NbtCompound nbt, RegistryWrapper.WrapperLookup lookup) {
         TitlesPersistentState s = new TitlesPersistentState();
 

@@ -17,17 +17,14 @@ public final class IlluminatePower implements TitlePower {
     public static final Identifier ID = Identifier.of("rpg-systems", "illuminate");
     private final Map<UUID, BlockPos> lastPos = new HashMap<>();
     private final Map<UUID, net.minecraft.registry.RegistryKey<World>> lastDim = new HashMap<>();
-
     @Override
     public Identifier id() {
         return ID;
     }
-
     @Override
     public void onDeactivate(ServerPlayerEntity player) {
         removeLight(player.getServer(), player.getUuid());
     }
-
     @Override
     public void onServerTick(MinecraftServer server, Set<ServerPlayerEntity> players) {
         for (ServerPlayerEntity player : players) {
@@ -46,7 +43,6 @@ public final class IlluminatePower implements TitlePower {
             }
         }
     }
-
     private void tryUpdateLight(ServerPlayerEntity player) {
         World world = player.getWorld();
         UUID id = player.getUuid();
@@ -80,7 +76,6 @@ public final class IlluminatePower implements TitlePower {
         lastPos.put(id, target);
         lastDim.put(id, world.getRegistryKey());
     }
-
     private void removeLight(MinecraftServer server, UUID id) {
         BlockPos prev = lastPos.remove(id);
         net.minecraft.registry.RegistryKey<World> dim = lastDim.remove(id);
@@ -94,7 +89,6 @@ public final class IlluminatePower implements TitlePower {
             world.removeBlock(prev, false);
         }
     }
-
     private void removeLight(ServerPlayerEntity player, BlockPos pos, net.minecraft.registry.RegistryKey<World> dim, boolean strictDim) {
         World world = player.getServer().getWorld(dim);
         if (world == null) return;
@@ -103,7 +97,6 @@ public final class IlluminatePower implements TitlePower {
             world.removeBlock(pos, false);
         }
     }
-
     private BlockPos findPlaceableAir(World world, BlockPos base) {
         if (isAirOrLight(world, base)) return base;
         BlockPos above = base.up();
@@ -116,7 +109,6 @@ public final class IlluminatePower implements TitlePower {
         }
         return null;
     }
-
     private boolean isAirOrLight(World world, BlockPos pos) {
         BlockState s = world.getBlockState(pos);
         return s.isAir() || s.isOf(Blocks.LIGHT);

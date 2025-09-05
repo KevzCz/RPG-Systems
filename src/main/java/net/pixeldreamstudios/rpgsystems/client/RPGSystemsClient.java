@@ -64,7 +64,6 @@ public final class RPGSystemsClient implements ClientModInitializer {
             PlayerTitleRenderer.init();
             TitlePowerNet.registerClient();
             TitlePowersClient.init();
-
         }
 
         openPartyScreen = KeyBindingHelper.registerKeyBinding(new KeyBinding(

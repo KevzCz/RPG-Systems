@@ -43,7 +43,6 @@ public final class PetCommands {
                                 p.sendMessage(Text.literal("Pet teleported"));
                                 return 1;
                             }
-
                             mob.teleport(p.getServerWorld(), p.getX(), p.getY(), p.getZ(),
                                     EnumSet.noneOf(PositionFlag.class), p.getYaw(), p.getPitch());
                             p.sendMessage(Text.literal("Pet teleported"));
@@ -51,13 +50,11 @@ public final class PetCommands {
                         }))
         );
     }
-
     private static void orientToPlayer(MobEntity mob, ServerPlayerEntity p) {
         mob.setYaw(p.getYaw());
         mob.setPitch(p.getPitch());
         if (mob instanceof LivingEntity le) le.setHeadYaw(p.getYaw());
     }
-
     private static int claimLookingAt(ServerCommandSource src, String name) {
         ServerPlayerEntity p = src.getPlayer();
         MobEntity mob = findMobInFront(p, 5);
@@ -69,7 +66,6 @@ public final class PetCommands {
         p.sendMessage(Text.literal("Claimed pet"));
         return 1;
     }
-
     private static int unclaimLookingAt(ServerCommandSource src) {
         ServerPlayerEntity p = src.getPlayer();
         MobEntity mob = findMobInFront(p, 5);
@@ -83,7 +79,6 @@ public final class PetCommands {
         p.sendMessage(Text.literal("Unclaimed pet"));
         return 1;
     }
-
     private static int renameLookingAt(ServerCommandSource src, String name) {
         ServerPlayerEntity p = src.getPlayer();
         MobEntity mob = findMobInFront(p, 5);
@@ -94,7 +89,6 @@ public final class PetCommands {
         p.sendMessage(Text.literal("Renamed pet"));
         return 1;
     }
-
     private static MobEntity findMobInFront(ServerPlayerEntity p, double range) {
         Vec3d eyes = p.getCameraPosVec(1.0f);
         Vec3d look = p.getRotationVec(1.0f).normalize();
@@ -104,7 +98,6 @@ public final class PetCommands {
         if (mobs.isEmpty()) return null;
         return mobs.stream().min(Comparator.comparingDouble(m -> m.getPos().squaredDistanceTo(end))).orElse(null);
     }
-
     private static MobEntity findOwnedPetNear(ServerPlayerEntity p, double radius) {
         List<MobEntity> mobs = p.getWorld().getEntitiesByClass(MobEntity.class, p.getBoundingBox().expand(radius), Entity::isAlive);
         UUID me = p.getUuid();

@@ -18,15 +18,12 @@ import java.util.UUID;
 
 public final class EnemyNet {
     private EnemyNet() {}
-
     private static final double BROADCAST_RANGE = 64.0;
     private static final double BROADCAST_RANGE_SQ = BROADCAST_RANGE * BROADCAST_RANGE;
-
     public static void initCommon() {
         PayloadTypeRegistry.playS2C().register(EnemyHudPayloads.DamageNumber.ID, EnemyHudPayloads.DamageNumber.CODEC);
         PayloadTypeRegistry.playS2C().register(EnemyHudPayloads.HealingNumber.ID, EnemyHudPayloads.HealingNumber.CODEC);
     }
-
     @Environment(EnvType.CLIENT)
     public static void initClient() {
         ClientPlayNetworking.registerGlobalReceiver(EnemyHudPayloads.DamageNumber.ID,

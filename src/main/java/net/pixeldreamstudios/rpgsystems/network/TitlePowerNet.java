@@ -22,7 +22,6 @@ public final class TitlePowerNet {
                 PacketCodec.tuple(Identifier.PACKET_CODEC, Trigger::powerId, Trigger::new);
         @Override public Id<? extends CustomPayload> getId() { return ID; }
     }
-
     public static void registerServer() {
         PayloadTypeRegistry.playC2S().register(Trigger.ID, Trigger.CODEC);
         ServerPlayNetworking.registerGlobalReceiver(Trigger.ID, (payload, context) -> {

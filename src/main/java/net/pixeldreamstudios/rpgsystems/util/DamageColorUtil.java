@@ -14,7 +14,6 @@ import net.spell_engine.entity.SpellProjectile;
 
 public final class DamageColorUtil {
     private DamageColorUtil(){}
-
     public static final int WHITE         = 0xFFFFFF;
     public static final int LIGHT_BLUE    = 0x82D4FF;
     public static final int DARK_BLUE     = 0x2F49B8;
@@ -54,15 +53,11 @@ public final class DamageColorUtil {
 
         return DARK_BLUE;
     }
-
-
     private static boolean isWither(DamageSource src) { return src.isOf(DamageTypes.WITHER); }
-
     private static boolean isPoison(DamageSource src, LivingEntity victim) {
         boolean magic = src.isOf(DamageTypes.MAGIC) || src.isOf(DamageTypes.INDIRECT_MAGIC);
         return magic && victim != null && victim.hasStatusEffect(StatusEffects.POISON);
     }
-
-    private static Integer trySpellSchoolColorFromDamageSource(DamageSource src) { /* … unchanged … */ return null; }
-    private static Integer trySpellSchoolColorFromSourceEntity(Entity sourceEntity) { /* … unchanged … */ return null; }
+    private static Integer trySpellSchoolColorFromDamageSource(DamageSource src) { return null; }
+    private static Integer trySpellSchoolColorFromSourceEntity(Entity sourceEntity) { return null; }
 }

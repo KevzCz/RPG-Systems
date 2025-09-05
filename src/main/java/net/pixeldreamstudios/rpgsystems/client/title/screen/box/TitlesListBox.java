@@ -13,7 +13,6 @@ import net.pixeldreamstudios.rpgsystems.client.title.TitleStyleUtil;
 import net.pixeldreamstudios.rpgsystems.client.title.TitleClientData;
 import net.pixeldreamstudios.rpgsystems.title.Title;
 import net.pixeldreamstudios.rpgsystems.title.TitleRegistry;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
@@ -25,26 +24,19 @@ public final class TitlesListBox {
     private static final int LEFT_PADDING = 7;
     private static final int BOTTOM_PADDING = 12;
     private static final int VISIBLE_ROWS = 4;
-
     private static final Identifier LOCKED_ICON = Identifier.of("rpg-systems", "textures/gui/title/locked.png");
     private static final int LOCK_SIZE = 8;
     private static final int LOCK_RIGHT_INSET = 4;
-
     private static final int HIGHLIGHT_COLOR = 0x44FFFFFF;
-
     private int screenX;
     private int screenY;
     private int bgWidth;
     private int bgHeight;
-
     private final TextRenderer font;
     private int scrollOffset = 0;
     private int selectedIndex = -1;
-
     private final List<Consumer<Title>> selectionListeners = new ArrayList<>();
-
     private float textScale = 0.5f;
-
     public TitlesListBox(int screenX, int screenY, int bgWidth, int bgHeight) {
         this.font = MinecraftClient.getInstance().textRenderer;
         this.screenX = screenX;

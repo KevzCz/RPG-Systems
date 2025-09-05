@@ -13,26 +13,18 @@ import java.util.*;
 
 public final class PartyPersistentState extends PersistentState {
     public static final String KEY = "rpgsystems_parties";
-
-    public static final PersistentState.Type<PartyPersistentState> TYPE =
-            new PersistentState.Type<>(PartyPersistentState::new, PartyPersistentState::fromNbt, null);
-
+    public static final PersistentState.Type<PartyPersistentState> TYPE = new PersistentState.Type<>(PartyPersistentState::new, PartyPersistentState::fromNbt, null);
     public static final long INVITE_TTL_MS = 60_000L;
-
     private final Map<UUID, Party> parties = new HashMap<>();
     private final Map<UUID, UUID> membership = new HashMap<>();
     private final Map<UUID, Set<UUID>> pendingInvites = new HashMap<>();
     private final Map<UUID, String> lastKnownNames = new HashMap<>();
-
     private final Map<UUID, Set<UUID>> joinRequests = new HashMap<>();
-
     private final Map<String, Long> inviteTimes = new HashMap<>();
-
     public static PartyPersistentState get(MinecraftServer server) {
         PersistentStateManager mgr = server.getWorld(World.OVERWORLD).getPersistentStateManager();
         return mgr.getOrCreate(TYPE, KEY);
     }
-
     private static PartyPersistentState fromNbt(NbtCompound nbt, RegistryWrapper.WrapperLookup lookup) {
         PartyPersistentState s = new PartyPersistentState();
 
@@ -52,13 +44,11 @@ public final class PartyPersistentState extends PersistentState {
             for (int j = 0; j < ids.size(); j++) set.add(ids.getCompound(j).getUuid("V"));
             if (!set.isEmpty()) s.pendingInvites.put(target, set);
         }
-
         NbtList names = nbt.getList("Names", NbtElement.COMPOUND_TYPE);
         for (int i = 0; i < names.size(); i++) {
             NbtCompound row = names.getCompound(i);
             s.lastKnownNames.put(row.getUuid("U"), row.getString("N"));
         }
-
         NbtList jr = nbt.getList("JoinRequests", NbtElement.COMPOUND_TYPE);
         for (int i = 0; i < jr.size(); i++) {
             NbtCompound row = jr.getCompound(i);
@@ -68,7 +58,6 @@ public final class PartyPersistentState extends PersistentState {
             for (int j = 0; j < rs.size(); j++) reqs.add(rs.getCompound(j).getUuid("U"));
             if (!reqs.isEmpty()) s.joinRequests.put(partyId, reqs);
         }
-
         NbtList times = nbt.getList("InviteTimes", NbtElement.COMPOUND_TYPE);
         for (int i = 0; i < times.size(); i++) {
             NbtCompound row = times.getCompound(i);
@@ -77,7 +66,6 @@ public final class PartyPersistentState extends PersistentState {
             long when = row.getLong("Time");
             s.inviteTimes.put(inviteKey(target, party), when);
         }
-
         return s;
     }
 

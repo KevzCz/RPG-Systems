@@ -15,13 +15,11 @@ import java.util.Map;
 
 public final class TitleSpellBonusUtil {
     private TitleSpellBonusUtil() {}
-
     public static void installTitleSpells(ServerPlayerEntity player, Identifier titleId, Collection<Identifier> spellIds) {
         if (spellIds == null || spellIds.isEmpty()) {
             uninstallTitleSpells(player, titleId);
             return;
         }
-
         World world = player.getWorld();
         List<String> install = new ArrayList<>();
         int found = 0;

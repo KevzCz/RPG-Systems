@@ -44,12 +44,10 @@ import java.util.UUID;
 
 public final class TitleConditionEvents {
     private TitleConditionEvents() {}
-
     private static final Map<UUID, net.minecraft.util.math.Vec3d> LAST_POS = new HashMap<>();
     private static final Map<UUID, RegistryKey<World>> LAST_DIM = new HashMap<>();
     private static final int INVENTORY_CHECK_INTERVAL = 20;
     private static int tickCounter = 0;
-
     public static void register() {
         ServerTickEvents.START_SERVER_TICK.register(TitleConditionEvents::onServerTick);
         ServerEntityCombatEvents.AFTER_KILLED_OTHER_ENTITY.register(TitleConditionEvents::onKill);
@@ -96,8 +94,6 @@ public final class TitleConditionEvents {
                 checkCompletionAndGrant(server, player, state, pt);
             }
         });
-
-
         UseBlockCallback.EVENT.register((player, world, hand, hit) -> onUseBlock(player, world, hand, hit));
         UseEntityCallback.EVENT.register((player, world, hand, entity, hit) -> onUseEntity(player, world, hand, entity, hit));
     }
@@ -263,7 +259,7 @@ public final class TitleConditionEvents {
                     state.markDirty();
                     changed = true;
                 }
-if ((c.type == Title.Condition.Type.DEAL_DAMAGE_TOTAL || c.type == Title.Condition.Type.DEAL_DAMAGE_MAX)
+                if ((c.type == Title.Condition.Type.DEAL_DAMAGE_TOTAL || c.type == Title.Condition.Type.DEAL_DAMAGE_MAX)
                         && lastAmt > 0
                         && matchesEntitySpec(killed, c)
                         && matchesNbt(killed, c)) {

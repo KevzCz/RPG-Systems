@@ -10,7 +10,6 @@ public final class PartySettings {
         nbt.putBoolean("AllowHelpfulNonMembers", allowHelpfulNonMembers);
         return nbt;
     }
-
     public static PartySettings fromNbt(NbtCompound nbt) {
         PartySettings s = new PartySettings();
         if (nbt != null) {

@@ -11,20 +11,16 @@ public final class PowerRegistry {
     private static final Map<Identifier, TitlePower> POWERS = new HashMap<>();
     private static final Map<Identifier, Set<UUID>> ACTIVE = new HashMap<>();
     private static boolean registeredTick = false;
-
     private PowerRegistry() {}
-
     public static void register(TitlePower power) {
         Objects.requireNonNull(power, "power");
         Identifier id = power.id();
         POWERS.put(id, power);
         ACTIVE.computeIfAbsent(id, k -> new HashSet<>());
     }
-
     public static Optional<TitlePower> get(Identifier id) {
         return Optional.ofNullable(POWERS.get(id));
     }
-
     public static void activate(Identifier powerId, ServerPlayerEntity player) {
         TitlePower power = POWERS.get(powerId);
         if (power == null) {

@@ -69,19 +69,16 @@ public final class TitleNet {
         PayloadTypeRegistry.playS2C().register(TitlePayloads.SyncActive.ID, TitlePayloads.SyncActive.CODEC);
         PayloadTypeRegistry.playS2C().register(TitlePayloads.SyncDefinitions.ID, TitlePayloads.SyncDefinitions.CODEC);
         PayloadTypeRegistry.playS2C().register(TitlePayloads.SyncProgress.ID, TitlePayloads.SyncProgress.CODEC);
-
         ClientPlayNetworking.registerGlobalReceiver(TitlePayloads.SyncSelf.ID, (payload, context) ->
                 context.client().execute(() ->
                         TitleClientData.setSelf(payload.unlocked(), payload.active().orElse(null))
                 )
         );
-
         ClientPlayNetworking.registerGlobalReceiver(TitlePayloads.SyncActive.ID, (payload, context) ->
                 context.client().execute(() ->
                         TitleClientData.setActive(payload.playerUuid(), payload.active().orElse(null))
                 )
         );
-
         ClientPlayNetworking.registerGlobalReceiver(TitlePayloads.SyncDefinitions.ID, (payload, context) ->
                 context.client().execute(() -> {
                     Map<Identifier, Title> map = new LinkedHashMap<>();
@@ -89,7 +86,6 @@ public final class TitleNet {
                         Identifier id = d.id();
                         Text name = Text.literal(d.name());
                         Text desc = d.description().map(Text::literal).orElse(Text.empty());
-
                         Title.Builder b = Title.builder(id, name).description(desc);
 
                         for (TitlePayloads.SyncDefinitions.BonusDef jb : d.bonuses()) {
@@ -144,11 +140,9 @@ public final class TitleNet {
                     TitleRegistry.bootstrapFallback();
                 })
         );
-
         ClientPlayNetworking.registerGlobalReceiver(TitlePayloads.SyncProgress.ID, (payload, context) ->
                 context.client().execute(() -> TitleClientData.setProgress(payload.progresses()))
         );
-
         ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> TitleClientData.clear());
         ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> TitleClientData.clear());
     }

@@ -17,7 +17,6 @@ public final class Title {
     public final Text description;
     public final List<Bonus> bonuses;
     public final List<Condition> conditions;
-
     private Title(Identifier id, Text displayName, Text description, List<Bonus> bonuses, List<Condition> conditions) {
         this.id = id;
         this.displayName = displayName;
@@ -25,7 +24,6 @@ public final class Title {
         this.bonuses = Collections.unmodifiableList(new ArrayList<>(bonuses));
         this.conditions = Collections.unmodifiableList(new ArrayList<>(conditions));
     }
-
     public static Builder builder(Identifier id, Text displayName) {
         return new Builder(id, displayName);
     }

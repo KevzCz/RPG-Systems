@@ -83,7 +83,11 @@ public final class TitlePayloads {
                 PacketCodecs.collection(ArrayList::new, Def.CODEC), SyncDefinitions::defs,
                 SyncDefinitions::new
         );
-        @Override public Id<? extends CustomPayload> getId() { return ID; }
+
+        @Override
+        public Id<? extends CustomPayload> getId() {
+            return ID;
+        }
 
         public enum CondType {
             OBTAIN_ITEM,
@@ -106,8 +110,15 @@ public final class TitlePayloads {
         }
 
         private static final PacketCodec<RegistryByteBuf, CondType> COND_TYPE_CODEC = new PacketCodec<RegistryByteBuf, CondType>() {
-            @Override public CondType decode(RegistryByteBuf buf) { return CondType.values()[VAR_INT.decode(buf)]; }
-            @Override public void encode(RegistryByteBuf buf, CondType value) { VAR_INT.encode(buf, value.ordinal()); }
+            @Override
+            public CondType decode(RegistryByteBuf buf) {
+                return CondType.values()[VAR_INT.decode(buf)];
+            }
+
+            @Override
+            public void encode(RegistryByteBuf buf, CondType value) {
+                VAR_INT.encode(buf, value.ordinal());
+            }
         };
 
         public record ConditionDef(
@@ -151,6 +162,7 @@ public final class TitlePayloads {
                     double min = DOUBLE.decode(buf);
                     return new ConditionDef(type, item, entityType, advancement, distance, count, hint, hidden, entitySpec, nbtQuery, level, block, biome, dimension, structure, attribute, min);
                 }
+
                 @Override
                 public void encode(RegistryByteBuf buf, ConditionDef v) {
                     COND_TYPE_CODEC.encode(buf, v.type);
@@ -189,7 +201,7 @@ public final class TitlePayloads {
                     };
             public static final PacketCodec<RegistryByteBuf, BonusDef> CODEC = PacketCodec.tuple(
                     ID_CODEC, BonusDef::attribute,
-                    DOUBLE,  BonusDef::amount,
+                    DOUBLE, BonusDef::amount,
                     OP_CODEC, BonusDef::operation,
                     BonusDef::new
             );
@@ -230,7 +242,6 @@ public final class TitlePayloads {
             };
         }
     }
-
     public record SyncProgress(List<TitleProgress> progresses) implements CustomPayload {
         public static final Id<SyncProgress> ID = new Id<>(Identifier.of("rpg-systems", "titles_progress_sync"));
         public static final PacketCodec<RegistryByteBuf, SyncProgress> CODEC = PacketCodec.tuple(

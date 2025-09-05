@@ -20,7 +20,6 @@ public final class Party {
         this.name = name == null ? "" : name;
         this.members.add(leader);
     }
-
     public boolean isMember(UUID uuid) { return members.contains(uuid); }
 
     public NbtCompound toNbt() {

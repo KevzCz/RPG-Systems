@@ -9,8 +9,6 @@ import net.minecraft.client.texture.NativeImage;
 import net.minecraft.resource.Resource;
 import net.minecraft.resource.ResourceManager;
 import net.minecraft.util.Identifier;
-import net.pixeldreamstudios.rpgsystems.RPGSystems;
-
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
@@ -19,7 +17,6 @@ import java.util.Optional;
 
 @Environment(EnvType.CLIENT)
 public final class TitleTextureResolver {
-    private static final boolean DEBUG = false;
     private static final float HALF_PIXEL_INSET = 0.5f;
     public static final class FrameInfo {
         public final Identifier textureId;
@@ -56,20 +53,12 @@ public final class TitleTextureResolver {
             this.frameHeight = frameHeight;
         }
     }
-
     private static final Map<Identifier, Meta> CACHE = new HashMap<>();
-
     private TitleTextureResolver() {}
-
     public static void clear() {
         CACHE.clear();
-        if (DEBUG) RPGSystems.LOGGER.info("[TitleTextureResolver] cache cleared");
     }
 
-    /**
-     * Returns UVs for frame 0 only (non-animated).
-     * v1 is the top edge; v0 is the bottom edge. This matches your renderers that expect flipped V.
-     */
     public static FrameInfo currentFrame(Identifier titleId) {
         Meta meta = CACHE.computeIfAbsent(titleId, TitleTextureResolver::loadMeta);
         if (meta == null) return null;
@@ -106,13 +95,6 @@ public final class TitleTextureResolver {
             u1 = 1.0f - epsU;
             v0 = 0.0f + epsV;
             v1 = 1.0f - epsV;
-        }
-
-        if (DEBUG) {
-            RPGSystems.LOGGER.info(
-                    "[TitleTextureResolver] {} img={}x{} frame0={}x{} u0={} u1={} v0={} v1={}",
-                    titleId, texW, texH, frameW, frameH, u0, u1, v0, v1
-            );
         }
 
         return new FrameInfo(meta.textureId, frameW, frameH, u0, v0, u1, v1);
@@ -168,18 +150,8 @@ public final class TitleTextureResolver {
                 frameW = imgW;
             }
 
-            if (DEBUG) {
-                RPGSystems.LOGGER.info(
-                        "[TitleTextureResolver] loaded {} img={}x{} frame={}x{} (static)",
-                        titleId, imgW, imgH, frameW, frameH
-                );
-            }
-
             return new Meta(png, imgW, imgH, frameW, frameH);
         } catch (Exception e) {
-            if (DEBUG) {
-                RPGSystems.LOGGER.warn("[TitleTextureResolver] failed to load {}: {}", titleId, e.toString());
-            }
             return null;
         }
     }

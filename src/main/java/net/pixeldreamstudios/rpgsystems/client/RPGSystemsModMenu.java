@@ -17,13 +17,10 @@ public final class RPGSystemsModMenu implements ModMenuApi {
     public ConfigScreenFactory<?> getModConfigScreenFactory() {
         return parent -> new ReadOnlyConfigScreen(parent);
     }
-
     private static final class ReadOnlyConfigScreen extends Screen {
         private final Screen parent;
-
         private CheckboxWidget partyEnabled;
         private CheckboxWidget petEnabled;
-
         private CheckboxWidget titleEnabled;
         private CheckboxWidget partyLogToConsole;
 
