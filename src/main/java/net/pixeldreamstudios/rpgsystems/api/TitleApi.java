@@ -2,6 +2,7 @@ package net.pixeldreamstudios.rpgsystems.api;
 
 import net.minecraft.entity.attribute.EntityAttributeModifier;
 import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
 import net.pixeldreamstudios.rpgsystems.title.Title;
 import net.pixeldreamstudios.rpgsystems.title.TitleRegistry;
@@ -13,14 +14,21 @@ import java.util.Optional;
 
 public final class TitleApi {
     private TitleApi() {}
+
     public static boolean grant(ServerPlayerEntity player, Identifier titleId) {
         Title t = TitleRegistry.get(titleId);
         if (t == null) return false;
+
         TitlesPersistentState state = TitlesPersistentState.get(player.getServer());
         TitlesPersistentState.PlayerTitles pt = state.getOrCreate(player.getUuid());
         boolean added = pt.unlocked.add(titleId.toString());
         if (added) {
             state.markDirty();
+
+            String rawName = extractRawName(t);
+            String plainName = stripStyleTokens(rawName);
+            player.sendMessage(Text.literal("You have unlocked the title " + plainName));
+
             return true;
         }
         return false;
@@ -96,7 +104,7 @@ public final class TitleApi {
             TitleSpellBonusUtil.installTitleSpells(player, t.id, spells);
         }
 
-        java.util.List<net.minecraft.util.Identifier> powers = new java.util.ArrayList<>();
+        java.util.List<Identifier> powers = new java.util.ArrayList<>();
         for (Title.Bonus b : t.bonuses) {
             if (b.powerId != null && b.powerId.isPresent()) {
                 powers.add(b.powerId.get());
@@ -130,6 +138,7 @@ public final class TitleApi {
                 + "/" + attrId.getNamespace() + "/" + attrId.getPath();
         return Identifier.of("rpg-systems", path);
     }
+
     public static void refreshActiveOnLogin(ServerPlayerEntity player) {
         TitlesPersistentState state = TitlesPersistentState.get(player.getServer());
         TitlesPersistentState.PlayerTitles pt = state.getOrCreate(player.getUuid());
@@ -150,6 +159,7 @@ public final class TitleApi {
         state.markDirty();
         return removed != null;
     }
+
     public static Optional<Identifier> getActiveId(ServerPlayerEntity player) {
         TitlesPersistentState state = TitlesPersistentState.get(player.getServer());
         TitlesPersistentState.PlayerTitles pt = state.getOrCreate(player.getUuid());
@@ -162,5 +172,30 @@ public final class TitleApi {
 
     public static boolean isActive(ServerPlayerEntity player, Identifier titleId) {
         return getActiveId(player).map(id -> id.equals(titleId)).orElse(false);
+    }
+
+    private static String extractRawName(Title t) {
+        try {
+            Object dn = t.displayName; // Text or String in your codebase
+            if (dn instanceof Text txt) return txt.getString();
+            return String.valueOf(dn);
+        } catch (Throwable ignored) {
+            return t.id.getPath();
+        }
+    }
+
+    private static String stripStyleTokens(String s) {
+        if (s == null || s.isEmpty()) return "";
+        String out = s;
+
+        out = out.replaceAll("(?i)\\{\\s*(?:rainbow|wiggle|gradient|pulse|shake|color|bounce|wave|glitch|clear|reset)(?:[^}]*)\\}", "");
+        out = out.replaceAll("(?i)\\{\\s*/\\s*(?:rainbow|wiggle|gradient|pulse|shake|color|bounce|wave|glitch|clear|reset)\\s*\\}", "");
+
+        out = out.replaceAll("(?i)&[0-9a-frk-o]", "");
+
+        out = out.replace('\u00A7', ' ');
+        out = out.replaceAll("\\s+", " ").trim();
+
+        return out;
     }
 }

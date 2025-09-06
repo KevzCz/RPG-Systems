@@ -1,0 +1,14 @@
+{
+  "name": "{gradient:#00b3ff,#00ffaa}{pulse:1.1}Pathfinder{/pulse}{/gradient}",
+  "description": "Blaze trails across the world.",
+  "bonuses": [
+    {
+      "attribute": [
+        { "id": "minecraft:generic.movement_speed", "amount": 0.075, "operation": "multiply_total" }
+      ]
+    }
+  ],
+  "conditions": [
+    { "type": "walk_blocks", "distance": 1000, "hint": "Walk 1,000 blocks." }
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "name": "{gradient:#ff4500,#ffae00}{shake:1.0}Nether Runner{/shake}{/gradient}",
+  "description": "Step into the Nether and live to tell it.",
+  "bonuses": [
+    {
+      "attribute": [
+        { "id": "minecraft:generic.movement_speed", "amount": 0.08, "operation": "multiply_total" },
+        { "id": "minecraft:generic.armor",          "amount": 1.0,  "operation": "add_value" }
+      ]
+    }
+  ],
+  "conditions": [
+    { "type": "enter_dimension", "dimension": "minecraft:the_nether", "hint": "Enter the Nether." }
+  ]
+}

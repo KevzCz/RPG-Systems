@@ -1,0 +1,15 @@
+{
+  "name": "{rainbow:0.25}{wave:amp=1.0,speed=3.0}Journeyman{/wave}{/rainbow}",
+  "description": "Grow wiser through experience.",
+  "bonuses": [
+    {
+      "attribute": [
+        { "id": "minecraft:generic.attack_speed",  "amount": 0.05, "operation": "multiply_total" },
+        { "id": "minecraft:generic.movement_speed","amount": 0.05, "operation": "multiply_total" }
+      ]
+    }
+  ],
+  "conditions": [
+    { "type": "reach_level", "level": 10, "hint": "Reach player level 10." }
+  ]
+}

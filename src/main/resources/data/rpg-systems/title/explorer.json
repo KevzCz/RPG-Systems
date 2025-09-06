@@ -1,0 +1,15 @@
+{
+  "name": "{gradient:#4bd3ff,#48baff}{wave:amp=1.0,speed=4.0}Explorer{/wave}{/gradient}",
+  "description": "Chart new paths across the land.",
+  "bonuses": [
+    {
+      "attribute": [
+        { "id": "minecraft:generic.movement_speed", "amount": 0.06, "operation": "multiply_total" },
+        { "id": "minecraft:generic.attack_speed",   "amount": 0.03, "operation": "multiply_total" }
+      ]
+    }
+  ],
+  "conditions": [
+    { "type": "walk_blocks", "distance": 1500, "hint": "Walk 1,500 blocks." }
+  ]
+}

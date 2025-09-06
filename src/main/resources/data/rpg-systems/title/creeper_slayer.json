@@ -1,0 +1,15 @@
+{
+  "hidden": true,
+  "name": "{gradient:#2ecc71,#1abc9c}{wiggle:amp=1.0,speed=7.0}Creeper Slayer{/wiggle}{/gradient}",
+  "description": "Hiss no more.",
+  "bonuses": [
+    {
+      "damage_bonus": [
+        { "id": "minecraft:creeper", "amount": 0.20, "operation": "multiplied" }
+      ]
+    }
+  ],
+  "conditions": [
+    { "type": "kill_mobs", "entity_type": "minecraft:creeper", "count": 100 }
+  ]
+}

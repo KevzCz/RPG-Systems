@@ -1,0 +1,14 @@
+{
+  "name": "{color:#adff2f}{pulse:1.4}Novice{/pulse}{/color}",
+  "description": "Take your first crafting step.",
+  "bonuses": [
+    {
+      "attribute": [
+        { "id": "minecraft:generic.movement_speed", "amount": 0.05, "operation": "multiply_total" }
+      ]
+    }
+  ],
+  "conditions": [
+    { "type": "obtain_item", "item": "minecraft:crafting_table", "count": 1, "hint": "Obtain a Crafting Table." }
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "name": "{color:#dda0dd}{wiggle:amp=0.8,speed=5.5}Scholar{/wiggle}{/color}",
+  "description": "Knowledge is power.",
+  "bonuses": [
+    {
+      "attribute": [
+        { "id": "minecraft:generic.attack_speed",   "amount": 0.06, "operation": "multiply_total" },
+        { "id": "minecraft:generic.movement_speed", "amount": 0.02, "operation": "multiply_total" }
+      ]
+    }
+  ],
+  "conditions": [
+    { "type": "reach_level", "level": 20, "hint": "Reach player level 20." }
+  ]
+}

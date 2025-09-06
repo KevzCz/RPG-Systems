@@ -1,0 +1,15 @@
+{
+  "hidden": true,
+  "name": "{color:#ff4444}{shake:1.4}Destroyer{/shake}{/color}",
+  "description": "One swing. No mercy.",
+  "bonuses": [
+    {
+      "attribute": [
+        { "id": "minecraft:generic.attack_damage", "amount": 0.10, "operation": "multiply_total" }
+      ]
+    }
+  ],
+  "conditions": [
+    { "type": "deal_damage_max", "entity": "any", "count": 20 }
+  ]
+}

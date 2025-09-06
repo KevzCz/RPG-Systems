@@ -1,0 +1,15 @@
+{
+  "name": "{rainbow:0.20}{wave:amp=0.8,speed=2.8}End Voyager{/wave}{/rainbow}",
+  "description": "Gaze into the void.",
+  "bonuses": [
+    {
+      "attribute": [
+        { "id": "minecraft:generic.max_health",   "amount": 2.0, "operation": "add_value" },
+        { "id": "minecraft:generic.attack_damage","amount": 0.05, "operation": "multiply_total" }
+      ]
+    }
+  ],
+  "conditions": [
+    { "type": "enter_dimension", "dimension": "minecraft:the_end", "hint": "Enter the End." }
+  ]
+}

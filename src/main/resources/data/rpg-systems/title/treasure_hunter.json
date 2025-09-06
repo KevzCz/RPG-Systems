@@ -1,0 +1,15 @@
+{
+  "hidden": true,
+  "name": "{gradient:#ffd700,#fff2a6}{wiggle:amp=0.7,speed=4.8}Treasure Hunter{/wiggle}{/gradient}",
+  "description": "X marks the spot.",
+  "bonuses": [
+    {
+      "attribute": [
+        { "id": "minecraft:generic.movement_speed", "amount": 0.03, "operation": "multiply_total" }
+      ]
+    }
+  ],
+  "conditions": [
+    { "type": "find_structure", "structure": "minecraft:buried_treasure" }
+  ]
+}

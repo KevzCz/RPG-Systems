@@ -1,0 +1,15 @@
+{
+  "hidden": true,
+  "name": "{color:#b19cd9}{shake:1.0}Enderman Slayer{/shake}{/color}",
+  "description": "You stare back into the abyss.",
+  "bonuses": [
+    {
+      "damage_bonus": [
+        { "id": "minecraft:enderman", "amount": 0.20, "operation": "multiplied" }
+      ]
+    }
+  ],
+  "conditions": [
+    { "type": "kill_mobs", "entity_type": "minecraft:enderman", "count": 100 }
+  ]
+}

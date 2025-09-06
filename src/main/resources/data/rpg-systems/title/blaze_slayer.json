@@ -1,0 +1,15 @@
+{
+  "hidden": true,
+  "name": "{gradient:#ff7a00,#ffd000}{pulse:1.3}Blaze Slayer{/pulse}{/gradient}",
+  "description": "Ashes to ashes.",
+  "bonuses": [
+    {
+      "damage_bonus": [
+        { "id": "minecraft:blaze", "amount": 0.20, "operation": "multiplied" }
+      ]
+    }
+  ],
+  "conditions": [
+    { "type": "kill_mobs", "entity_type": "minecraft:blaze", "count": 100 }
+  ]
+}

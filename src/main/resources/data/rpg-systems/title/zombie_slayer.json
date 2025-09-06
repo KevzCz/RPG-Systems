@@ -1,0 +1,15 @@
+{
+  "hidden": true,
+  "name": "{color:#98fb98}{shake:1.0}Zombie Slayer{/shake}{/color}",
+  "description": "You’ve learned how the undead fall.",
+  "bonuses": [
+    {
+      "damage_bonus": [
+        { "id": "minecraft:zombie", "amount": 0.20, "operation": "multiplied" }
+      ]
+    }
+  ],
+  "conditions": [
+    { "type": "kill_mobs", "entity_type": "minecraft:zombie", "count": 100 }
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "name": "{gradient:#ff8c00,#ffd700}{wiggle:amp=1.0,speed=6.0}Adventurer{/wiggle}{/gradient}",
+  "description": "Travel far and best foes.",
+  "bonuses": [
+    {
+      "attribute": [
+        { "id": "minecraft:generic.attack_damage", "amount": 0.10, "operation": "multiply_total" },
+        { "id": "minecraft:generic.max_health",     "amount": 2.0,  "operation": "add_value" }
+      ]
+    }
+  ],
+  "conditions": [
+    { "type": "walk_blocks", "distance": 500, "hint": "Walk 500 blocks." },
+    { "type": "kill_mobs", "entity": "any", "count": 5, "hint": "Defeat 5 mobs." }
+  ]
+}

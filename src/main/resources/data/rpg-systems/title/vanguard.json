@@ -1,0 +1,18 @@
+{
+  "name": "{color:#87cefa}{bounce:amp=1.0,speed=2.8}Vanguard{/bounce}{/color}",
+  "description": "First to find, first to fight.",
+  "bonuses": [
+    {
+      "attribute": [
+        { "id": "minecraft:generic.armor", "amount": 2.0, "operation": "add_value" },
+        { "id": "minecraft:generic.knockback_resistance", "amount": 0.10, "operation": "add_value" }
+      ]
+    }
+  ],
+  "conditions": [
+    { "type": "find_structure", "structure": "minecraft:stronghold", "hint": "Locate a Stronghold." },
+    { "type": "kill_mobs", "entity": "any", "count": 10, "hint": "Defeat 10 mobs." },
+    { "type": "deal_damage_max", "entity": "any", "count": 12, "hint": "Deal 12 damage in a single hit." },
+    { "type": "check_attribute", "attribute": "minecraft:generic.armor", "min": 8.0, "hint": "Reach at least 8 Armor." }
+  ]
+}

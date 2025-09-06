@@ -1,0 +1,15 @@
+{
+  "hidden": true,
+  "name": "{color:#ff69b4}{pulse:1.2}Spider Slayer{/pulse}{/color}",
+  "description": "No more eight-legged ambushes.",
+  "bonuses": [
+    {
+      "damage_bonus": [
+        { "id": "minecraft:spider", "amount": 0.20, "operation": "multiplied" }
+      ]
+    }
+  ],
+  "conditions": [
+    { "type": "kill_mobs", "entity_type": "minecraft:spider", "count": 100 }
+  ]
+}

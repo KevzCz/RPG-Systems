@@ -1,0 +1,15 @@
+{
+  "hidden": true,
+  "name": "{color:#e6e6fa}{shake:1.0}Skeleton Slayer{/shake}{/color}",
+  "description": "Bones break the same as anything else.",
+  "bonuses": [
+    {
+      "damage_bonus": [
+        { "id": "minecraft:skeleton", "amount": 0.20, "operation": "multiplied" }
+      ]
+    }
+  ],
+  "conditions": [
+    { "type": "kill_mobs", "entity_type": "minecraft:skeleton", "count": 100 }
+  ]
+}

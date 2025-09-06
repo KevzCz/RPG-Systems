@@ -1,0 +1,18 @@
+{
+  "name": "{gradient:#00ffbf,#00ffaa}{wave:amp=0.9,speed=3.6}Ranger{/wave}{/gradient}",
+  "description": "Swift feet and surer shots.",
+  "bonuses": [
+    {
+      "attribute": [
+        { "id": "minecraft:generic.movement_speed", "amount": 0.06, "operation": "multiply_total" },
+        { "id": "minecraft:generic.attack_speed",   "amount": 0.04, "operation": "multiply_total" }
+      ]
+    }
+  ],
+  "conditions": [
+    { "type": "walk_blocks", "distance": 3000, "hint": "Walk 3,000 blocks." },
+    { "type": "visit_biome", "biome": "minecraft:taiga", "hint": "Visit a Taiga biome." },
+    { "type": "kill_mobs", "entity_type": "minecraft:skeleton", "count": 25, "hint": "Defeat 25 Skeletons." },
+    { "type": "craft_item", "item": "minecraft:bow", "count": 1, "hint": "Craft a Bow." }
+  ]
+}

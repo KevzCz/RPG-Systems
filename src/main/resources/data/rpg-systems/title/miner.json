@@ -1,0 +1,14 @@
+{
+  "name": "{gradient:#bfbfbf,#8e8e8e}{bounce:amp=0.8,speed=3.5}Miner{/bounce}{/gradient}",
+  "description": "Put pick to stone until the tunnels sing.",
+  "bonuses": [
+    {
+      "attribute": [
+        { "id": "minecraft:generic.armor_toughness", "amount": 1.0, "operation": "add_value" }
+      ]
+    }
+  ],
+  "conditions": [
+    { "type": "mine_blocks", "block": "minecraft:stone", "count": 256, "hint": "Mine 256 Stone." }
+  ]
+}

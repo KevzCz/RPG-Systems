@@ -1,0 +1,15 @@
+{
+  "hidden": true,
+  "name": "{gradient:#c86dd7,#9a5cff}{wiggle:amp=1.0,speed=6.5}Witch Hunter{/wiggle}{/gradient}",
+  "description": "Brews won’t save them.",
+  "bonuses": [
+    {
+      "damage_bonus": [
+        { "id": "minecraft:witch", "amount": 0.20, "operation": "multiplied" }
+      ]
+    }
+  ],
+  "conditions": [
+    { "type": "kill_mobs", "entity_type": "minecraft:witch", "count": 75 }
+  ]
+}

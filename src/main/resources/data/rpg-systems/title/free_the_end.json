@@ -1,0 +1,14 @@
+{
+  "name": "{gradient:#6a00ff,#9b59ff,#00c3ff}{pulse:1.1}{glitch:intensity=0.55}Free{/glitch} {wave:amp=1.0,speed=2.8}The End{/wave}{/pulse}{/gradient}",
+  "description": "From End to end.",
+  "bonuses": [
+    {
+      "damage_bonus": [
+        { "id": "minecraft:ender_dragon", "amount": 0.15, "operation": "multiplied" }
+      ]
+    }
+  ],
+  "conditions": [
+    { "type": "advancement", "advancement": "minecraft:end/kill_dragon" }
+  ]
+}

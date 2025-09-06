@@ -1,0 +1,18 @@
+{
+  "name": "{gradient:#ff7f50,#ffd700}{wave:amp=0.9,speed=3.2}Trailblazer{/wave}{/gradient}",
+  "description": "Forge the path, fight what follows.",
+  "bonuses": [
+    {
+      "attribute": [
+        { "id": "minecraft:generic.movement_speed", "amount": 0.08, "operation": "multiply_total" },
+        { "id": "minecraft:generic.attack_damage",  "amount": 0.05, "operation": "multiply_total" }
+      ]
+    }
+  ],
+  "conditions": [
+    { "type": "walk_blocks", "distance": 2500, "hint": "Walk 2,500 blocks." },
+    { "type": "kill_mobs", "entity": "any", "count": 20, "hint": "Defeat 20 mobs." },
+    { "type": "obtain_item", "item": "minecraft:iron_sword", "count": 1, "hint": "Obtain an Iron Sword." },
+    { "type": "visit_biome", "biome": "minecraft:savanna", "hint": "Visit a Savanna biome." }
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "hidden": true,
+  "name": "{color:#7fff00}{bounce:amp=1.0,speed=4.0}Slime Slayer{/bounce}{/color}",
+  "description": "No more squish.",
+  "bonuses": [
+    {
+      "damage_bonus": [
+        { "id": "minecraft:slime", "amount": 0.20, "operation": "multiplied" }
+      ]
+    }
+  ],
+  "conditions": [
+    { "type": "kill_mobs", "entity_type": "minecraft:slime", "count": 100 }
+  ]
+}
