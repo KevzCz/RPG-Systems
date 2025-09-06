@@ -9,9 +9,9 @@ Titles will have:
 {
   "name": "A required name",
   "description": "An optional description",
-  // Default is true, doesn't load the title if false
+  // Default is true, doesn't load the title if false (Optional)
   "enabled": false
-  // Default is false, hides from the list if true
+  // Default is false, hides from the list if true (Optional)
   "hidden": true
   // Optional bonuses section
   "bonuses": [
@@ -29,7 +29,7 @@ Titles will have:
       "spell": [
         "paladins:heal"
       ],
-    // Optional
+    // Optional. Operation: Additive or Multiplied
       "damage_bonus": [
         { "id": "minecraft:ender_dragon", "amount": 0.15, "operation": "multiplied" }
       ]
