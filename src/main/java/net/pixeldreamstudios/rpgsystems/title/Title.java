@@ -15,15 +15,19 @@ public final class Title {
     public final Identifier id;
     public final Text displayName;
     public final Text description;
+    public final boolean hidden;
     public final List<Bonus> bonuses;
     public final List<Condition> conditions;
-    private Title(Identifier id, Text displayName, Text description, List<Bonus> bonuses, List<Condition> conditions) {
+
+    private Title(Identifier id, Text displayName, Text description, List<Bonus> bonuses, List<Condition> conditions, boolean hidden) {
         this.id = id;
         this.displayName = displayName;
         this.description = description;
+        this.hidden = hidden;
         this.bonuses = Collections.unmodifiableList(new ArrayList<>(bonuses));
         this.conditions = Collections.unmodifiableList(new ArrayList<>(conditions));
     }
+
     public static Builder builder(Identifier id, Text displayName) {
         return new Builder(id, displayName);
     }
@@ -32,27 +36,36 @@ public final class Title {
         public final RegistryEntry<EntityAttribute> attribute;
         public final double amount;
         public final EntityAttributeModifier.Operation operation;
+
         public final Optional<Identifier> spellId;
         public final Optional<Identifier> powerId;
 
-        private Bonus(RegistryEntry<EntityAttribute> attribute, double amount, EntityAttributeModifier.Operation operation, Optional<Identifier> spellId, Optional<Identifier> powerId) {
+        private Bonus(RegistryEntry<EntityAttribute> attribute, double amount, EntityAttributeModifier.Operation operation) {
             this.attribute = attribute;
             this.amount = amount;
             this.operation = operation;
-            this.spellId = spellId;
-            this.powerId = powerId;
+            this.spellId = Optional.empty();
+            this.powerId = Optional.empty();
         }
 
-        public static Bonus forAttribute(RegistryEntry<EntityAttribute> attr, double amount, EntityAttributeModifier.Operation op) {
-            return new Bonus(attr, amount, op, Optional.empty(), Optional.empty());
+        private Bonus(Identifier spellId, boolean isSpell) {
+            this.attribute = null;
+            this.amount = 0.0;
+            this.operation = null;
+            this.spellId = isSpell ? Optional.of(spellId) : Optional.empty();
+            this.powerId = isSpell ? Optional.empty() : Optional.of(spellId);
+        }
+
+        public static Bonus forAttribute(RegistryEntry<EntityAttribute> attribute, double amount, EntityAttributeModifier.Operation operation) {
+            return new Bonus(attribute, amount, operation);
         }
 
         public static Bonus forSpell(Identifier spellId) {
-            return new Bonus(null, 0.0, EntityAttributeModifier.Operation.ADD_VALUE, Optional.of(spellId), Optional.empty());
+            return new Bonus(spellId, true);
         }
 
         public static Bonus forPower(Identifier powerId) {
-            return new Bonus(null, 0.0, EntityAttributeModifier.Operation.ADD_VALUE, Optional.empty(), Optional.of(powerId));
+            return new Bonus(powerId, false);
         }
     }
 
@@ -138,6 +151,7 @@ public final class Title {
         private Text description = Text.empty();
         private final List<Bonus> bonuses = new ArrayList<>();
         private final List<Condition> conditions = new ArrayList<>();
+        private boolean hidden = false;
 
         private Builder(Identifier id, Text displayName) {
             this.id = id;
@@ -164,13 +178,18 @@ public final class Title {
             return this;
         }
 
+        public Builder hidden(boolean hidden) {
+            this.hidden = hidden;
+            return this;
+        }
+
         public Builder addCondition(Condition c) {
             this.conditions.add(c);
             return this;
         }
 
         public Title build() {
-            return new Title(id, displayName, description, bonuses, conditions);
+            return new Title(id, displayName, description, bonuses, conditions, hidden);
         }
     }
 }

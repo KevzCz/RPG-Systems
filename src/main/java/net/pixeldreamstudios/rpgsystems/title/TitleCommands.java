@@ -45,6 +45,14 @@ public final class TitleCommands {
                                         .executes(ctx -> remove(ctx,
                                                 EntityArgumentType.getPlayer(ctx, "player"),
                                                 IdentifierArgumentType.getIdentifier(ctx, "id"))))))
+                .then(literal("reset")
+                        .requires(src -> src.hasPermissionLevel(2))
+                        .then(argument("player", EntityArgumentType.player())
+                                .then(argument("id", IdentifierArgumentType.identifier())
+                                        .suggests(TitleCommands::suggestTitles)
+                                        .executes(ctx -> reset(ctx,
+                                                EntityArgumentType.getPlayer(ctx, "player"),
+                                                IdentifierArgumentType.getIdentifier(ctx, "id"))))))
                 .then(literal("apply")
                         .then(argument("id", IdentifierArgumentType.identifier())
                                 .suggests(TitleCommands::suggestTitles)
@@ -56,6 +64,7 @@ public final class TitleCommands {
                                 .executes(ctx -> conditionCheck(ctx, IdentifierArgumentType.getIdentifier(ctx, "id")))))
         );
     }
+
     private static int conditionCheck(CommandContext<ServerCommandSource> ctx, Identifier id) {
         ServerPlayerEntity self = ctx.getSource().getPlayer();
         MinecraftServer server = ctx.getSource().getServer();
@@ -150,11 +159,35 @@ public final class TitleCommands {
             ctx.getSource().sendError(Text.literal("Title not found or not unlocked: " + id));
             return 0;
         }
-        syncSelfTo(ctx.getSource().getServer(), target);
+
+        TitleApi.clearProgress(target, id);
+
+        net.pixeldreamstudios.rpgsystems.network.TitleNet.syncSelfTo(ctx.getSource().getServer(), target);
         broadcastActiveToAll(ctx.getSource().getServer(), target.getUuid(), activeOf(ctx.getSource().getServer(), target.getUuid()));
-        ctx.getSource().sendFeedback(() -> Text.literal("Removed title " + id + " from " + target.getName().getString()), true);
+
+        ctx.getSource().sendFeedback(
+                () -> Text.literal("Removed and wiped progress for title " + id + " from " + target.getName().getString()),
+                true
+        );
         return 1;
     }
+    private static int reset(CommandContext<ServerCommandSource> ctx, ServerPlayerEntity target, Identifier id) {
+        boolean had = TitleApi.clearProgress(target, id);
+
+        net.pixeldreamstudios.rpgsystems.network.TitleNet.syncSelfTo(ctx.getSource().getServer(), target);
+
+        if (had) {
+            ctx.getSource().sendFeedback(
+                    () -> Text.literal("Reset progress for title " + id + " on " + target.getName().getString()),
+                    true
+            );
+            return 1;
+        } else {
+            ctx.getSource().sendError(Text.literal("No progress found for title: " + id));
+            return 0;
+        }
+    }
+
     private static int applySelf(CommandContext<ServerCommandSource> ctx, Identifier id) {
         ServerPlayerEntity self = ctx.getSource().getPlayer();
         boolean ok = net.pixeldreamstudios.rpgsystems.api.TitleApi.setActive(self, Optional.of(id));

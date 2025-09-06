@@ -38,7 +38,7 @@ public final class PlayerTitleRenderer {
     public static void init() {
         ClientPlayConnectionEvents.JOIN.register((h, s, c) -> {});
         ClientPlayConnectionEvents.DISCONNECT.register((h, c) -> {});
-        WorldRenderEvents.AFTER_ENTITIES.register(PlayerTitleRenderer::render);
+        WorldRenderEvents.LAST.register(PlayerTitleRenderer::render);
     }
 
     private static void render(WorldRenderContext context) {
@@ -50,11 +50,15 @@ public final class PlayerTitleRenderer {
         var client = MinecraftClient.getInstance();
         if (client == null || client.options.hudHidden) return;
 
+        boolean isFirstPerson = client.options.getPerspective().isFirstPerson();
         var camPos = camera.getPos();
         float tickDelta = client.getRenderTickCounter().getTickDelta(false);
 
         RenderSystem.enableBlend();
-        RenderSystem.enableDepthTest();
+        RenderSystem.defaultBlendFunc();
+
+        RenderSystem.disableDepthTest();
+        RenderSystem.depthMask(false);
 
         for (var entity : world.getPlayers()) {
             PlayerEntity player = entity;
@@ -90,6 +94,8 @@ public final class PlayerTitleRenderer {
             var titleCfg = net.pixeldreamstudios.rpgsystems.client.title.config.TitlesClientConfig.get();
             if (isSelf && !titleCfg.showOwnTitle) continue;
             if (!isSelf && !titleCfg.showOthersTitles) continue;
+            if (isSelf && isFirstPerson) continue;
+
             float gapAboveName = isSelf ? 0f : NAME_GAP;
 
             matrices.push();
@@ -117,6 +123,9 @@ public final class PlayerTitleRenderer {
             drawStyledTitle3D(context, matrices, label, finalAlpha);
             matrices.pop();
         }
+
+        RenderSystem.depthMask(true);
+        RenderSystem.enableDepthTest();
     }
 
     private static void drawQuadLitUV(Matrix4f mat, float u0, float v0, float u1, float v1, float alpha) {
@@ -223,8 +232,6 @@ public final class PlayerTitleRenderer {
 
         matrices.pop();
     }
-
-
 
     private static boolean isOnScreen(WorldRenderContext context, Box box) {
         var frustum = context.frustum();

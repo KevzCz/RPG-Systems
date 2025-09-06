@@ -214,7 +214,8 @@ public final class TitlePayloads {
                 List<BonusDef> bonuses,
                 List<Identifier> spells,
                 List<Identifier> powers,
-                List<ConditionDef> conditions
+                List<ConditionDef> conditions,
+                boolean hidden
         ) {
             public static final PacketCodec<RegistryByteBuf, Def> CODEC = new PacketCodec<RegistryByteBuf, Def>() {
                 @Override
@@ -226,7 +227,8 @@ public final class TitlePayloads {
                     List<Identifier> spells = PacketCodecs.collection(ArrayList::new, ID_CODEC).decode(buf);
                     List<Identifier> powers = PacketCodecs.collection(ArrayList::new, ID_CODEC).decode(buf);
                     List<ConditionDef> conditions = PacketCodecs.collection(ArrayList::new, ConditionDef.CODEC).decode(buf);
-                    return new Def(id, name, description, bonuses, spells, powers, conditions);
+                    boolean hidden = BOOL.decode(buf);
+                    return new Def(id, name, description, bonuses, spells, powers, conditions, hidden);
                 }
 
                 @Override
@@ -238,9 +240,11 @@ public final class TitlePayloads {
                     PacketCodecs.collection(ArrayList::new, ID_CODEC).encode(buf, new ArrayList<>(v.spells));
                     PacketCodecs.collection(ArrayList::new, ID_CODEC).encode(buf, new ArrayList<>(v.powers));
                     PacketCodecs.collection(ArrayList::new, ConditionDef.CODEC).encode(buf, new ArrayList<>(v.conditions));
+                    BOOL.encode(buf, v.hidden);
                 }
             };
         }
+
     }
     public record SyncProgress(List<TitleProgress> progresses) implements CustomPayload {
         public static final Id<SyncProgress> ID = new Id<>(Identifier.of("rpg-systems", "titles_progress_sync"));

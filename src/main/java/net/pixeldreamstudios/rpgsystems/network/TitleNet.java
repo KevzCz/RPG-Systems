@@ -86,7 +86,7 @@ public final class TitleNet {
                         Identifier id = d.id();
                         Text name = Text.literal(d.name());
                         Text desc = d.description().map(Text::literal).orElse(Text.empty());
-                        Title.Builder b = Title.builder(id, name).description(desc);
+                        Title.Builder b = Title.builder(id, name).description(desc).hidden(d.hidden());
 
                         for (TitlePayloads.SyncDefinitions.BonusDef jb : d.bonuses()) {
                             RegistryKey<EntityAttribute> key = RegistryKey.of(RegistryKeys.ATTRIBUTE, jb.attribute());
@@ -259,8 +259,10 @@ public final class TitleNet {
                     bdefs,
                     sdefs,
                     pdefs,
-                    cdefs
+                    cdefs,
+                    t.hidden
             ));
+
         }
         ServerPlayNetworking.send(player, new TitlePayloads.SyncDefinitions(defs));
     }

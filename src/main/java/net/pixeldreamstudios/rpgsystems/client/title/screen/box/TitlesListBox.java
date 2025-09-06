@@ -94,7 +94,13 @@ public final class TitlesListBox {
         int boxX = screenX + LEFT_PADDING;
         int boxY = screenY + bgHeight - BOTTOM_PADDING - BOX_HEIGHT;
 
-        List<Title> allTitles = new ArrayList<>(TitleRegistry.all().values());
+        java.util.Set<Identifier> unlockedSet = TitleClientData.getSelfUnlocked();
+        List<Title> allTitles = new ArrayList<>();
+        for (Title t : TitleRegistry.all().values()) {
+            if (!t.hidden || unlockedSet.contains(t.id)) {
+                allTitles.add(t);
+            }
+        }
         int maxOffset = Math.max(0, allTitles.size() - VISIBLE_ROWS);
         if (scrollOffset > maxOffset) scrollOffset = maxOffset;
         if (selectedIndex >= allTitles.size()) selectedIndex = -1;

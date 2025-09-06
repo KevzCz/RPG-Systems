@@ -142,4 +142,13 @@ public final class TitleApi {
             }
         }
     }
+
+    public static boolean clearProgress(ServerPlayerEntity player, Identifier titleId) {
+        TitlesPersistentState state = TitlesPersistentState.get(player.getServer());
+        TitlesPersistentState.PlayerTitles pt = state.getOrCreate(player.getUuid());
+        net.minecraft.nbt.NbtCompound removed = pt.progress.remove(titleId.toString());
+        state.markDirty();
+        return removed != null;
+    }
+
 }

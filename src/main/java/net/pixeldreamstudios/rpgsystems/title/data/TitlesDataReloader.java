@@ -43,6 +43,11 @@ public final class TitlesDataReloader extends JsonDataLoader implements Identifi
                 Title.Builder b = Title.builder(id, Text.literal(data.name().orElse(leaf)));
                 data.description().ifPresent(desc -> b.description(Text.literal(desc)));
 
+                boolean hiddenTitle = json != null && json.isJsonObject() && json.getAsJsonObject().has("hidden") && json.getAsJsonObject().get("hidden").getAsBoolean();
+                if (hiddenTitle) {
+                    b.hidden(true);
+                }
+
                 for (TitleData.Bonus group : data.bonuses()) {
                     for (TitleData.AttrBonus ab : group.attributes()) {
                         RegistryKey<EntityAttribute> key = RegistryKey.of(RegistryKeys.ATTRIBUTE, ab.id());
@@ -50,56 +55,54 @@ public final class TitlesDataReloader extends JsonDataLoader implements Identifi
                                 .orElseThrow(() -> new IllegalArgumentException("Unknown attribute: " + ab.id()));
                         b.add(entry, ab.amount(), ab.operation());
                     }
-                    for (Identifier sid : group.spells()) {
-                        b.addSpell(sid);
+                    for (Identifier spell : group.spells()) {
+                        b.addSpell(spell);
                     }
-                    for (Identifier pid : group.powers()) {
-                        b.addPower(pid);
+                    for (Identifier power : group.powers()) {
+                        b.addPower(power);
                     }
                 }
 
-                if (data.conditions() != null) {
-                    for (TitleData.Condition jc : data.conditions()) {
-                        Title.Condition.Type t = switch (jc.type()) {
-                            case OBTAIN_ITEM           -> Title.Condition.Type.OBTAIN_ITEM;
-                            case KILL_MOBS             -> Title.Condition.Type.KILL_MOBS;
-                            case ADVANCEMENT           -> Title.Condition.Type.ADVANCEMENT;
-                            case WALK_BLOCKS           -> Title.Condition.Type.WALK_BLOCKS;
-                            case REACH_LEVEL           -> Title.Condition.Type.REACH_LEVEL_XP;
-                            case REACH_LEVEL_XP        -> Title.Condition.Type.REACH_LEVEL_XP;
-                            case REACH_LEVEL_PUFFERFISH-> Title.Condition.Type.REACH_LEVEL_PUFFERFISH;
-                            case CRAFT_ITEM            -> Title.Condition.Type.CRAFT_ITEM;
-                            case MINE_BLOCKS           -> Title.Condition.Type.MINE_BLOCKS;
-                            case VISIT_BIOME           -> Title.Condition.Type.VISIT_BIOME;
-                            case ENTER_DIMENSION       -> Title.Condition.Type.ENTER_DIMENSION;
-                            case INTERACT_BLOCK        -> Title.Condition.Type.INTERACT_BLOCK;
-                            case INTERACT_ENTITY       -> Title.Condition.Type.INTERACT_ENTITY;
-                            case FIND_STRUCTURE        -> Title.Condition.Type.FIND_STRUCTURE;
-                            case DEAL_DAMAGE_TOTAL     -> Title.Condition.Type.DEAL_DAMAGE_TOTAL;
-                            case DEAL_DAMAGE_MAX       -> Title.Condition.Type.DEAL_DAMAGE_MAX;
-                            case CHECK_ATTRIBUTE       -> Title.Condition.Type.CHECK_ATTRIBUTE;
-                        };
+                for (TitleData.Condition jc : data.conditions()) {
+                    Title.Condition.Type t = switch (jc.type()) {
+                        case OBTAIN_ITEM -> Title.Condition.Type.OBTAIN_ITEM;
+                        case KILL_MOBS -> Title.Condition.Type.KILL_MOBS;
+                        case ADVANCEMENT -> Title.Condition.Type.ADVANCEMENT;
+                        case WALK_BLOCKS -> Title.Condition.Type.WALK_BLOCKS;
+                        case REACH_LEVEL -> Title.Condition.Type.REACH_LEVEL;
+                        case REACH_LEVEL_XP -> Title.Condition.Type.REACH_LEVEL_XP;
+                        case REACH_LEVEL_PUFFERFISH -> Title.Condition.Type.REACH_LEVEL_PUFFERFISH;
+                        case CRAFT_ITEM -> Title.Condition.Type.CRAFT_ITEM;
+                        case MINE_BLOCKS -> Title.Condition.Type.MINE_BLOCKS;
+                        case VISIT_BIOME -> Title.Condition.Type.VISIT_BIOME;
+                        case ENTER_DIMENSION -> Title.Condition.Type.ENTER_DIMENSION;
+                        case INTERACT_BLOCK -> Title.Condition.Type.INTERACT_BLOCK;
+                        case INTERACT_ENTITY -> Title.Condition.Type.INTERACT_ENTITY;
+                        case FIND_STRUCTURE -> Title.Condition.Type.FIND_STRUCTURE;
+                        case DEAL_DAMAGE_TOTAL -> Title.Condition.Type.DEAL_DAMAGE_TOTAL;
+                        case DEAL_DAMAGE_MAX -> Title.Condition.Type.DEAL_DAMAGE_MAX;
+                        case CHECK_ATTRIBUTE -> Title.Condition.Type.CHECK_ATTRIBUTE;
+                    };
 
-                        b.addCondition(new Title.Condition(
-                                t,
-                                jc.item(),
-                                jc.entityType(),
-                                jc.advancement(),
-                                jc.distance().orElse(0L),
-                                jc.count().orElse(0),
-                                jc.hint(),
-                                jc.hidden().orElse(false),
-                                jc.entity(),
-                                jc.nbt(),
-                                jc.level().orElse(0),
-                                jc.block(),
-                                jc.biome(),
-                                jc.dimension(),
-                                jc.structure(),
-                                jc.attribute(),
-                                jc.min().orElse(0.0)
-                        ));
-                    }
+                    b.addCondition(new Title.Condition(
+                            t,
+                            jc.item(),
+                            jc.entityType(),
+                            jc.advancement(),
+                            jc.distance().orElse(0L),
+                            jc.count().orElse(0),
+                            jc.hint(),
+                            jc.hidden().orElse(false),
+                            jc.entity(),
+                            jc.nbt(),
+                            jc.level().orElse(0),
+                            jc.block(),
+                            jc.biome(),
+                            jc.dimension(),
+                            jc.structure(),
+                            jc.attribute(),
+                            jc.min().orElse(0.0)
+                    ));
                 }
 
                 Title built = b.build();
