@@ -56,8 +56,7 @@ public final class PlayerTitleRenderer {
 
         RenderSystem.enableBlend();
         RenderSystem.defaultBlendFunc();
-
-        RenderSystem.disableDepthTest();
+        RenderSystem.enableDepthTest();
         RenderSystem.depthMask(false);
 
         for (var entity : world.getPlayers()) {
@@ -99,7 +98,6 @@ public final class PlayerTitleRenderer {
             float gapAboveName = isSelf ? 0f : NAME_GAP;
 
             matrices.push();
-
             matrices.translate(ex - camPos.x, ey - camPos.y + head + hpOffset + gapAboveName, ez - camPos.z);
             faceCamera(matrices, camera);
 
@@ -125,7 +123,6 @@ public final class PlayerTitleRenderer {
         }
 
         RenderSystem.depthMask(true);
-        RenderSystem.enableDepthTest();
     }
 
     private static void drawQuadLitUV(Matrix4f mat, float u0, float v0, float u1, float v1, float alpha) {
@@ -221,7 +218,7 @@ public final class PlayerTitleRenderer {
                         yOff,
                         argb,
                         false, matrices.peek().getPositionMatrix(),
-                        consumers, TextRenderer.TextLayerType.SEE_THROUGH, 0, light);
+                        consumers, TextRenderer.TextLayerType.NORMAL, 0, light);
 
                 advanceX += cw;
                 globalIndex++;
