@@ -221,10 +221,12 @@ public final class TitleBox {
             if (selected == null) return;
             ClientPlayNetworking.send(new TitlePayloads.RequestSetActive(Optional.of(selected.id)));
         });
+        this.applyButton.setDrawScale(0.75f);
 
         this.disableButton = new TitleButtonWidget(0, 0, BUTTON_SIZE, BUTTON_SIZE, DISABLE_NORMAL, DISABLE_HOVER, () -> {
             ClientPlayNetworking.send(new TitlePayloads.RequestSetActive(Optional.empty()));
         });
+        this.disableButton.setDrawScale(0.75f);
     }
 
     private void updateButtonLayout() {

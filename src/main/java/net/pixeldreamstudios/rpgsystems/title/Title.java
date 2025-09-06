@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.Optional;
 
 public final class Title {
+    public enum DamageOp { ADDED, MULTIPLIED }
     public final Identifier id;
     public final Text displayName;
     public final Text description;
@@ -36,7 +37,9 @@ public final class Title {
         public final RegistryEntry<EntityAttribute> attribute;
         public final double amount;
         public final EntityAttributeModifier.Operation operation;
-
+        public final Optional<Identifier> damageTarget;
+        public final DamageOp damageOp;
+        public final double damageAmount;
         public final Optional<Identifier> spellId;
         public final Optional<Identifier> powerId;
 
@@ -46,6 +49,9 @@ public final class Title {
             this.operation = operation;
             this.spellId = Optional.empty();
             this.powerId = Optional.empty();
+            this.damageTarget = Optional.empty();
+            this.damageOp = null;
+            this.damageAmount = 0.0;
         }
 
         private Bonus(Identifier spellId, boolean isSpell) {
@@ -54,6 +60,23 @@ public final class Title {
             this.operation = null;
             this.spellId = isSpell ? Optional.of(spellId) : Optional.empty();
             this.powerId = isSpell ? Optional.empty() : Optional.of(spellId);
+            this.damageTarget = Optional.empty();
+            this.damageOp = null;
+            this.damageAmount = 0.0;
+        }
+
+        private Bonus(Identifier target, double amount, DamageOp op) {
+            this.attribute = null;
+            this.amount = 0.0;
+            this.operation = null;
+            this.spellId = Optional.empty();
+            this.powerId = Optional.empty();
+            this.damageTarget = Optional.of(target);
+            this.damageOp = op;
+            this.damageAmount = amount;
+        }
+        public static Bonus forDamage(Identifier target, double amount, DamageOp op) {
+            return new Bonus(target, amount, op);
         }
 
         public static Bonus forAttribute(RegistryEntry<EntityAttribute> attribute, double amount, EntityAttributeModifier.Operation operation) {
@@ -165,6 +188,10 @@ public final class Title {
 
         public Builder add(RegistryEntry<EntityAttribute> attribute, double amount, EntityAttributeModifier.Operation operation) {
             this.bonuses.add(Bonus.forAttribute(attribute, amount, operation));
+            return this;
+        }
+        public Builder addDamageBonus(Identifier target, double amount, DamageOp op) {
+            this.bonuses.add(Bonus.forDamage(target, amount, op));
             return this;
         }
 

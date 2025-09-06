@@ -18,7 +18,8 @@
 		"EntityRelationsHelpfulGateMixin",
 		"LivingEntityDamageMixin",
 		"LivingEntityHealMixin",
-		"DamageTrackerAccessor"
+		"DamageTrackerAccessor",
+		"LivingEntityDamageBonusMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

@@ -70,7 +70,12 @@ public final class TitlesDataReloader extends JsonDataLoader implements Identifi
                     }
                     for (Identifier spell : group.spells()) b.addSpell(spell);
                     for (Identifier power : group.powers()) b.addPower(power);
+                    for (TitleData.DamageBonus db : group.damageBonuses()) {
+                        b.addDamageBonus(db.id(), db.amount(), db.operation() == TitleData.DamageOp.MULTIPLIED
+                                ? Title.DamageOp.MULTIPLIED : Title.DamageOp.ADDED);
+                    }
                 }
+
 
                 for (TitleData.Condition jc : data.conditions()) {
                     Title.Condition.Type t = switch (jc.type()) {

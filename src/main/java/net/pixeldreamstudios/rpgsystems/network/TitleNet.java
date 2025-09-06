@@ -94,6 +94,11 @@ public final class TitleNet {
                                     .orElseThrow(() -> new IllegalArgumentException("Unknown attribute: " + jb.attribute()));
                             b.add(entry, jb.amount(), jb.operation());
                         }
+                        for (TitlePayloads.SyncDefinitions.DamageBonusDef db : d.damage()) {
+                            b.addDamageBonus(db.target(), db.amount(),
+                                    db.op() == TitlePayloads.SyncDefinitions.DmgOp.MULTIPLIED
+                                            ? Title.DamageOp.MULTIPLIED : Title.DamageOp.ADDED);
+                        }
 
                         for (Identifier sid : d.spells()) {
                             b.addSpell(sid);
@@ -199,6 +204,7 @@ public final class TitleNet {
             String desc = t.description == null ? "" : t.description.getString();
 
             List<TitlePayloads.SyncDefinitions.BonusDef> bdefs = new ArrayList<>();
+            List<TitlePayloads.SyncDefinitions.DamageBonusDef> ddefs = new ArrayList<>();
             List<Identifier> sdefs = new ArrayList<>();
             List<Identifier> pdefs = new ArrayList<>();
             for (Title.Bonus b : t.bonuses) {
@@ -213,7 +219,13 @@ public final class TitleNet {
                     pdefs.add(b.powerId.get());
                     continue;
                 }
-
+                if (b.damageTarget != null && b.damageTarget.isPresent()) {
+                    TitlePayloads.SyncDefinitions.DmgOp op =
+                            (b.damageOp == Title.DamageOp.MULTIPLIED)
+                                    ? TitlePayloads.SyncDefinitions.DmgOp.MULTIPLIED
+                                    : TitlePayloads.SyncDefinitions.DmgOp.ADDED;
+                    ddefs.add(new TitlePayloads.SyncDefinitions.DamageBonusDef(b.damageTarget.get(), b.damageAmount, op));
+                }
                 if (b.attribute != null) {
                     Identifier attrId = Registries.ATTRIBUTE.getId(b.attribute.value());
                     if (attrId != null) {
@@ -259,6 +271,7 @@ public final class TitleNet {
                     bdefs,
                     sdefs,
                     pdefs,
+                    ddefs,
                     cdefs,
                     t.hidden
             ));

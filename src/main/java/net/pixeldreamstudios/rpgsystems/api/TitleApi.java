@@ -150,5 +150,17 @@ public final class TitleApi {
         state.markDirty();
         return removed != null;
     }
+    public static Optional<Identifier> getActiveId(ServerPlayerEntity player) {
+        TitlesPersistentState state = TitlesPersistentState.get(player.getServer());
+        TitlesPersistentState.PlayerTitles pt = state.getOrCreate(player.getUuid());
+        return Optional.ofNullable(pt.active == null ? null : Identifier.of(pt.active));
+    }
 
+    public static Optional<Title> getActive(ServerPlayerEntity player) {
+        return getActiveId(player).map(TitleRegistry::get);
+    }
+
+    public static boolean isActive(ServerPlayerEntity player, Identifier titleId) {
+        return getActiveId(player).map(id -> id.equals(titleId)).orElse(false);
+    }
 }

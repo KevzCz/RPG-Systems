@@ -224,6 +224,22 @@ public final class TitleDescriptionBox {
                     y += smallLineH + UI_MARGIN_Y;
                 }
             }
+            List<Text> dmgLines = formatDamageBonuses();
+            if (!dmgLines.isEmpty()) {
+                y += scaled(2);
+                drawScaled(ctx, Text.literal("Bonus damage against").asOrderedText(),
+                        innerX, y - scrollY, COLOR_HEADER, textScale);
+                y += scaled(10);
+
+                wrapWidth = Math.max(1, Math.round(innerW / textScale));
+                for (Text t : dmgLines) {
+                    for (OrderedText ot : font.wrapLines(t, wrapWidth)) {
+                        drawScaled(ctx, ot, innerX, y - scrollY, COLOR_BONUS_TEXT, textScale);
+                        y += scaled(9);
+                    }
+                    y += UI_MARGIN_Y;
+                }
+            }
         }
 
 
@@ -274,8 +290,12 @@ public final class TitleDescriptionBox {
     private List<Text> formatBonuses() {
         List<Text> out = new ArrayList<>();
         for (Title.Bonus b : current.bonuses) {
-            if (b.spellId != null && b.spellId.isPresent()) continue;
-            if (b.powerId != null && b.powerId.isPresent()) continue;
+            // skip non-attribute entries
+            if ((b.spellId != null && b.spellId.isPresent())
+                    || (b.powerId != null && b.powerId.isPresent())
+                    || b.attribute == null) {         // <-- add this guard
+                continue;
+            }
 
             String attrKey = b.attribute.value().getTranslationKey();
             Text attrName = Text.translatable(attrKey);
@@ -290,6 +310,22 @@ public final class TitleDescriptionBox {
         }
         return out;
     }
+
+    private List<Text> formatDamageBonuses() {
+        List<Text> out = new ArrayList<>();
+        for (Title.Bonus b : current.bonuses) {
+            if (b.damageTarget != null && b.damageTarget.isPresent()) {
+                var type = Registries.ENTITY_TYPE.get(b.damageTarget.get());
+                Text mob = Text.translatable(type.getTranslationKey());
+                Text amountTxt = (b.damageOp == Title.DamageOp.ADDED)
+                        ? Text.literal(" +" + trim(b.damageAmount))
+                        : Text.literal(" " + trim(b.damageAmount * 100.0) + "%");
+                out.add(Text.literal("• ").append(mob).append(amountTxt));
+            }
+        }
+        return out;
+    }
+
     private List<Identifier> collectSpellIds() {
         List<Identifier> list = new ArrayList<>();
         for (Title.Bonus b : current.bonuses) {

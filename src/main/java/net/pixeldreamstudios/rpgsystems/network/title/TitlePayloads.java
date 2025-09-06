@@ -206,7 +206,20 @@ public final class TitlePayloads {
                     BonusDef::new
             );
         }
+        public enum DmgOp { ADDED, MULTIPLIED }
+        private static final PacketCodec<RegistryByteBuf, DmgOp> DMG_OP_CODEC = new PacketCodec<>() {
+            @Override public DmgOp decode(RegistryByteBuf buf) { return DmgOp.values()[VAR_INT.decode(buf)]; }
+            @Override public void encode(RegistryByteBuf buf, DmgOp v) { VAR_INT.encode(buf, v.ordinal()); }
+        };
 
+        public record DamageBonusDef(Identifier target, double amount, DmgOp op) {
+            public static final PacketCodec<RegistryByteBuf, DamageBonusDef> CODEC = PacketCodec.tuple(
+                    ID_CODEC, DamageBonusDef::target,
+                    DOUBLE,  DamageBonusDef::amount,
+                    DMG_OP_CODEC, DamageBonusDef::op,
+                    DamageBonusDef::new
+            );
+        }
         public record Def(
                 Identifier id,
                 String name,
@@ -214,36 +227,37 @@ public final class TitlePayloads {
                 List<BonusDef> bonuses,
                 List<Identifier> spells,
                 List<Identifier> powers,
+                List<DamageBonusDef> damage,
                 List<ConditionDef> conditions,
                 boolean hidden
         ) {
-            public static final PacketCodec<RegistryByteBuf, Def> CODEC = new PacketCodec<RegistryByteBuf, Def>() {
-                @Override
-                public Def decode(RegistryByteBuf buf) {
+            public static final PacketCodec<RegistryByteBuf, Def> CODEC = new PacketCodec<>() {
+                @Override public Def decode(RegistryByteBuf buf) {
                     Identifier id = ID_CODEC.decode(buf);
                     String name = STRING.decode(buf);
                     Optional<String> description = OPT_STRING.decode(buf);
                     List<BonusDef> bonuses = PacketCodecs.collection(ArrayList::new, BonusDef.CODEC).decode(buf);
                     List<Identifier> spells = PacketCodecs.collection(ArrayList::new, ID_CODEC).decode(buf);
                     List<Identifier> powers = PacketCodecs.collection(ArrayList::new, ID_CODEC).decode(buf);
+                    List<DamageBonusDef> damage = PacketCodecs.collection(ArrayList::new, DamageBonusDef.CODEC).decode(buf);
                     List<ConditionDef> conditions = PacketCodecs.collection(ArrayList::new, ConditionDef.CODEC).decode(buf);
                     boolean hidden = BOOL.decode(buf);
-                    return new Def(id, name, description, bonuses, spells, powers, conditions, hidden);
+                    return new Def(id, name, description, bonuses, spells, powers, damage, conditions, hidden);
                 }
-
-                @Override
-                public void encode(RegistryByteBuf buf, Def v) {
+                @Override public void encode(RegistryByteBuf buf, Def v) {
                     ID_CODEC.encode(buf, v.id);
                     STRING.encode(buf, v.name);
                     OPT_STRING.encode(buf, v.description);
                     PacketCodecs.collection(ArrayList::new, BonusDef.CODEC).encode(buf, new ArrayList<>(v.bonuses));
                     PacketCodecs.collection(ArrayList::new, ID_CODEC).encode(buf, new ArrayList<>(v.spells));
                     PacketCodecs.collection(ArrayList::new, ID_CODEC).encode(buf, new ArrayList<>(v.powers));
+                    PacketCodecs.collection(ArrayList::new, DamageBonusDef.CODEC).encode(buf, new ArrayList<>(v.damage));
                     PacketCodecs.collection(ArrayList::new, ConditionDef.CODEC).encode(buf, new ArrayList<>(v.conditions));
                     BOOL.encode(buf, v.hidden);
                 }
             };
         }
+
 
     }
     public record SyncProgress(List<TitleProgress> progresses) implements CustomPayload {

@@ -12,6 +12,11 @@ public final class TitleButtonWidget extends PressableWidget {
     private final Identifier normalTexture;
     private final Identifier hoverTexture;
     private final Runnable onPressAction;
+    private float drawScale = 1.0f;
+
+    public void setDrawScale(float drawScale) {
+        this.drawScale = drawScale;
+    }
 
     public TitleButtonWidget(int x, int y, int width, int height, Identifier normalTexture, Identifier hoverTexture, Runnable onPressAction) {
         super(x, y, width, height, Text.empty());
@@ -38,7 +43,22 @@ public final class TitleButtonWidget extends PressableWidget {
     protected void renderWidget(DrawContext context, int mouseX, int mouseY, float delta) {
         if (!this.visible) return;
         Identifier tex = this.isHovered() ? hoverTexture : normalTexture;
-        context.drawTexture(tex, this.getX(), this.getY(), 0, 0, this.getWidth(), this.getHeight(), this.getWidth(), this.getHeight());
+
+        int w = this.getWidth();
+        int h = this.getHeight();
+        int x = this.getX();
+        int y = this.getY();
+
+        var matrices = context.getMatrices();
+        matrices.push();
+        matrices.translate(x + w / 2f, y + h / 2f, 0f);
+        matrices.scale(drawScale, drawScale, 1f);
+        context.drawTexture(tex,
+                Math.round(-w / 2f), Math.round(-h / 2f),
+                0, 0,
+                w, h,
+                w, h);
+        matrices.pop();
     }
 
     @Override

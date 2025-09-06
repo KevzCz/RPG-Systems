@@ -101,15 +101,36 @@ public record TitleData(
     public record Bonus(
             List<AttrBonus> attributes,
             List<Identifier> spells,
-            List<Identifier> powers
+            List<Identifier> powers,
+            List<DamageBonus> damageBonuses
     ) {
         public static final Codec<Bonus> CODEC = RecordCodecBuilder.create(i -> i.group(
                 Codecs.oneOrMany(AttrBonus.CODEC).optionalFieldOf("attribute", List.of()).forGetter(Bonus::attributes),
                 Codecs.oneOrMany(Identifier.CODEC).optionalFieldOf("spell", List.of()).forGetter(Bonus::spells),
-                Codecs.oneOrMany(Identifier.CODEC).optionalFieldOf("power", List.of()).forGetter(Bonus::powers)
+                Codecs.oneOrMany(Identifier.CODEC).optionalFieldOf("power", List.of()).forGetter(Bonus::powers),
+                Codecs.oneOrMany(DamageBonus.CODEC).optionalFieldOf("damage_bonus", List.of()).forGetter(Bonus::damageBonuses)
         ).apply(i, Bonus::new));
     }
 
+    public enum DamageOp {
+        ADDED, MULTIPLIED;
+        public static final Codec<DamageOp> CODEC = Codec.STRING.xmap(
+                s -> s.equalsIgnoreCase("multiplied") ? MULTIPLIED : ADDED,
+                op -> op == MULTIPLIED ? "multiplied" : "added"
+        );
+    }
+
+    public record DamageBonus(
+            Identifier id,
+            double amount,
+            DamageOp operation
+    ) {
+        public static final Codec<DamageBonus> CODEC = RecordCodecBuilder.create(i -> i.group(
+                Identifier.CODEC.fieldOf("id").forGetter(DamageBonus::id),
+                Codec.DOUBLE.fieldOf("amount").forGetter(DamageBonus::amount),
+                DamageOp.CODEC.fieldOf("operation").forGetter(DamageBonus::operation)
+        ).apply(i, DamageBonus::new));
+    }
     public record Condition(
             ConditionType type,
             Optional<Identifier> item,
