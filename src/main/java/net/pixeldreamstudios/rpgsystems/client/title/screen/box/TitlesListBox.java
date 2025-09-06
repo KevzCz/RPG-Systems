@@ -16,6 +16,7 @@ import net.pixeldreamstudios.rpgsystems.title.TitleRegistry;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.function.Consumer;
 
 @Environment(EnvType.CLIENT)
@@ -85,7 +86,7 @@ public final class TitlesListBox {
     }
 
     public Title getSelectedTitle() {
-        List<Title> all = new ArrayList<>(TitleRegistry.all().values());
+        List<Title> all = visibleTitles();
         if (selectedIndex < 0 || selectedIndex >= all.size()) return null;
         return all.get(selectedIndex);
     }
@@ -94,13 +95,7 @@ public final class TitlesListBox {
         int boxX = screenX + LEFT_PADDING;
         int boxY = screenY + bgHeight - BOTTOM_PADDING - BOX_HEIGHT;
 
-        java.util.Set<Identifier> unlockedSet = TitleClientData.getSelfUnlocked();
-        List<Title> allTitles = new ArrayList<>();
-        for (Title t : TitleRegistry.all().values()) {
-            if (!t.hidden || unlockedSet.contains(t.id)) {
-                allTitles.add(t);
-            }
-        }
+        List<Title> allTitles = visibleTitles();
         int maxOffset = Math.max(0, allTitles.size() - VISIBLE_ROWS);
         if (scrollOffset > maxOffset) scrollOffset = maxOffset;
         if (selectedIndex >= allTitles.size()) selectedIndex = -1;
@@ -188,7 +183,7 @@ public final class TitlesListBox {
             return false;
         }
 
-        List<Title> all = new ArrayList<>(TitleRegistry.all().values());
+        List<Title> all = visibleTitles();
         int maxOffset = Math.max(0, all.size() - VISIBLE_ROWS);
         if (amount > 0) {
             scrollOffset = Math.max(0, scrollOffset - 1);
@@ -211,7 +206,7 @@ public final class TitlesListBox {
         int row = Math.min(VISIBLE_ROWS - 1, Math.max(0, (int) Math.floor(relY / rowH)));
         int index = scrollOffset + row;
 
-        List<Title> all = new ArrayList<>(TitleRegistry.all().values());
+        List<Title> all = visibleTitles();
         if (index < all.size()) {
             selectedIndex = index;
             Title selected = all.get(index);
@@ -240,5 +235,16 @@ public final class TitlesListBox {
         int sy = Math.round(y / scale);
         ctx.drawTextWithShadow(font, text, sx, sy, color);
         ctx.getMatrices().pop();
+    }
+
+    private List<Title> visibleTitles() {
+        Set<Identifier> unlockedSet = TitleClientData.getSelfUnlocked();
+        List<Title> list = new ArrayList<>();
+        for (Title t : TitleRegistry.all().values()) {
+            if (!t.hidden || unlockedSet.contains(t.id)) {
+                list.add(t);
+            }
+        }
+        return list;
     }
 }

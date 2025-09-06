@@ -8,11 +8,17 @@ import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.screen.ingame.InventoryScreen;
 import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
+import net.pixeldreamstudios.rpgsystems.client.title.TitleClientData;
 import net.pixeldreamstudios.rpgsystems.client.title.screen.box.TitleBox;
 import net.pixeldreamstudios.rpgsystems.client.title.screen.box.TitleDescriptionBox;
 import net.pixeldreamstudios.rpgsystems.client.title.screen.box.TitlesListBox;
 import net.pixeldreamstudios.rpgsystems.client.title.widget.TitleButtonWidget;
+import net.pixeldreamstudios.rpgsystems.title.Title;
 import net.pixeldreamstudios.rpgsystems.title.TitleRegistry;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Set;
 
 @Environment(EnvType.CLIENT)
 public final class TitleScreen extends Screen {
@@ -65,8 +71,15 @@ public final class TitleScreen extends Screen {
         this.titlesListBox.setSelectionListener(title -> this.descriptionBox.setTitle(title));
         this.titlesListBox.setOnSelectionChanged(title -> this.titleBox.setSelectedTitle(title));
 
-        if (!TitleRegistry.all().isEmpty()) {
-            var first = TitleRegistry.all().values().iterator().next();
+        Set<Identifier> unlocked = TitleClientData.getSelfUnlocked();
+        List<Title> visible = new ArrayList<>();
+        for (Title t : TitleRegistry.all().values()) {
+            if (!t.hidden || unlocked.contains(t.id)) {
+                visible.add(t);
+            }
+        }
+        if (!visible.isEmpty()) {
+            Title first = visible.get(0);
             this.descriptionBox.setTitle(first);
             this.titleBox.setSelectedTitle(first);
         }

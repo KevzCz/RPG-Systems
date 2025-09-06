@@ -3,6 +3,7 @@ package net.pixeldreamstudios.rpgsystems.title.data;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
 import com.mojang.serialization.JsonOps;
 import net.fabricmc.fabric.api.resource.IdentifiableResourceReloadListener;
 import net.minecraft.entity.attribute.EntityAttribute;
@@ -32,21 +33,33 @@ public final class TitlesDataReloader extends JsonDataLoader implements Identifi
     @Override
     protected void apply(Map<Identifier, JsonElement> prepared, ResourceManager manager, Profiler profiler) {
         Map<Identifier, Title> loaded = new HashMap<>();
+
         prepared.forEach((fileId, json) -> {
             try {
+                JsonObject root = json != null && json.isJsonObject() ? json.getAsJsonObject() : null;
+
+                boolean enabled = true;
+                if (root != null && root.has("enabled")) {
+                    enabled = root.get("enabled").getAsBoolean();
+                }
+                if (!enabled) {
+                    RPGSystems.LOGGER.info("Skipping disabled title json {}", fileId);
+                    return;
+                }
+
                 TitleData data = TitleData.CODEC.parse(JsonOps.INSTANCE, json).getOrThrow();
+
                 String path = fileId.getPath();
                 int slash = path.lastIndexOf('/');
                 String leaf = (slash >= 0) ? path.substring(slash + 1) : path;
+                if (leaf.endsWith(".json")) leaf = leaf.substring(0, leaf.length() - 5);
                 Identifier id = Identifier.of(fileId.getNamespace(), leaf);
 
                 Title.Builder b = Title.builder(id, Text.literal(data.name().orElse(leaf)));
                 data.description().ifPresent(desc -> b.description(Text.literal(desc)));
 
-                boolean hiddenTitle = json != null && json.isJsonObject() && json.getAsJsonObject().has("hidden") && json.getAsJsonObject().get("hidden").getAsBoolean();
-                if (hiddenTitle) {
-                    b.hidden(true);
-                }
+                boolean hiddenTitle = root != null && root.has("hidden") && root.get("hidden").getAsBoolean();
+                if (hiddenTitle) b.hidden(true);
 
                 for (TitleData.Bonus group : data.bonuses()) {
                     for (TitleData.AttrBonus ab : group.attributes()) {
@@ -55,12 +68,8 @@ public final class TitlesDataReloader extends JsonDataLoader implements Identifi
                                 .orElseThrow(() -> new IllegalArgumentException("Unknown attribute: " + ab.id()));
                         b.add(entry, ab.amount(), ab.operation());
                     }
-                    for (Identifier spell : group.spells()) {
-                        b.addSpell(spell);
-                    }
-                    for (Identifier power : group.powers()) {
-                        b.addPower(power);
-                    }
+                    for (Identifier spell : group.spells()) b.addSpell(spell);
+                    for (Identifier power : group.powers()) b.addPower(power);
                 }
 
                 for (TitleData.Condition jc : data.conditions()) {
@@ -105,8 +114,7 @@ public final class TitlesDataReloader extends JsonDataLoader implements Identifi
                     ));
                 }
 
-                Title built = b.build();
-                loaded.put(id, built);
+                loaded.put(id, b.build());
             } catch (Exception ex) {
                 RPGSystems.LOGGER.error("Failed to parse title json {}: {}", fileId, ex.toString());
             }
