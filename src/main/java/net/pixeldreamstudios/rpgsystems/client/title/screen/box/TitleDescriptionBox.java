@@ -14,6 +14,7 @@ import net.minecraft.text.MutableText;
 import net.minecraft.text.OrderedText;
 import net.minecraft.text.Style;
 import net.minecraft.text.Text;
+import net.minecraft.util.Formatting;
 import net.minecraft.util.Identifier;
 import net.pixeldreamstudios.iconleadingtooltip.util.IconLeadingUtil;
 import net.pixeldreamstudios.rpgsystems.client.title.TitleClientData;
@@ -75,8 +76,8 @@ public final class TitleDescriptionBox {
 
     private static final class HintSpot {
         final int x, y, w, h;
-        final Text hint;
-        HintSpot(int x, int y, int w, int h, Text hint) { this.x=x; this.y=y; this.w=w; this.h=h; this.hint=hint; }
+        final List<Text> hint;
+        HintSpot(int x, int y, int w, int h, List<Text> hint) { this.x=x; this.y=y; this.w=w; this.h=h; this.hint=hint; }
         boolean contains(double mx, double my) { return mx>=x && mx<=x+w && my>=y && my<=y+h; }
     }
 
@@ -248,8 +249,8 @@ public final class TitleDescriptionBox {
 
                     TitleIconRenderer.renderForCondition(ctx, cl.source, iconX, iconY, iconSize);
 
-                    Text iconTip = iconTooltip(cl.source);
-                    if (iconTip != null) {
+                    List<Text> iconTip = iconTooltip(cl.source);
+                    if (iconTip != null && !iconTip.isEmpty()) {
                         hintSpots.add(new HintSpot(iconX, iconY, iconSize, iconSize, iconTip));
                     }
 
@@ -293,7 +294,7 @@ public final class TitleDescriptionBox {
                     int badgeX = innerX + innerW - infoSize;
                     int badgeY = centerY(startY, scrollY, blockH, infoSize);
                     drawSprite(ctx, INFO_ICON, badgeX, badgeY, infoSize, infoSize);
-                    hintSpots.add(new HintSpot(badgeX, badgeY, infoSize, infoSize, cl.hint));
+                    hintSpots.add(new HintSpot(badgeX, badgeY, infoSize, infoSize, List.of(cl.hint)));
                 }
 
                 y += blockH + UI_MARGIN_Y;
@@ -399,7 +400,6 @@ public final class TitleDescriptionBox {
 
     public void renderHints(DrawContext ctx, int mouseX, int mouseY) {
 
-        // mob tooltip has priority
         for (MobSpot s : mobSpots) {
             if (s.contains(mouseX, mouseY)) {
                 ctx.getMatrices().push();
@@ -418,28 +418,21 @@ public final class TitleDescriptionBox {
         }
     }
 
-
-    // TitleDescriptionBox.java
-    // Full method; drop in to replace your current one.
-    // TitleDescriptionBox.java
     private void drawMobTooltip(DrawContext ctx, int mouseX, int mouseY, MobSpot s) {
-        // (we're already on z+400 from renderHints)
         String modName = modNameOf(s.mobId.getNamespace());
         Text line1 = s.mobName;
         Text line2 = Text.literal(modName);
 
-        // ---- header measurements ----
-        int pad = 6;                   // outer padding
-        int gapHeaderBody = 6;         // gap between header and body
-        int headerTextGap = 2;         // gap between name and mod line
+        int pad = 6;
+        int gapHeaderBody = 6;
+        int headerTextGap = 2;
         int textH = font.fontHeight;
         int w1 = font.getWidth(line1);
         int w2 = font.getWidth(line2);
         int headerW = Math.max(w1, w2) + pad * 2;
         int headerH = pad + (textH * 2 + headerTextGap) + pad;
 
-        // ---- preview section sizing: 1×1 baseline + excess (no mob scaling) ----
-        final int BASE = 40; // visual baseline: fits a 1×1 mob snugly
+        final int BASE = 40;
         var entity = TitleIconRenderer.getPreviewEntity(s.mobId);
         float eW = entity != null ? Math.max(0.1f, entity.getWidth())  : 1.0f;
         float eH = entity != null ? Math.max(0.1f, entity.getHeight()) : 1.0f;
@@ -454,20 +447,16 @@ public final class TitleDescriptionBox {
         int bodyW = previewAreaW + bodyPad * 2;
         int bodyH = previewAreaH + bodyPad * 2;
 
-        // Full tooltip size before clamping
         int tipW = Math.max(headerW, bodyW);
-        int tipH = headerH + gapHeaderBody + 1 /*divider*/ + bodyH;
+        int tipH = headerH + gapHeaderBody + 1 + bodyH;
 
-        // ---- on-screen placement (flip/clamp) ----
         int cursorPad = 12, edgePad = 4;
         var win = MinecraftClient.getInstance().getWindow();
         int sw = win.getScaledWidth(), sh = win.getScaledHeight();
 
-        // Cap to screen if necessary (we still don't scale the mob — section just fills available space)
         if (tipW > sw - edgePad * 2) {
             tipW = sw - edgePad * 2;
             bodyW = tipW;
-            // If the preview would be wider than the body after capping, expand height to keep the mob centered
             if (bodyW < previewAreaW + bodyPad * 2) {
                 float squeeze = (float)(previewAreaW + bodyPad * 2) / Math.max(1, bodyW);
                 previewAreaH = Math.round(previewAreaH * squeeze);
@@ -487,7 +476,6 @@ public final class TitleDescriptionBox {
         x = Math.max(edgePad, Math.min(sw - tipW - edgePad, x));
         y = Math.max(edgePad, Math.min(sh - tipH - edgePad, y));
 
-        // ---- background + border ----
         int bg = 0xF0101010;
         int border1 = 0x50505050;
         int border2 = 0xA0A0A0A0;
@@ -496,7 +484,6 @@ public final class TitleDescriptionBox {
         ctx.fill(x, y, x + tipW, y + tipH, bg);
         ctx.drawBorder(x, y, tipW, tipH, border2);
 
-        // ---- header (its own section, centered text) ----
         int headerCenterX = x + tipW / 2;
         int nameY = y + pad;
         int modY  = nameY + textH + headerTextGap;
@@ -504,38 +491,26 @@ public final class TitleDescriptionBox {
         ctx.drawCenteredTextWithShadow(font, line1, headerCenterX, nameY, 0xFFFFFFFF);
         ctx.drawCenteredTextWithShadow(font, line2, headerCenterX, modY, 0xFFB0B0B0);
 
-        // Divider between header and preview section
         int dividerY = y + headerH + (gapHeaderBody / 2);
         ctx.fill(x + 2, dividerY, x + tipW - 2, dividerY + 1, 0x40FFFFFF);
 
-        // ---- preview section (its own section, mob centered) ----
         int bodyX = x;
         int bodyY = y + headerH + gapHeaderBody + 1;
 
-        // Subtle body strip so it feels like a separate area
         ctx.fill(bodyX + 1, bodyY + 1, bodyX + tipW - 1, bodyY + bodyH - 1, 0x08080808);
 
-        // Center the render area inside the body
         int areaLeft = bodyX + (tipW - previewAreaW) / 2;
         int areaTop  = bodyY + (bodyH - previewAreaH) / 2;
 
-        // Optional faint frame for the actual render area
         ctx.drawBorder(areaLeft, areaTop, previewAreaW, previewAreaH, 0x20202020);
 
-        // Render box (N×N) centered inside the area
         int renderLeft = areaLeft + (previewAreaW - BASE) / 2;
         int renderTop  = areaTop  + (previewAreaH - BASE) / 2;
 
-        // Clip the mob strictly to its section
         ctx.enableScissor(areaLeft, areaTop, areaLeft + previewAreaW, areaTop + previewAreaH);
         TitleIconRenderer.renderEntityPreview(ctx, s.mobId, renderLeft, renderTop, BASE);
         ctx.disableScissor();
     }
-
-
-
-
-
 
     private static String modNameOf(String namespace) {
         if ("minecraft".equals(namespace)) return "Minecraft";
@@ -1186,24 +1161,35 @@ public final class TitleDescriptionBox {
         return i;
     }
 
-    private Text iconTooltip(Title.Condition c) {
+    private List<Text> iconTooltip(Title.Condition c) {
         if (c.item.isPresent()) {
-            var item = Registries.ITEM.get(c.item.get());
-            return plainName(Text.translatable(item.getTranslationKey()));
+            Identifier id = c.item.get();
+            var item = Registries.ITEM.get(id);
+            Text name = plainName(Text.translatable(item.getTranslationKey()));
+            String mod = modNameOf(id.getNamespace());
+            return List.of(name, Text.literal(mod).formatted(Formatting.GRAY));
         }
         if (c.block.isPresent()) {
-            var block = Registries.BLOCK.get(c.block.get());
-            return plainName(Text.translatable(block.getTranslationKey()));
+            Identifier id = c.block.get();
+            var block = Registries.BLOCK.get(id);
+            Text name = plainName(Text.translatable(block.getTranslationKey()));
+            String mod = modNameOf(id.getNamespace());
+            return List.of(name, Text.literal(mod).formatted(Formatting.GRAY));
         }
         if (c.entityType.isPresent()) {
-            var type = Registries.ENTITY_TYPE.get(c.entityType.get());
-            return plainName(Text.translatable(type.getTranslationKey()));
+            var typeId = c.entityType.get();
+            var type = Registries.ENTITY_TYPE.get(typeId);
+            Text name = plainName(Text.translatable(type.getTranslationKey()));
+            String mod = modNameOf(typeId.getNamespace());
+            return List.of(name, Text.literal(mod).formatted(Formatting.GRAY));
         }
         if (c.entitySpec.isPresent()) {
             Identifier mid = Identifier.tryParse(c.entitySpec.get());
             if (mid != null && Registries.ENTITY_TYPE.containsId(mid)) {
                 var type = Registries.ENTITY_TYPE.get(mid);
-                return plainName(Text.translatable(type.getTranslationKey()));
+                Text name = plainName(Text.translatable(type.getTranslationKey()));
+                String mod = modNameOf(mid.getNamespace());
+                return List.of(name, Text.literal(mod).formatted(Formatting.GRAY));
             }
         }
         return null;
