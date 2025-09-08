@@ -15,7 +15,7 @@ public final class RPGSystemsConfig {
     public static final class Systems {
         public boolean party = true;
         public boolean pet = false;
-        public boolean title = false;
+        public boolean title = true;
     }
     public static final class Party {
         public boolean logChatToConsole = true;
