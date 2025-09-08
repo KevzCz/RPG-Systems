@@ -19,9 +19,9 @@
 		"EntityRelationsHelpfulGateMixin",
 		"LivingEntityDamageMixin",
 		"LivingEntityHealMixin",
-		"DamageTrackerAccessor",
 		"LivingEntityDamageBonusMixin",
-		"ProjectileIgnoreAlliesMixin"
+		"ProjectileIgnoreAlliesMixin",
+		"LivingEntityLastRawDamageMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

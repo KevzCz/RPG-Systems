@@ -88,12 +88,16 @@ public final class HealingNumbersRenderer {
             Floating f = ACTIVE.get(i);
 
             Entity e = world.getEntityById(f.entityId);
-            if (!(e instanceof LivingEntity living) || !living.isAlive()) { ACTIVE.remove(i); continue; }
+            LivingEntity living = e instanceof LivingEntity ? (LivingEntity) e : null;
 
             int ageTicks = (int)(now - f.spawnTick);
             if (ageTicks >= LIFETIME_TICKS) { ACTIVE.remove(i); continue; }
 
-            if (f.needsBootstrap()) f.bootstrapFromEntity(living);
+            if (living != null && f.needsBootstrap()) {
+                f.bootstrapFromEntity(living);
+            }
+
+            if (f.needsBootstrap()) continue;
 
             float tLife = (ageTicks + tickDelta) / LIFETIME_TICKS;
             float rise  = easeOutCubic(tLife) * BASE_RISE_PER_SEC;
@@ -194,7 +198,7 @@ public final class HealingNumbersRenderer {
 
         Floating(MinecraftClient mc, int entityId, float amount, boolean isSpell, UUID sourceUuid, long spawnTick) {
             this.entityId = entityId;
-            this.displayText = String.format(Locale.ROOT, "+%.2f", Math.abs(amount));
+            this.displayText = formatAmount(amount);
             this.isSpell = isSpell;
             this.sourceUuid = sourceUuid;
             this.spawnTick = spawnTick;
@@ -205,6 +209,23 @@ public final class HealingNumbersRenderer {
                 Entity e = mc.world.getEntityById(entityId);
                 if (e instanceof LivingEntity living) bootstrapFromEntity(living);
             }
+        }
+
+        static String formatAmount(float amount) {
+            float abs = Math.abs(amount);
+            long rounded = Math.round(abs);
+            if (Math.abs(abs - rounded) < 0.005f) {
+                return "+" + Long.toString(rounded);
+            }
+            String s = String.format(Locale.ROOT, "+%.2f", abs);
+            int dot = s.indexOf('.');
+            if (dot >= 0) {
+                int end = s.length();
+                while (end > dot + 1 && s.charAt(end - 1) == '0') end--;
+                if (end == dot + 1) end = dot;
+                s = s.substring(0, end);
+            }
+            return s;
         }
 
         boolean needsBootstrap() {

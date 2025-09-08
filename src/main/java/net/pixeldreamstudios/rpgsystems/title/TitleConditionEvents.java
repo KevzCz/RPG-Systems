@@ -13,7 +13,6 @@ import net.minecraft.entity.EntityType;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.attribute.EntityAttribute;
 import net.minecraft.entity.attribute.EntityAttributeInstance;
-import net.minecraft.entity.damage.DamageTracker;
 import net.minecraft.item.Item;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.registry.Registries;
@@ -33,8 +32,8 @@ import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.World;
 import net.minecraft.world.gen.StructureAccessor;
 import net.minecraft.world.gen.structure.Structure;
+import net.pixeldreamstudios.rpgsystems.accessor.LivingEntityRawDamageAccess;
 import net.pixeldreamstudios.rpgsystems.api.TitleApi;
-import net.pixeldreamstudios.rpgsystems.mixin.DamageTrackerAccessor;
 import net.pixeldreamstudios.rpgsystems.network.TitleNet;
 
 import java.util.ArrayList;
@@ -234,17 +233,18 @@ public final class TitleConditionEvents {
         TitlesPersistentState state = TitlesPersistentState.get(server);
         TitlesPersistentState.PlayerTitles pt = state.getOrCreate(player.getUuid());
 
+        float lastRaw = 0f;
+        if (killed instanceof LivingEntityRawDamageAccess acc) {
+            java.util.UUID a = acc.rpgsystems$getLastRawDamageAttacker();
+            if (a != null && a.equals(player.getUuid())) {
+                lastRaw = acc.rpgsystems$getLastRawDamageAmount();
+            }
+        }
+        long lastAmt = Math.max(0L, Math.round(lastRaw));
+
         boolean changed = false;
 
-        float lastDmg = 0f;
-        DamageTracker tracker = killed.getDamageTracker();
-        if (tracker instanceof DamageTrackerAccessor acc) {
-            var list = acc.rpg$getRecentDamage();
-            if (!list.isEmpty()) lastDmg = list.get(list.size() - 1).damage();
-        }
-        long lastAmt = Math.max(0L, Math.round(lastDmg));
-
-        for (Map.Entry<Identifier, Title> e : snapshotTitleEntries()) {
+        for (var e : snapshotTitleEntries()) {
             Identifier id = e.getKey();
             Title t = e.getValue();
             if (isAlreadyUnlocked(pt, id)) continue;
@@ -259,6 +259,7 @@ public final class TitleConditionEvents {
                     state.markDirty();
                     changed = true;
                 }
+
                 if ((c.type == Title.Condition.Type.DEAL_DAMAGE_TOTAL || c.type == Title.Condition.Type.DEAL_DAMAGE_MAX)
                         && lastAmt > 0
                         && matchesEntitySpec(killed, c)

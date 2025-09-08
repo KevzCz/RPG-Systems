@@ -104,12 +104,16 @@ public final class DamageNumbersRenderer {
             Floating f = ACTIVE.get(i);
 
             Entity e = world.getEntityById(f.entityId);
-            if (!(e instanceof LivingEntity living) || !living.isAlive()) { ACTIVE.remove(i); continue; }
+            LivingEntity living = e instanceof LivingEntity ? (LivingEntity) e : null;
 
             int ageTicks = (int) (now - f.spawnTick);
             if (ageTicks >= LIFETIME_TICKS) { ACTIVE.remove(i); continue; }
 
-            if (f.needsBootstrap()) f.bootstrapFromEntity(living);
+            if (living != null && f.needsBootstrap()) {
+                f.bootstrapFromEntity(living);
+            }
+
+            if (f.needsBootstrap()) continue;
 
             double dx = f.baseX - camPos.x;
             double dz = f.baseZ - camPos.z;
@@ -154,6 +158,7 @@ public final class DamageNumbersRenderer {
             drawTextAt((int)(alpha * 255f), rgb, f.displayText, pos, camera, context.matrixStack(), context.consumers(), scale, tilt);
         }
     }
+
 
     private static boolean isFromMyParty(UUID sourceUuid) {
         if (sourceUuid == null) return false;
@@ -208,7 +213,7 @@ public final class DamageNumbersRenderer {
 
         Floating(MinecraftClient mc, int entityId, float amount, boolean crit, boolean pet, int rgb, UUID sourceUuid, long spawnTick) {
             this.entityId = entityId;
-            this.displayText = String.format(java.util.Locale.ROOT, "%.2f", Math.abs(amount));
+            this.displayText = formatAmount(amount);
             this.crit = crit;
             this.pet = pet;
             this.rgb = rgb;
@@ -221,6 +226,23 @@ public final class DamageNumbersRenderer {
                 Entity e = mc.world.getEntityById(entityId);
                 if (e instanceof LivingEntity living) bootstrapFromEntity(living);
             }
+        }
+
+        static String formatAmount(float amount) {
+            float abs = Math.abs(amount);
+            long rounded = Math.round(abs);
+            if (Math.abs(abs - rounded) < 0.005f) {
+                return Long.toString(rounded);
+            }
+            String s = String.format(java.util.Locale.ROOT, "%.2f", abs);
+            int dot = s.indexOf('.');
+            if (dot >= 0) {
+                int end = s.length();
+                while (end > dot + 1 && s.charAt(end - 1) == '0') end--;
+                if (end == dot + 1) end = dot;
+                s = s.substring(0, end);
+            }
+            return s;
         }
 
         boolean needsBootstrap() {
@@ -236,6 +258,7 @@ public final class DamageNumbersRenderer {
             baseZ = living.getZ();
         }
     }
+
 
 
     private static float computeAlpha(int ageTicks, float tickDelta) {

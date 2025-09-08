@@ -5,6 +5,7 @@ import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.Tameable;
 import net.minecraft.entity.damage.DamageSource;
 import net.minecraft.world.World;
+import net.pixeldreamstudios.rpgsystems.accessor.LivingEntityRawDamageAccess;
 import net.pixeldreamstudios.rpgsystems.network.EnemyNet;
 import net.pixeldreamstudios.rpgsystems.party.PartyAllies;
 import net.pixeldreamstudios.rpgsystems.util.DamageColorUtil;
@@ -40,14 +41,35 @@ public abstract class LivingEntityDamageMixin {
         int rgb = DamageColorUtil.colorOf(world, source, self);
 
         Entity attacker = source.getAttacker();
-        boolean crit = false;
-
-
         boolean isPet = attacker instanceof Tameable;
 
         UUID owner = attacker != null ? PartyAllies.owningPlayerUuidFromAttacker(attacker) : null;
         UUID srcUuid = owner != null ? owner : (attacker != null ? attacker.getUuid() : new UUID(0L, 0L));
 
-        EnemyNet.broadcastDamageNumber(self, taken, crit, isPet, rgb, srcUuid);
+        float displayDamage = taken;
+
+        boolean killedNow = post <= 0.0f;
+        boolean rawMatchesAttacker = false;
+        float rawAmount = 0.0f;
+
+        if (self instanceof LivingEntityRawDamageAccess acc) {
+            UUID rawAttacker = acc.rpgsystems$getLastRawDamageAttacker();
+            if (rawAttacker != null) {
+                if (owner != null) {
+                    rawMatchesAttacker = rawAttacker.equals(owner);
+                } else if (attacker != null) {
+                    rawMatchesAttacker = rawAttacker.equals(attacker.getUuid());
+                }
+                if (rawMatchesAttacker) rawAmount = acc.rpgsystems$getLastRawDamageAmount();
+            }
+        }
+
+        if (killedNow && rawMatchesAttacker && rawAmount > 0.0f) {
+            displayDamage = Math.max(displayDamage, rawAmount);
+        }
+
+        boolean crit = false;
+
+        EnemyNet.broadcastDamageNumber(self, displayDamage, crit, isPet, rgb, srcUuid);
     }
 }
