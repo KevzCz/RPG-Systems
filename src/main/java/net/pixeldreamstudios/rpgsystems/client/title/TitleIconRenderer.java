@@ -57,7 +57,6 @@ public final class TitleIconRenderer {
         return false;
     }
 
-    // TitleIconRenderer.java
     public static void drawMob(DrawContext context, int x, int y, int scale, int mouseX, int mouseY, LivingEntity entity) {
         MinecraftClient client = MinecraftClient.getInstance();
         EntityRenderDispatcher dispatcher = client.getEntityRenderDispatcher();
@@ -66,7 +65,6 @@ public final class TitleIconRenderer {
         matrices.translate(x, y, 100.0);
         matrices.scale(scale, -scale, scale);
 
-        // Use entity height so feet/head are balanced around the target point
         float yOff = 0.5f + (entity.getHeight() * 0.5f);
         matrices.translate(0.0, -yOff, 0.0);
 
@@ -122,7 +120,6 @@ public final class TitleIconRenderer {
         return true;
     }
 
-    // Keep this method signature unchanged
     public static boolean renderEntityPreview(DrawContext ctx, Identifier entityTypeId, int x, int y, int sizePx) {
         MinecraftClient mc = MinecraftClient.getInstance();
         if (mc == null || mc.world == null) return false;
@@ -130,14 +127,10 @@ public final class TitleIconRenderer {
         LivingEntity entity = getPreviewEntity(entityTypeId);
         if (entity == null) return false;
 
-        // Center of the N×N render box
         int cx = x + Math.round(sizePx * 0.5f);
-        int cy = y + Math.round(sizePx * 0.5f); // ⬅️ centered (was 0.90f)
-
-        // Constant scale: section grows for big mobs; we never resize the mob itself
+        int cy = y + Math.round(sizePx * 0.5f);
         int scale = Math.max(1, Math.round(sizePx / 4.0f));
 
-        // Slow spin
         float tickDelta = mc.getRenderTickCounter().getTickDelta(false);
         float t = mc.world.getTime() + tickDelta;
         float angle = (t * 2.5f) % 360.0f;
@@ -149,7 +142,6 @@ public final class TitleIconRenderer {
         m.scale(scale, -scale, scale);
         m.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(angle));
 
-        // Height-aware vertical centering: baseline 1 block + excess
         float yOff = 0.5f + (entity.getHeight() * 0.5f);
         m.translate(0.0, -yOff, 0.0);
 
