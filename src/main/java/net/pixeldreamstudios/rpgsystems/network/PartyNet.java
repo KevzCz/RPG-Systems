@@ -11,11 +11,8 @@ import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.text.Text;
 import net.minecraft.util.ActionResult;
 import net.minecraft.util.Identifier;
-import net.pixeldreamstudios.rpgsystems.network.party.PartyHudPayloads;
+import net.pixeldreamstudios.rpgsystems.network.party.*;
 import net.pixeldreamstudios.rpgsystems.network.party.PartyHudPayloads.*;
-import net.pixeldreamstudios.rpgsystems.network.party.PartyInvitePayloads;
-import net.pixeldreamstudios.rpgsystems.network.party.PartyJoinRequestPayloads;
-import net.pixeldreamstudios.rpgsystems.network.party.PartySettingsPayloads;
 import net.pixeldreamstudios.rpgsystems.party.Party;
 import net.pixeldreamstudios.rpgsystems.party.PartyPersistentState;
 import net.puffish.skillsmod.SkillsMod;
@@ -58,7 +55,7 @@ public final class PartyNet {
         PayloadTypeRegistry.playS2C().register(PartySettingsPayloads.Sync.ID, PartySettingsPayloads.Sync.CODEC);
         PayloadTypeRegistry.playC2S().register(PartyInvitePayloads.EligibleInviteesRequest.ID, PartyInvitePayloads.EligibleInviteesRequest.CODEC);
         PayloadTypeRegistry.playS2C().register(PartyInvitePayloads.EligibleInviteesResponse.ID, PartyInvitePayloads.EligibleInviteesResponse.CODEC);
-
+        PayloadTypeRegistry.playS2C().register(PartyStatusEffectsPayloads.MemberEffects.ID, PartyStatusEffectsPayloads.MemberEffects.CODEC);
         ServerPlayNetworking.registerGlobalReceiver(
                 PartyInvitePayloads.EligibleInviteesRequest.ID, (payload, ctx) -> {
                     ServerPlayerEntity who = ctx.player();
@@ -329,7 +326,8 @@ public final class PartyNet {
                 java.util.List<String> effIds =
                         net.pixeldreamstudios.rpgsystems.network.party.PartyStatusEffectsSync.snapshotEffectIds(subject);
                 ServerPlayNetworking.send(viewer,
-                        new net.pixeldreamstudios.rpgsystems.network.party.PartyStatusEffectsPayloads.MemberEffects(
+                        new net.pixeldreamstudios.rpgsystems.network.party.
+                                PartyStatusEffectsPayloads.MemberEffects(
                                 memberId, effIds
                         ));
             }

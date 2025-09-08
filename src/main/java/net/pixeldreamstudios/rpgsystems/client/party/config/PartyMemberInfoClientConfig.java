@@ -30,15 +30,25 @@ public final class PartyMemberInfoClientConfig {
 
     public static synchronized void load() {
         Path p = path();
+        boolean needSave = false;
         if (Files.exists(p)) {
             try (Reader r = Files.newBufferedReader(p)) {
                 INSTANCE = GSON.fromJson(r, PartyMemberInfoClientConfig.class);
-            } catch (Throwable ignored) {
+                if (INSTANCE == null) {
+                    INSTANCE = new PartyMemberInfoClientConfig();
+                    needSave = true;
+                }
+            } catch (Throwable t) {
+                INSTANCE = new PartyMemberInfoClientConfig();
+                needSave = true;
             }
+        } else {
+            INSTANCE = new PartyMemberInfoClientConfig();
+            needSave = true;
         }
-        if (INSTANCE == null) INSTANCE = new PartyMemberInfoClientConfig();
+
         INSTANCE.enforceMaxThreeBars();
-        save();
+        if (needSave) save();
     }
 
     public static synchronized void save() {

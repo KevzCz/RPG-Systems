@@ -13,8 +13,8 @@ import java.util.Map;
 import java.util.UUID;
 
 @Environment(EnvType.CLIENT)
-public final class PartyHighlighter {
-    private PartyHighlighter() {}
+public final class ClientPartyHighlighter {
+    private ClientPartyHighlighter() {}
 
     private static final MinecraftClient MC = MinecraftClient.getInstance();
     private static boolean enabled = false;
@@ -54,7 +54,7 @@ public final class PartyHighlighter {
     /** Color to use when we’re glowing them. */
     public static int getColor(Entity e) {
         UUID id = e.getUuid();
-        return COLOR_CACHE.computeIfAbsent(id, PartyHighlighter::colorForUuid);
+        return COLOR_CACHE.computeIfAbsent(id, ClientPartyHighlighter::colorForUuid);
     }
 
     private static int colorForUuid(UUID u) {

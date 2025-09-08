@@ -31,6 +31,10 @@ public final class TitleNet {
 
     public static void registerServer() {
         PayloadTypeRegistry.playC2S().register(TitlePayloads.RequestSetActive.ID, TitlePayloads.RequestSetActive.CODEC);
+        PayloadTypeRegistry.playS2C().register(TitlePayloads.SyncSelf.ID, TitlePayloads.SyncSelf.CODEC);
+        PayloadTypeRegistry.playS2C().register(TitlePayloads.SyncActive.ID, TitlePayloads.SyncActive.CODEC);
+        PayloadTypeRegistry.playS2C().register(TitlePayloads.SyncDefinitions.ID, TitlePayloads.SyncDefinitions.CODEC);
+        PayloadTypeRegistry.playS2C().register(TitlePayloads.SyncProgress.ID, TitlePayloads.SyncProgress.CODEC);
 
         ServerPlayNetworking.registerGlobalReceiver(TitlePayloads.RequestSetActive.ID, (payload, context) -> {
             ServerPlayerEntity player = context.player();
@@ -65,10 +69,6 @@ public final class TitleNet {
 
     @Environment(EnvType.CLIENT)
     public static void registerClient() {
-        PayloadTypeRegistry.playS2C().register(TitlePayloads.SyncSelf.ID, TitlePayloads.SyncSelf.CODEC);
-        PayloadTypeRegistry.playS2C().register(TitlePayloads.SyncActive.ID, TitlePayloads.SyncActive.CODEC);
-        PayloadTypeRegistry.playS2C().register(TitlePayloads.SyncDefinitions.ID, TitlePayloads.SyncDefinitions.CODEC);
-        PayloadTypeRegistry.playS2C().register(TitlePayloads.SyncProgress.ID, TitlePayloads.SyncProgress.CODEC);
         ClientPlayNetworking.registerGlobalReceiver(TitlePayloads.SyncSelf.ID, (payload, context) ->
                 context.client().execute(() ->
                         TitleClientData.setSelf(payload.unlocked(), payload.active().orElse(null))

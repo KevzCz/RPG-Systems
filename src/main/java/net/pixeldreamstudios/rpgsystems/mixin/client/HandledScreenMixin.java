@@ -13,7 +13,7 @@ import net.minecraft.util.Identifier;
 import net.pixeldreamstudios.rpgsystems.client.party.ClientPartyHudData;
 import net.pixeldreamstudios.rpgsystems.client.party.screen.PartyScreen;
 import net.pixeldreamstudios.rpgsystems.client.title.screen.TitleScreen;
-import net.pixeldreamstudios.rpgsystems.config.RPGSystemsConfig;
+import net.pixeldreamstudios.rpgsystems.network.SystemNet;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
@@ -61,13 +61,13 @@ public abstract class HandledScreenMixin<T extends ScreenHandler> extends Screen
 
     @Unique
     private boolean titles$shouldAttach() {
-        if (!RPGSystemsConfig.get().systems.title) return false;
+        if (!SystemNet.SystemsClientState.titleEnabled()) return false;
         return base$shouldAttach();
     }
 
     @Unique
     private boolean party$shouldAttach() {
-        if (!RPGSystemsConfig.get().systems.party) return false;
+        if (!SystemNet.SystemsClientState.partyEnabled()) return false;
         return base$shouldAttach();
     }
 

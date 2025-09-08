@@ -5,12 +5,9 @@ import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.fabricmc.fabric.api.resource.ResourceManagerHelper;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.resource.ResourceType;
-import net.pixeldreamstudios.rpgsystems.compat.showbuild.ShowBuildCompatNet;
+import net.pixeldreamstudios.rpgsystems.compat.showbuild.ShowBuildCompatNetServer;
 import net.pixeldreamstudios.rpgsystems.config.RPGSystemsConfig;
-import net.pixeldreamstudios.rpgsystems.network.EnemyNet;
-import net.pixeldreamstudios.rpgsystems.network.PartyNet;
-import net.pixeldreamstudios.rpgsystems.network.TitleNet;
-import net.pixeldreamstudios.rpgsystems.network.TitlePowerNet;
+import net.pixeldreamstudios.rpgsystems.network.*;
 import net.pixeldreamstudios.rpgsystems.party.PartyCommands;
 import net.pixeldreamstudios.rpgsystems.pet.PetCommands;
 import net.pixeldreamstudios.rpgsystems.title.TitleCommands;
@@ -26,13 +23,13 @@ public class RPGSystems implements ModInitializer {
 	@Override
 	public void onInitialize() {
 		RPGSystemsConfig.load();
-
+		SystemNet.registerServer();
 		if (RPGSystemsConfig.get().systems.party) {
 			PartyNet.initCommon();
 		}
 
 		if (FabricLoader.getInstance().isModLoaded("showmeyourbuild")) {
-			ShowBuildCompatNet.initCommon();
+			ShowBuildCompatNetServer.initServer();
 		}
 
 		EnemyNet.initCommon();

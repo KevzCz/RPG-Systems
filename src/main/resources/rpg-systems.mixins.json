@@ -9,7 +9,8 @@
 		"client.EntityRelationsHelpfulGateClientMixin",
 		"client.SpellTargetHelpfulFilterMixin",
 		"client.HandledScreenMixin",
-		"client.EntityRendererMixin"
+		"client.EntityRendererMixin",
+		"client.ProjectileIgnoreAlliesClientMixin"
 	],
 	"mixins": [
 		"MobEntityPetMixin",
@@ -19,7 +20,8 @@
 		"LivingEntityDamageMixin",
 		"LivingEntityHealMixin",
 		"DamageTrackerAccessor",
-		"LivingEntityDamageBonusMixin"
+		"LivingEntityDamageBonusMixin",
+		"ProjectileIgnoreAlliesMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

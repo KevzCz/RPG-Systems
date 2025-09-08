@@ -29,19 +29,24 @@ public final class DamageNumbersClientConfig {
 
     public static DamageNumbersClientConfig get() {
         if (INSTANCE == null) {
+            boolean needSave = false;
             try {
                 if (Files.exists(FILE)) {
                     INSTANCE = GSON.fromJson(Files.readString(FILE), DamageNumbersClientConfig.class);
                     if (INSTANCE.showMode == null) INSTANCE.showMode = ShowMode.ALL;
                 } else {
                     INSTANCE = new DamageNumbersClientConfig();
+                    needSave = true;
                 }
             } catch (Exception e) {
                 INSTANCE = new DamageNumbersClientConfig();
+                needSave = true;
             }
+            if (needSave) save();
         }
         return INSTANCE;
     }
+
 
     public static void save() {
         try {

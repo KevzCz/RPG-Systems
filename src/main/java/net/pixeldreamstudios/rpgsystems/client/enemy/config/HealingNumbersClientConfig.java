@@ -20,17 +20,28 @@ public final class HealingNumbersClientConfig {
 
     private HealingNumbersClientConfig() {}
 
-    public static HealingNumbersClientConfig get() {
+    public static synchronized HealingNumbersClientConfig get() {
         if (INSTANCE == null) {
+            boolean needSave = false;
             try {
                 if (Files.exists(FILE)) {
                     INSTANCE = GSON.fromJson(Files.readString(FILE), HealingNumbersClientConfig.class);
+                    if (INSTANCE == null) {
+                        INSTANCE = new HealingNumbersClientConfig();
+                        needSave = true;
+                    } else if (INSTANCE.mode == null) {
+                        INSTANCE.mode = Mode.ALL;
+                        needSave = true;
+                    }
                 } else {
                     INSTANCE = new HealingNumbersClientConfig();
+                    needSave = true;
                 }
             } catch (Exception e) {
                 INSTANCE = new HealingNumbersClientConfig();
+                needSave = true;
             }
+            if (needSave) save();
         }
         return INSTANCE;
     }

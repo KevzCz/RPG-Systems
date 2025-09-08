@@ -20,12 +20,12 @@ import net.pixeldreamstudios.rpgsystems.client.party.hud.PartyInviteHud;
 import net.pixeldreamstudios.rpgsystems.client.party.hud.PartyInviteInventoryUi;
 import net.pixeldreamstudios.rpgsystems.client.party.hud.PartyJoinRequestHud;
 import net.pixeldreamstudios.rpgsystems.client.party.screen.PartyScreen;
-import net.pixeldreamstudios.rpgsystems.client.title.PlayerTitleRenderer;
+import net.pixeldreamstudios.rpgsystems.client.title.TitlePlayerRenderer;
 import net.pixeldreamstudios.rpgsystems.client.title.TitlePowersClient;
 import net.pixeldreamstudios.rpgsystems.client.title.TitleTextureResolver;
-import net.pixeldreamstudios.rpgsystems.compat.showbuild.ShowBuildCompatNet;
 import net.pixeldreamstudios.rpgsystems.config.RPGSystemsConfig;
 import net.pixeldreamstudios.rpgsystems.network.EnemyNet;
+import net.pixeldreamstudios.rpgsystems.network.SystemNet;
 import net.pixeldreamstudios.rpgsystems.network.TitleNet;
 import net.pixeldreamstudios.rpgsystems.network.TitlePowerNet;
 import org.lwjgl.glfw.GLFW;
@@ -38,7 +38,9 @@ public final class RPGSystemsClient implements ClientModInitializer {
 
     @Override
     public void onInitializeClient() {
-        PartyHudClientConfig.load();
+        ClientConfigLoad.init();
+
+        SystemNet.registerClient();
 
         ClientPartyInvites.initClientReceivers();
         ClientPartyHudData.initClientReceivers();
@@ -49,9 +51,11 @@ public final class RPGSystemsClient implements ClientModInitializer {
         PartyInviteHud.init();
         PartyInviteInventoryUi.init();
         PartyJoinRequestHud.init();
-        PartyHighlighter.init();
+        ClientPartyHighlighter.init();
 
-        ShowBuildCompatNet.initClient();
+        if (net.fabricmc.loader.api.FabricLoader.getInstance().isModLoaded("showmeyourbuild")) {
+            net.pixeldreamstudios.rpgsystems.compat.showbuild.ShowBuildCompatNetClient.initClient();
+        }
 
         EnemyNet.initClient();
 
@@ -61,7 +65,7 @@ public final class RPGSystemsClient implements ClientModInitializer {
 
         if (RPGSystemsConfig.get().systems.title) {
             TitleNet.registerClient();
-            PlayerTitleRenderer.init();
+            TitlePlayerRenderer.init();
             TitlePowerNet.registerClient();
             TitlePowersClient.init();
         }
@@ -93,7 +97,7 @@ public final class RPGSystemsClient implements ClientModInitializer {
                 }
             }
             while (highlightParty.wasPressed()) {
-                PartyHighlighter.toggle();
+                ClientPartyHighlighter.toggle();
             }
             while (togglePartyHud.wasPressed()) {
                 var cfg = PartyHudClientConfig.get();
@@ -111,7 +115,7 @@ public final class RPGSystemsClient implements ClientModInitializer {
             ClientPartyJoinRequests.clearAll();
             ClientPartyChat.clearAll();
             ClientPartyStatusEffects.clearAll();
-            PartyHighlighter.disable();
+            ClientPartyHighlighter.disable();
             if (RPGSystemsConfig.get().systems.title) {
                 TitleTextureResolver.clear();
             }
@@ -123,7 +127,7 @@ public final class RPGSystemsClient implements ClientModInitializer {
             ClientPartyJoinRequests.clearAll();
             ClientPartyChat.clearAll();
             ClientPartyStatusEffects.clearAll();
-            PartyHighlighter.disable();
+            ClientPartyHighlighter.disable();
             if (RPGSystemsConfig.get().systems.title) {
                 TitleTextureResolver.clear();
             }

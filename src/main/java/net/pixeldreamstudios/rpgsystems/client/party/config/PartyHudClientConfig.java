@@ -11,7 +11,7 @@ import java.nio.file.Path;
 
 public final class PartyHudClientConfig {
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
-    private static final String FILE_NAME = "rpgsystems_client.json";
+    private static final String FILE_NAME = "rpgsystems_partyhud_client.json";
     private static PartyHudClientConfig INSTANCE;
 
     public boolean hudEnabled = true;
@@ -38,39 +38,52 @@ public final class PartyHudClientConfig {
 
     public static synchronized void load() {
         Path p = path();
+        boolean needSave = false;
+        PartyHudClientConfig loaded = null;
+
         if (Files.exists(p)) {
             try (Reader r = Files.newBufferedReader(p)) {
-                INSTANCE = GSON.fromJson(r, PartyHudClientConfig.class);
-            } catch (Throwable ignored) {
+                loaded = GSON.fromJson(r, PartyHudClientConfig.class);
+            } catch (Throwable t) {
+                try { Files.move(p, p.resolveSibling(FILE_NAME + ".bak")); } catch (Throwable ignored) {}
+                needSave = true;
             }
+        } else {
+            needSave = true;
         }
-        if (INSTANCE == null) INSTANCE = new PartyHudClientConfig();
-        INSTANCE.enforceMaxThreeBars();
-        save();
+
+        INSTANCE = (loaded != null) ? loaded : new PartyHudClientConfig();
+
+        if (INSTANCE.enforceMaxThreeBars()) needSave = true;
+
+        if (needSave) save();
     }
 
     public static synchronized void save() {
+        if (INSTANCE == null) INSTANCE = new PartyHudClientConfig();
+        Path p = path();
         try {
-            Files.createDirectories(path().getParent());
-            try (Writer w = Files.newBufferedWriter(path())) {
+            Files.createDirectories(p.getParent());
+            try (Writer w = Files.newBufferedWriter(p)) {
                 GSON.toJson(INSTANCE, w);
             }
-        } catch (Throwable ignored) {
-        }
+        } catch (Throwable ignored) {}
     }
 
-    public void enforceMaxThreeBars() {
+    public boolean enforceMaxThreeBars() {
         int count = 0;
         if (showHpBar) count++;
         if (showHungerBar) count++;
         if (showStaminaBar) count++;
         if (showManaBar) count++;
         if (showRpgManaBar) count++;
-        if (count <= 3) return;
-        if (showRpgManaBar && count > 3) { showRpgManaBar = false; count--; }
-        if (showManaBar    && count > 3) { showManaBar    = false; count--; }
-        if (showStaminaBar && count > 3) { showStaminaBar = false; count--; }
-        if (showHungerBar  && count > 3) { showHungerBar  = false; count--; }
-        if (count > 3) showHpBar = false;
+
+        boolean changed = false;
+        if (count > 3) { if (showRpgManaBar) { showRpgManaBar = false; changed = true; count--; } }
+        if (count > 3) { if (showManaBar)    { showManaBar    = false; changed = true; count--; } }
+        if (count > 3) { if (showStaminaBar) { showStaminaBar = false; changed = true; count--; } }
+        if (count > 3) { if (showHungerBar)  { showHungerBar  = false; changed = true; count--; } }
+        if (count > 3) { if (showHpBar)      { showHpBar      = false; changed = true; } }
+        return changed;
     }
 }

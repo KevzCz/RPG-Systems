@@ -26,19 +26,19 @@ import net.minecraft.util.math.RotationAxis;
 import org.joml.Matrix4f;
 
 @Environment(EnvType.CLIENT)
-public final class PlayerTitleRenderer {
+public final class TitlePlayerRenderer {
     private static final float BASE_WORLD_W = 0.6f;
     private static final float NAME_GAP = 0.20f;
     private static final float Y_OFFSET = 0.55f;
     private static final double MAX_DISTANCE_SQ = 48.0 * 48.0;
     private static final float MIN_ALPHA_FAR = 0.35f;
 
-    private PlayerTitleRenderer() {}
+    private TitlePlayerRenderer() {}
 
     public static void init() {
         ClientPlayConnectionEvents.JOIN.register((h, s, c) -> {});
         ClientPlayConnectionEvents.DISCONNECT.register((h, c) -> {});
-        WorldRenderEvents.LAST.register(PlayerTitleRenderer::render);
+        WorldRenderEvents.LAST.register(TitlePlayerRenderer::render);
     }
 
     private static void render(WorldRenderContext context) {

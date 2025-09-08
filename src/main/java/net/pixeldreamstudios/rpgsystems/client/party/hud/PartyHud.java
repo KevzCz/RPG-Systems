@@ -98,12 +98,6 @@ public final class PartyHud implements HudRenderCallback {
 
     public static void init() {
         HudRenderCallback.EVENT.register(new PartyHud());
-
-        PayloadTypeRegistry.playS2C().register(
-                PartyStatusEffectsPayloads.MemberEffects.ID,
-                PartyStatusEffectsPayloads.MemberEffects.CODEC
-        );
-
         ClientPlayNetworking.registerGlobalReceiver(
                 PartyStatusEffectsPayloads.MemberEffects.ID,
                 (payload, context) -> {

@@ -19,20 +19,29 @@ public final class EnemyHudClientConfig {
 
     private EnemyHudClientConfig() {}
 
-    public static EnemyHudClientConfig get() {
+    public static synchronized EnemyHudClientConfig get() {
         if (INSTANCE == null) {
+            boolean needSave = false;
             try {
                 if (Files.exists(FILE)) {
                     INSTANCE = GSON.fromJson(Files.readString(FILE), EnemyHudClientConfig.class);
+                    if (INSTANCE == null) {
+                        INSTANCE = new EnemyHudClientConfig();
+                        needSave = true;
+                    }
                 } else {
                     INSTANCE = new EnemyHudClientConfig();
+                    needSave = true;
                 }
             } catch (Exception e) {
                 INSTANCE = new EnemyHudClientConfig();
+                needSave = true;
             }
+            if (needSave) save();
         }
         return INSTANCE;
     }
+
 
     public static void save() {
         try {

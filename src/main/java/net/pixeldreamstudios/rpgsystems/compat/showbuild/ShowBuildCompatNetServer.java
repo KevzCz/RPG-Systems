@@ -1,24 +1,26 @@
 package net.pixeldreamstudios.rpgsystems.compat.showbuild;
 
-import net.fabricmc.api.EnvType;
-import net.fabricmc.api.Environment;
-import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.fabricmc.loader.api.FabricLoader;
-import net.minecraft.client.MinecraftClient;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.text.Text;
-import net.pixeldreamstudios.rpgsystems.compat.showbuild.ShowBuildCompatPayloads.*;
-@Environment(EnvType.CLIENT)
-public final class ShowBuildCompatNet {
-    private ShowBuildCompatNet() {}
+import net.pixeldreamstudios.rpgsystems.compat.showbuild.ShowBuildCompatPayloads.OpenBuildData;
+import net.pixeldreamstudios.rpgsystems.compat.showbuild.ShowBuildCompatPayloads.OpenBuildRequest;
 
-    public static void initCommon() {
-        PayloadTypeRegistry.playC2S().register(OpenBuildRequest.ID, OpenBuildRequest.CODEC);
-        PayloadTypeRegistry.playS2C().register(OpenBuildData.ID, OpenBuildData.CODEC);
+public final class ShowBuildCompatNetServer {
+    private ShowBuildCompatNetServer() {}
 
+    public static void initServer() {
+        PayloadTypeRegistry.playC2S().register(
+                ShowBuildCompatPayloads.OpenBuildRequest.ID,
+                ShowBuildCompatPayloads.OpenBuildRequest.CODEC
+        );
+        PayloadTypeRegistry.playS2C().register(
+                ShowBuildCompatPayloads.OpenBuildData.ID,
+                ShowBuildCompatPayloads.OpenBuildData.CODEC
+        );
         ServerPlayNetworking.registerGlobalReceiver(OpenBuildRequest.ID, (payload, ctx) -> {
             ServerPlayerEntity requester = ctx.player();
             requester.server.execute(() -> {
@@ -39,18 +41,6 @@ public final class ShowBuildCompatNet {
                 }
 
                 ServerPlayNetworking.send(requester, new OpenBuildData(target.getName().getString(), data));
-            });
-        });
-    }
-
-    @Environment(EnvType.CLIENT)
-    public static void initClient() {
-        ClientPlayNetworking.registerGlobalReceiver(OpenBuildData.ID, (payload, context) -> {
-            context.client().execute(() -> {
-                if (!FabricLoader.getInstance().isModLoaded("showmeyourbuild")) return;
-                MinecraftClient.getInstance().setScreen(
-                        new net.pixeldreamstudios.showmeyourbuild.client.gui.BuildViewScreen(payload.data())
-                );
             });
         });
     }
