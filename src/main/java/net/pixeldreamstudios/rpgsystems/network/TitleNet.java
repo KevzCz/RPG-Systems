@@ -19,6 +19,7 @@ import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
 import net.pixeldreamstudios.rpgsystems.api.TitleApi;
 import net.pixeldreamstudios.rpgsystems.client.title.TitleClientData;
+import net.pixeldreamstudios.rpgsystems.network.title.TitleListSyncPayload;
 import net.pixeldreamstudios.rpgsystems.network.title.TitlePayloads;
 import net.pixeldreamstudios.rpgsystems.title.Title;
 import net.pixeldreamstudios.rpgsystems.title.TitleRegistry;
@@ -35,6 +36,7 @@ public final class TitleNet {
         PayloadTypeRegistry.playS2C().register(TitlePayloads.SyncActive.ID, TitlePayloads.SyncActive.CODEC);
         PayloadTypeRegistry.playS2C().register(TitlePayloads.SyncDefinitions.ID, TitlePayloads.SyncDefinitions.CODEC);
         PayloadTypeRegistry.playS2C().register(TitlePayloads.SyncProgress.ID, TitlePayloads.SyncProgress.CODEC);
+        PayloadTypeRegistry.playS2C().register(TitleListSyncPayload.ID, TitleListSyncPayload.CODEC);
 
         ServerPlayNetworking.registerGlobalReceiver(TitlePayloads.RequestSetActive.ID, (payload, context) -> {
             ServerPlayerEntity player = context.player();
@@ -55,7 +57,9 @@ public final class TitleNet {
             broadcastAllActivesTo(server, handler.player);
             TitleApi.refreshActiveOnLogin(handler.player);
         });
-
+        ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> {
+            sendAllTitles(handler.player);
+        });
         ServerPlayerEvents.AFTER_RESPAWN.register((oldPlayer, newPlayer, alive) -> {
             TitleApi.refreshActiveOnLogin(newPlayer);
 
@@ -79,6 +83,22 @@ public final class TitleNet {
                         TitleClientData.setActive(payload.playerUuid(), payload.active().orElse(null))
                 )
         );
+        ClientPlayNetworking.registerGlobalReceiver(TitleListSyncPayload.ID, (payload, context) -> {
+            context.client().execute(() -> {
+                Map<Identifier, Title> merged = new LinkedHashMap<>(TitleRegistry.all());
+                for (TitleListSyncPayload.Entry e : payload.entries()) {
+                    Identifier id = e.id();
+                    if (!merged.containsKey(id)) {
+                        Title t = Title.builder(id, Text.literal(e.name()))
+                                .hidden(e.hidden())
+                                .build();
+                        merged.put(id, t);
+                    }
+                }
+                TitleRegistry.replaceAll(merged);
+                TitleRegistry.bootstrapFallback();
+            });
+        });
         ClientPlayNetworking.registerGlobalReceiver(TitlePayloads.SyncDefinitions.ID, (payload, context) ->
                 context.client().execute(() -> {
                     Map<Identifier, Title> map = new LinkedHashMap<>();
@@ -168,7 +188,15 @@ public final class TitleNet {
 
         ServerPlayNetworking.send(player, new net.pixeldreamstudios.rpgsystems.network.title.TitlePayloads.SyncSelf(unlocked, active));
     }
-
+    public static void sendAllTitles(ServerPlayerEntity player) {
+        List<TitleListSyncPayload.Entry> entries = new ArrayList<>();
+        for (Title t : TitleRegistry.all().values()) {
+            String name = t.displayName != null ? t.displayName.getString() : t.id.toString();
+            boolean hidden = t.hidden;
+            entries.add(new TitleListSyncPayload.Entry(t.id, name, hidden));
+        }
+        ServerPlayNetworking.send(player, new TitleListSyncPayload(entries));
+    }
     public static void syncProgressTo(MinecraftServer server, ServerPlayerEntity player) {
         TitlesPersistentState state = TitlesPersistentState.get(server);
         TitlesPersistentState.PlayerTitles pt = state.getOrCreate(player.getUuid());
