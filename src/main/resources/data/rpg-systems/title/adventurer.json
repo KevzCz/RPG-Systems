@@ -11,6 +11,10 @@
   ],
   "conditions": [
     { "type": "walk_blocks", "distance": 500, "hint": "Walk 500 blocks." },
-    { "type": "kill_mobs", "entity": "any", "count": 5, "hint": "Defeat 5 mobs." }
+    { "type": "kill_mobs", "entity_type": "minecraft:skeleton", "count": 5, "hint": "Defeat 5 Skeletons." },
+    { "type": "kill_mobs", "entity_type": "minecraft:zombie", "count": 5, "hint": "Defeat 5 Zombies." },
+    { "type": "kill_mobs", "entity_type": "minecraft:creeper", "count": 5, "hint": "Defeat 5 Creepers." },
+    { "type": "kill_mobs", "entity_type": "minecraft:spider", "count": 5, "hint": "Defeat 5 Spiders." },
+    { "type": "kill_mobs", "entity_type": "minecraft:ender_dragon", "count": 5, "hint": "Defeat 5 Spiders." }
   ]
 }

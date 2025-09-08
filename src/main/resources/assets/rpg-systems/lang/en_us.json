@@ -1,6 +1,8 @@
 {
+  "screen.rpgsystems.party": "Party",
   "screen.rpgsystems.titles": "Titles",
-  "title.rpgsystems.bonuses": "Bonuses",
+  "title.rpgsystems.bonuses": "Bonuses:",
+  "title.rpgsystems.bonus_damage_against": "Bonus Damage Against",
   "title.rpgsystems.novice": "Novice",
   "title.rpgsystems.slayer": "Slayer",
   "title.rpgsystems.sprinter": "Sprinter",

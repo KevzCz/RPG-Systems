@@ -11,7 +11,7 @@ import net.minecraft.nbt.NbtCompound;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.text.Text;
 import net.pixeldreamstudios.rpgsystems.compat.showbuild.ShowBuildCompatPayloads.*;
-
+@Environment(EnvType.CLIENT)
 public final class ShowBuildCompatNet {
     private ShowBuildCompatNet() {}
 
