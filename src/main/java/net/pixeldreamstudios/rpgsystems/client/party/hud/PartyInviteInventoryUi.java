@@ -1,4 +1,3 @@
-
 package net.pixeldreamstudios.rpgsystems.client.party.hud;
 
 import net.fabricmc.api.EnvType;
@@ -7,15 +6,16 @@ import net.fabricmc.fabric.api.client.screen.v1.ScreenEvents;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.Drawable;
-import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.screen.ingame.InventoryScreen;
 import net.minecraft.client.gui.widget.ButtonWidget;
 import net.minecraft.client.gui.widget.ClickableWidget;
 import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
+import net.pixeldreamstudios.rpgsystems.client.config.MiscClientConfig;
 import net.pixeldreamstudios.rpgsystems.client.party.ClientPartyInvites;
 
 import java.util.UUID;
+
 @Environment(EnvType.CLIENT)
 public final class PartyInviteInventoryUi {
     private PartyInviteInventoryUi() {}
@@ -36,8 +36,10 @@ public final class PartyInviteInventoryUi {
             final int PAD = 6;
             final int STACK_GAP = 6;
 
-            final int plateX = 8;
-            final int basePlateY = h - PLATE_H - 8;
+            var cfg = MiscClientConfig.get();
+
+            final int plateBaseX = cfg.inviteInventoryX;
+            final int plateBaseBottom = h - cfg.inviteInventoryY;
 
             Drawable plateDrawable = (ctx, mx, my, dt) -> {
                 var invites = ClientPartyInvites.invites();
@@ -45,16 +47,17 @@ public final class PartyInviteInventoryUi {
 
                 int i = 0;
                 for (var inv : invites) {
-                    int py = basePlateY - i * (PLATE_H + STACK_GAP);
-                    ctx.drawTexture(TEX_PLATE, plateX, py, 0, 0, PLATE_W, PLATE_H, PLATE_W, PLATE_H);
+                    int pyBottom = plateBaseBottom - i * (PLATE_H + STACK_GAP);
+                    int py = pyBottom - PLATE_H;
+                    ctx.drawTexture(TEX_PLATE, plateBaseX, py, 0, 0, PLATE_W, PLATE_H, PLATE_W, PLATE_H);
 
                     String partyName = (inv.partyName == null || inv.partyName.isBlank()) ? "Party" : inv.partyName;
-                    drawCenteredScaled(ctx, partyName, plateX, py + PLATE_H - 33, PLATE_W, 0.5f);
+                    drawCenteredScaled(ctx, partyName, plateBaseX, py + PLATE_H - 33, PLATE_W, 0.5f);
 
                     long ttl = ClientPartyInvites.inviteTtlMs();
                     long now = System.currentTimeMillis();
                     long rem = Math.max(0L, ttl - (now - inv.createdAt));
-                    drawCenteredScaled(ctx, formatMmSs(rem), plateX, py + PLATE_H - 15, PLATE_W, 0.5f);
+                    drawCenteredScaled(ctx, formatMmSs(rem), plateBaseX, py + PLATE_H - 15, PLATE_W, 0.5f);
 
                     i++;
                 }
@@ -79,11 +82,13 @@ public final class PartyInviteInventoryUi {
 
                 for (int i = 0; i < invites.size(); i++) {
                     var inv = invites.get(i);
-                    int py = basePlateY - i * (PLATE_H + STACK_GAP);
 
-                    int accX = plateX + PAD;
+                    int pyBottom = plateBaseBottom - i * (PLATE_H + STACK_GAP);
+                    int py = pyBottom - PLATE_H;
+
+                    int accX = plateBaseX + PAD;
                     int accY = py + PLATE_H - PAD - BTN_H;
-                    int decX = plateX + PLATE_W - PAD - BTN_W;
+                    int decX = plateBaseX + PLATE_W - PAD - BTN_W;
                     int decY = accY;
 
                     var accBtn = new ScaledIconButton(accX, accY, BTN_W, BTN_H, 0.75f,
@@ -135,7 +140,6 @@ public final class PartyInviteInventoryUi {
         m.pop();
     }
 
-    /** Button that draws its texture scaled inside its hitbox. */
     private static final class ScaledIconButton extends ButtonWidget {
         private final Identifier normal, hover;
         private final float scale;
@@ -165,23 +169,6 @@ public final class PartyInviteInventoryUi {
             ctx.drawTexture(tex, 0, 0, 0, 0, w, h, w, h);
             m.pop();
         }
-    }
-
-    private static void cleanup(Screen screen, ClickableWidget... ws) {
-        var acc = (net.pixeldreamstudios.rpgsystems.mixin.client.ScreenAccessor) screen;
-        for (var w : ws) {
-            if (w == null) continue;
-            w.visible = false;
-            w.active  = false;
-            acc.rpgsystems$remove(w);
-        }
-    }
-
-    private static void drawCentered(DrawContext ctx, String text, int x, int y, int plateW) {
-        var mc = MinecraftClient.getInstance();
-        int tw = mc.textRenderer.getWidth(text);
-        int tx = x + Math.max(4, (plateW - tw) / 2);
-        ctx.drawText(mc.textRenderer, text, tx, y, 0xFFFFFF, false);
     }
 
     private static String formatMmSs(long ms) {

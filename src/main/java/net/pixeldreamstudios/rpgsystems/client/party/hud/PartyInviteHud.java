@@ -9,10 +9,12 @@ import net.minecraft.client.render.RenderTickCounter;
 import net.minecraft.client.texture.AbstractTexture;
 import net.minecraft.client.texture.TextureManager;
 import net.minecraft.util.Identifier;
+import net.pixeldreamstudios.rpgsystems.client.config.MiscClientConfig;
 import net.pixeldreamstudios.rpgsystems.client.party.ClientPartyInvites;
 import net.pixeldreamstudios.rpgsystems.client.party.ClientPartyInvites.NoticeKind;
 
 import java.util.*;
+
 @Environment(EnvType.CLIENT)
 public final class PartyInviteHud implements HudRenderCallback {
     public static void init() { HudRenderCallback.EVENT.register(new PartyInviteHud()); }
@@ -22,8 +24,8 @@ public final class PartyInviteHud implements HudRenderCallback {
     private static final Identifier TEX_DECLINE      = Identifier.of("rpg-systems","textures/gui/party_invite_decline.png");
     private static final Identifier TEX_EXPIRED      = Identifier.of("rpg-systems","textures/gui/party_invite_expired.png");
     private static final Identifier TEX_JOIN_REQ     = Identifier.of("rpg-systems","textures/gui/party_join.png");
-    private static final Identifier TEX_JOIN_REQ_ACC     = Identifier.of("rpg-systems","textures/gui/party_join_accept.png");
-    private static final Identifier TEX_JOIN_REQ_DEC     = Identifier.of("rpg-systems","textures/gui/party_join_decline.png");
+    private static final Identifier TEX_JOIN_REQ_ACC = Identifier.of("rpg-systems","textures/gui/party_join_accept.png");
+    private static final Identifier TEX_JOIN_REQ_DEC = Identifier.of("rpg-systems","textures/gui/party_join_decline.png");
     private static final Identifier TEX_LEAVE        = Identifier.of("rpg-systems","textures/gui/party_leave.png");
     private static final Identifier TEX_KICK         = Identifier.of("rpg-systems","textures/gui/party_kick.png");
 
@@ -36,8 +38,6 @@ public final class PartyInviteHud implements HudRenderCallback {
     private static final int VIS_W = Math.round(TEX_W * SCALE);
     private static final int VIS_H = Math.round(TEX_H * SCALE);
 
-    private static final int MARGIN_X = 0;
-    private static final int MARGIN_Y = 10;
     private static final int STACK_GAP = 6;
 
     private static final long SHOW_MS  = 5000L;
@@ -82,16 +82,20 @@ public final class PartyInviteHud implements HudRenderCallback {
         long now = System.currentTimeMillis();
         TOASTS.removeIf(t -> now - t.startAtMs >= SHOW_MS + SLIDE_MS);
 
-        int sh = ctx.getScaledWindowHeight();
-        int nextBottom = sh - MARGIN_Y;
+        var cfg = MiscClientConfig.get();
+
+        int baseLeft = cfg.inviteHudX;
+        int baseBottom = ctx.getScaledWindowHeight() - cfg.inviteHudY;
+
+        int nextBottom = baseBottom;
 
         ListIterator<Toast> it = TOASTS.listIterator(TOASTS.size());
         while (it.hasPrevious()) {
             Toast t = it.previous();
 
             float slide = slideProgress(now - t.startAtMs);
-            int offX    = -VIS_W - MARGIN_X;
-            int targetX = MARGIN_X;
+            int offX    = -VIS_W - baseLeft;
+            int targetX = baseLeft;
             int drawX   = Math.round(lerp(offX, targetX, slide));
             int drawY   = nextBottom - VIS_H;
             nextBottom  = drawY - STACK_GAP;
@@ -110,6 +114,7 @@ public final class PartyInviteHud implements HudRenderCallback {
         if (elapsedMs >= SHOW_MS)  return 1f - Math.min(SLIDE_MS, elapsedMs - SHOW_MS) / (float) SLIDE_MS;
         return 1f;
     }
+
     private static float lerp(float a, float b, float t) { return a + (b - a) * Math.max(0f, Math.min(1f, t)); }
 
     private static void ensureNearest() {

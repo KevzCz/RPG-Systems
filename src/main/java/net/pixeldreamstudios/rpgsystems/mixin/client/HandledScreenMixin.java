@@ -30,44 +30,29 @@ public abstract class HandledScreenMixin<T extends ScreenHandler> extends Screen
         super(title);
     }
 
-    @Shadow
-    protected int x;
-    @Shadow
-    protected int y;
-    @Shadow
-    protected int backgroundWidth;
-    @Shadow
-    protected int backgroundHeight;
-    @Shadow
-    protected T handler;
+    @Shadow protected int x;
+    @Shadow protected int y;
+    @Shadow protected int backgroundWidth;
+    @Shadow protected int backgroundHeight;
+    @Shadow protected T handler;
 
     @Unique
-    private static final Identifier TITLES_BTN_NORMAL =
-            Identifier.of("rpg-systems", "textures/gui/title/title_normal.png");
+    private static final Identifier TITLES_BTN_NORMAL = Identifier.of("rpg-systems", "textures/gui/title/title_normal.png");
     @Unique
-    private static final Identifier TITLES_BTN_HOVER =
-            Identifier.of("rpg-systems", "textures/gui/title/title_hover.png");
+    private static final Identifier TITLES_BTN_HOVER  = Identifier.of("rpg-systems", "textures/gui/title/title_hover.png");
 
     @Unique
-    private static final Identifier PARTY_BTN_NORMAL =
-            Identifier.of("rpg-systems", "textures/gui/button/party_button_normal.png");
+    private static final Identifier PARTY_BTN_NORMAL = Identifier.of("rpg-systems", "textures/gui/button/party_button_normal.png");
     @Unique
-    private static final Identifier PARTY_BTN_HOVER =
-            Identifier.of("rpg-systems", "textures/gui/button/party_button_hover.png");
+    private static final Identifier PARTY_BTN_HOVER  = Identifier.of("rpg-systems", "textures/gui/button/party_button_hover.png");
 
-    @Unique
-    private int titles$btnSize = 10;
-    @Unique
-    private int titles$btnX;
-    @Unique
-    private int titles$btnY;
+    @Unique private int titles$btnSize = 10;
+    @Unique private int titles$btnX;
+    @Unique private int titles$btnY;
 
-    @Unique
-    private int party$btnSize = 10;
-    @Unique
-    private int party$btnX;
-    @Unique
-    private int party$btnY;
+    @Unique private int party$btnSize = 10;
+    @Unique private int party$btnX;
+    @Unique private int party$btnY;
 
     @Unique
     private boolean base$shouldAttach() {
@@ -88,14 +73,15 @@ public abstract class HandledScreenMixin<T extends ScreenHandler> extends Screen
 
     @Inject(method = "init", at = @At("TAIL"))
     private void titles$onInit(CallbackInfo ci) {
+        var misc = net.pixeldreamstudios.rpgsystems.client.config.MiscClientConfig.get();
+
         if (titles$shouldAttach()) {
-            this.titles$btnX = this.x + 64;
-            this.titles$btnY = this.y + 67;
+            this.titles$btnX = this.x + misc.handledTitlesBtnOffsetX;
+            this.titles$btnY = this.y + misc.handledTitlesBtnOffsetY;
         }
         if (party$shouldAttach()) {
-            this.party$btnX = this.x + 28;
-            this.party$btnY = this.y + 67;
-
+            this.party$btnX = this.x + misc.handledPartyBtnOffsetX;
+            this.party$btnY = this.y + misc.handledPartyBtnOffsetY;
         }
     }
 
@@ -155,5 +141,4 @@ public abstract class HandledScreenMixin<T extends ScreenHandler> extends Screen
             }
         }
     }
-
 }

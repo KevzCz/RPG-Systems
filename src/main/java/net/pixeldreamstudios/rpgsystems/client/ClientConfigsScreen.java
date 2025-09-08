@@ -8,6 +8,7 @@ import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.widget.ButtonWidget;
 import net.minecraft.client.gui.widget.ClickableWidget;
 import net.minecraft.text.Text;
+import net.pixeldreamstudios.rpgsystems.client.config.MiscOptionsScreen;
 import net.pixeldreamstudios.rpgsystems.client.enemy.configui.DamageNumbersScreen;
 import net.pixeldreamstudios.rpgsystems.client.enemy.configui.EnemyHudsScreen;
 import net.pixeldreamstudios.rpgsystems.client.enemy.configui.HealingNumbersScreen;
@@ -67,7 +68,10 @@ public final class ClientConfigsScreen extends Screen {
         ButtonWidget titlesBtn = ButtonWidget.builder(Text.literal("Titles"),
                         b -> this.client.setScreen(new TitlesOptionsScreen(this)))
                 .size(colW - 8, buttonH).position(0, 0).build();
-        navColumn.setButtons(partyHudBtn, memberInfoBtn, enemyHudsBtn, damageBtn, healingBtn, titlesBtn);
+        ButtonWidget miscBtn = ButtonWidget.builder(Text.literal("Misc UI Positions"),
+                        b -> this.client.setScreen(new MiscOptionsScreen(this)))
+                .size(colW - 8, buttonH).position(0, 0).build();
+        navColumn.setButtons(partyHudBtn, memberInfoBtn, enemyHudsBtn, damageBtn, healingBtn, titlesBtn, miscBtn);
         this.addDrawableChild(navColumn);
     }
 

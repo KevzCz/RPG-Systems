@@ -39,8 +39,6 @@ public final class PartyHud implements HudRenderCallback {
     private static final boolean DEBUG_BOXES = false;
     private static final boolean DEBUG_EFFECTS = false;
 
-    private static final int HUD_OFFSET_X = -10;
-
     private static final int PANEL_W = 128;
     private static final int PANEL_H = 32;
     private static final int ROW_GAP  = 1;
@@ -90,7 +88,7 @@ public final class PartyHud implements HudRenderCallback {
 
     private static boolean staminaAvailableCached = FabricLoader.getInstance().isModLoaded("staminaattributes");
     private static boolean manaAvailableCached = FabricLoader.getInstance().isModLoaded("manaattributes");
-    private static boolean rpgManaAvailableCached = FabricLoader.getInstance().isModLoaded("rpgmana"); // NEW
+    private static boolean rpgManaAvailableCached = FabricLoader.getInstance().isModLoaded("rpgmana");
 
     private static final float EFFECT_ICON_SIZE = 3f;
     private static final float EFFECT_ICON_GAP  = 1f;
@@ -135,8 +133,8 @@ public final class PartyHud implements HudRenderCallback {
 
         List<ClientPartyHudData.Member> list = ClientPartyHudData.membersSortedExcludingSelf();
 
-        final int x = 8 + HUD_OFFSET_X;
-        final int yStart = 10;
+        final int x = cfg.partyHudX;
+        final int yStart = cfg.partyHudY;
         final int yStep = Math.round(PANEL_H * BG_SCALE) + ROW_GAP;
 
         if (list.isEmpty()) return;
@@ -425,7 +423,7 @@ public final class PartyHud implements HudRenderCallback {
         if (cfg.showManaBar && manaAvailableCached) {
             StackedValue v = queryTracked(uuid, false);
             float pct = v.max > 0 ? Math.max(0f, Math.min(1f, v.now / v.max)) : 0f;
-            int nowI = v.now >= 0 ? (int)v.now : 0;     // now already clamped, but harmless
+            int nowI = v.now >= 0 ? (int)v.now : 0;
             int maxI = v.max > 0 ? (int)v.max : 0;
             String txt = (maxI > 0) ? (nowI + " / " + maxI) : "?? / ??";
             out.add(new RenderBar(pct, txt, BAR_MANA_FILL));
@@ -522,6 +520,7 @@ public final class PartyHud implements HudRenderCallback {
         ctx.drawSprite(0, 0, z, EFFECT_BASE_PX, EFFECT_BASE_PX, sprite);
         m.pop();
     }
+
     private static StackedValue queryTracked(UUID uuid, boolean stamina) {
         MinecraftClient mc = MinecraftClient.getInstance();
         if (mc == null || mc.world == null) return new StackedValue(-1, -1);
@@ -532,7 +531,7 @@ public final class PartyHud implements HudRenderCallback {
         Float nowF = reflectFloat(e, getNow);
         Float maxF = reflectFloat(e, getMax);
         if (nowF == null || maxF == null) return new StackedValue(-1, -1);
-        float now = Math.max(0f, nowF);  // clamp negatives to zero
+        float now = Math.max(0f, nowF);
         float max = Math.max(0f, maxF);
         return new StackedValue(now, max);
     }
@@ -545,7 +544,7 @@ public final class PartyHud implements HudRenderCallback {
         Float nowF = reflectFloat(e, "getMana");
         Float maxF = reflectFloat(e, "getMaxMana");
         if (nowF == null || maxF == null) return new StackedValue(-1, -1);
-        float now = Math.max(0f, nowF);  // clamp negatives to zero
+        float now = Math.max(0f, nowF);
         float max = Math.max(0f, maxF);
         return new StackedValue(now, max);
     }

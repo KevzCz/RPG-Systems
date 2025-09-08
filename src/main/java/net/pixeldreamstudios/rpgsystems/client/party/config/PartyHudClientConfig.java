@@ -22,11 +22,15 @@ public final class PartyHudClientConfig {
     public boolean showManaBar = false;
     public boolean showRpgManaBar = false;
 
+    public int partyHudX = -2;
+    public int partyHudY = 10;
+
     private static Path path() {
         return FabricLoader.getInstance().getConfigDir()
                 .resolve("rpgsystems")
                 .resolve(FILE_NAME);
     }
+
     public static synchronized PartyHudClientConfig get() {
         if (INSTANCE == null) load();
         return INSTANCE;
@@ -62,8 +66,7 @@ public final class PartyHudClientConfig {
         if (showStaminaBar) count++;
         if (showManaBar) count++;
         if (showRpgManaBar) count++;
-        if (count <= 3) return
-                ;
+        if (count <= 3) return;
         if (showRpgManaBar && count > 3) { showRpgManaBar = false; count--; }
         if (showManaBar    && count > 3) { showManaBar    = false; count--; }
         if (showStaminaBar && count > 3) { showStaminaBar = false; count--; }
