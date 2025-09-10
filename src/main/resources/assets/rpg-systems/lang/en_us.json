@@ -1,6 +1,11 @@
 {
   "screen.rpgsystems.party": "Party",
   "screen.rpgsystems.titles": "Titles",
+  "screen.rpgsystems.party.create": "Create Party",
+
+  "key.rpgsystems.highlight_party": "Highlight Party Members",
+  "key.rpgsystems.open_party": "Open Party Screen",
+  "key.rpgsystems.toggle_party_hud": "Toggle Party Hud",
   "title.rpgsystems.bonuses": "Bonuses:",
   "title.rpgsystems.bonus_damage_against": "Bonus Damage Against",
   "title.rpgsystems.novice": "Novice",

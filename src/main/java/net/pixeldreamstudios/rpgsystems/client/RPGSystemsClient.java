@@ -9,7 +9,10 @@ import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.option.KeyBinding;
 import net.minecraft.client.util.InputUtil;
+import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.text.Text;
+import net.minecraft.util.hit.EntityHitResult;
+import net.minecraft.util.hit.HitResult;
 import net.pixeldreamstudios.rpgsystems.client.enemy.DamageNumbersRenderer;
 import net.pixeldreamstudios.rpgsystems.client.enemy.EnemyHealthBarRenderer;
 import net.pixeldreamstudios.rpgsystems.client.enemy.HealingNumbersRenderer;
@@ -91,14 +94,38 @@ public final class RPGSystemsClient implements ClientModInitializer {
 
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
             while (openPartyScreen.wasPressed()) {
-                if (ClientPartyHudData.partyId != null) {
-                    MinecraftClient mc = MinecraftClient.getInstance();
-                    if (mc.currentScreen == null) mc.setScreen(new PartyScreen());
+                boolean hasParty = ClientPartyHudData.partyId != null;
+
+                MinecraftClient mc = MinecraftClient.getInstance();
+                HitResult hit = mc.crosshairTarget;
+                boolean acted = false;
+
+                if (hit != null && hit.getType() == HitResult.Type.ENTITY) {
+                    EntityHitResult ehr = (EntityHitResult) hit;
+                    if (ehr.getEntity() instanceof PlayerEntity target && mc.player != null && !target.getUuid().equals(mc.player.getUuid())) {
+                        if (mc.getNetworkHandler() != null) {
+                            if (hasParty) {
+                                mc.getNetworkHandler().sendChatCommand("party invite " + target.getName().getString());
+                                acted = true;
+                            } else {
+                                mc.getNetworkHandler().sendChatCommand("party request player " + target.getName().getString());
+                                acted = true;
+                            }
+                        }
+                    }
+                }
+
+                if (!acted && hasParty) {
+                    if (mc.currentScreen == null) {
+                        mc.setScreen(new PartyScreen());
+                    }
                 }
             }
+
             while (highlightParty.wasPressed()) {
                 ClientPartyHighlighter.toggle();
             }
+
             while (togglePartyHud.wasPressed()) {
                 var cfg = PartyHudClientConfig.get();
                 cfg.hudEnabled = !cfg.hudEnabled;

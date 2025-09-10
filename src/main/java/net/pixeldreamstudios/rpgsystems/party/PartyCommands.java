@@ -24,6 +24,7 @@ import java.util.concurrent.CompletableFuture;
 
 import static net.minecraft.server.command.CommandManager.argument;
 import static net.minecraft.server.command.CommandManager.literal;
+
 public final class PartyCommands {
     private PartyCommands() {}
 
@@ -57,9 +58,11 @@ public final class PartyCommands {
                         .then(argument("party", StringArgumentType.greedyString())
                                 .suggests(PartyCommands::suggestParties)
                                 .executes(ctx -> requestJoinByName(ctx, StringArgumentType.getString(ctx, "party"))))
-
                         .then(argument("partyId", UuidArgumentType.uuid())
                                 .executes(ctx -> requestJoin(ctx, UuidArgumentType.getUuid(ctx, "partyId"))))
+                        .then(literal("player")
+                                .then(argument("player", EntityArgumentType.player())
+                                        .executes(ctx -> requestJoinByPlayer(ctx, EntityArgumentType.getPlayer(ctx, "player")))))
                 )
                 .then(literal("requests")
                         .then(literal("accept")
@@ -72,9 +75,9 @@ public final class PartyCommands {
                         .then(argument("member", StringArgumentType.greedyString())
                                 .suggests(PartyCommands::suggestPartyMembers)
                                 .executes(ctx -> kickByLabel(ctx, StringArgumentType.getString(ctx, "member")))))
-
         );
     }
+
     private static int kickByLabel(CommandContext<ServerCommandSource> ctx, String label) {
         ServerPlayerEntity leader = ctx.getSource().getPlayer();
         if (leader == null) return 0;
@@ -144,7 +147,6 @@ public final class PartyCommands {
         return 1;
     }
 
-
     private static int rename(CommandContext<ServerCommandSource> ctx, String newName) {
         ServerPlayerEntity self = ctx.getSource().getPlayer();
         if (self == null) return 0;
@@ -178,7 +180,6 @@ public final class PartyCommands {
         self.sendMessage(Text.literal("Renamed party to " + desired + "."));
         return 1;
     }
-
 
     private static int invite(CommandContext<ServerCommandSource> ctx, ServerPlayerEntity target) {
         ServerPlayerEntity self = ctx.getSource().getPlayer();
@@ -258,7 +259,6 @@ public final class PartyCommands {
         return 1;
     }
 
-
     private static int acceptSpecific(CommandContext<ServerCommandSource> ctx, UUID partyId) {
         ServerPlayerEntity self = ctx.getSource().getPlayer();
         if (self == null) return 0;
@@ -300,7 +300,6 @@ public final class PartyCommands {
         }
         return 1;
     }
-
 
     private static int declineAny(CommandContext<ServerCommandSource> ctx) {
         ServerPlayerEntity self = ctx.getSource().getPlayer();
@@ -451,6 +450,18 @@ public final class PartyCommands {
         return 1;
     }
 
+    private static int requestJoinByPlayer(CommandContext<ServerCommandSource> ctx, ServerPlayerEntity target) {
+        ServerPlayerEntity self = ctx.getSource().getPlayer();
+        if (self == null) return 0;
+        PartyPersistentState state = PartyPersistentState.get(self.getServer());
+        Party targetParty = state.getPartyByMember(target.getUuid());
+        if (targetParty == null) {
+            self.sendMessage(Text.literal(target.getName().getString() + " is not in a party."));
+            return 0;
+        }
+        return requestJoin(ctx, targetParty.id);
+    }
+
     private static int acceptJoin(CommandContext<ServerCommandSource> ctx, ServerPlayerEntity requester) {
         ServerPlayerEntity leader = ctx.getSource().getPlayer();
         if (leader == null) return 0;
@@ -474,7 +485,6 @@ public final class PartyCommands {
         }
         return 1;
     }
-
 
     private static int declineJoin(CommandContext<ServerCommandSource> ctx, ServerPlayerEntity requester) {
         ServerPlayerEntity leader = ctx.getSource().getPlayer();
@@ -536,6 +546,7 @@ public final class PartyCommands {
 
         return 1;
     }
+
     private static String defaultPartyName(ServerPlayerEntity self) {
         String base = self.getName().getString();
         return base.endsWith("s") ? (base + "' Party") : (base + "'s Party");
@@ -545,9 +556,8 @@ public final class PartyCommands {
         return id.toString().substring(0, 8);
     }
 
-    private static java.util.concurrent.CompletableFuture<com.mojang.brigadier.suggestion.Suggestions>
-    suggestParties(com.mojang.brigadier.context.CommandContext<ServerCommandSource> c,
-                   com.mojang.brigadier.suggestion.SuggestionsBuilder b) {
+    private static CompletableFuture<Suggestions> suggestParties(CommandContext<ServerCommandSource> c,
+                                                                 SuggestionsBuilder b) {
         var server = c.getSource().getServer();
         var state  = PartyPersistentState.get(server);
         ServerPlayerEntity self = c.getSource().getPlayer();
@@ -578,7 +588,7 @@ public final class PartyCommands {
     private static UUID resolvePartyFromInput(MinecraftServer server, PartyPersistentState state, String input) {
         if (input == null || input.isBlank()) return null;
 
-        try { return java.util.UUID.fromString(input.trim()); } catch (IllegalArgumentException ignored) {}
+        try { return UUID.fromString(input.trim()); } catch (IllegalArgumentException ignored) {}
 
         String qi = input.trim();
         String qiLower = qi.toLowerCase(java.util.Locale.ROOT);
@@ -609,6 +619,7 @@ public final class PartyCommands {
         }
         return (matches == 1) ? match : null;
     }
+
     private static CompletableFuture<Suggestions> suggestInvitedParties(CommandContext<ServerCommandSource> c,
                                                                         SuggestionsBuilder b) {
         ServerPlayerEntity self = c.getSource().getPlayer();
@@ -672,12 +683,11 @@ public final class PartyCommands {
         UUID partyId = resolvePartyFromInput(server, state, userInput);
         if (partyId == null) {
             self.sendMessage(Text.literal("Couldn’t find a unique party for \"" + userInput +
-                    "\". Use Tab to pick from the suggestions."), false);
+                    "\". Use Tab to pick from the suggestions."));
             return 0;
         }
         return requestJoin(ctx, partyId);
     }
-
 
     private static String displayName(Party p) {
         return (p.name == null || p.name.isBlank()) ? p.id.toString() : p.name;
@@ -706,6 +716,7 @@ public final class PartyCommands {
         }
         return b.buildFuture();
     }
+
     private static UUID resolveMemberFromInput(MinecraftServer server, PartyPersistentState state, Party p, String input) {
         if (input == null || input.isBlank()) return null;
 
@@ -736,6 +747,7 @@ public final class PartyCommands {
         }
         return (matches == 1) ? match : null;
     }
+
     private static int acceptByName(CommandContext<ServerCommandSource> ctx, String userInput) {
         ServerPlayerEntity self = ctx.getSource().getPlayer();
         if (self == null) return 0;
@@ -763,5 +775,4 @@ public final class PartyCommands {
         }
         return declineSpecific(ctx, partyId);
     }
-
 }

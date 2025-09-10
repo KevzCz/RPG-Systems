@@ -46,6 +46,11 @@ public abstract class HandledScreenMixin<T extends ScreenHandler> extends Screen
     @Unique
     private static final Identifier PARTY_BTN_HOVER  = Identifier.of("rpg-systems", "textures/gui/button/party_button_hover.png");
 
+    @Unique
+    private static final Identifier PARTY_CREATE_BTN_NORMAL = Identifier.of("rpg-systems", "textures/gui/button/party_create_normal.png");
+    @Unique
+    private static final Identifier PARTY_CREATE_BTN_HOVER  = Identifier.of("rpg-systems", "textures/gui/button/party_create_hover.png");
+
     @Unique private int titles$btnSize = 10;
     @Unique private int titles$btnX;
     @Unique private int titles$btnY;
@@ -102,18 +107,21 @@ public abstract class HandledScreenMixin<T extends ScreenHandler> extends Screen
 
         if (party$shouldAttach()) {
             boolean hasParty = ClientPartyHudData.partyId != null;
+            int s = this.party$btnSize;
+            boolean hovered = mouseX >= party$btnX && mouseX <= party$btnX + s &&
+                    mouseY >= party$btnY && mouseY <= party$btnY + s;
 
-            if (hasParty) {
-                int s = this.party$btnSize;
-                boolean hovered = mouseX >= party$btnX && mouseX <= party$btnX + s &&
-                        mouseY >= party$btnY && mouseY <= party$btnY + s;
+            Identifier tex = hasParty
+                    ? (hovered ? PARTY_BTN_HOVER : PARTY_BTN_NORMAL)
+                    : (hovered ? PARTY_CREATE_BTN_HOVER : PARTY_CREATE_BTN_NORMAL);
 
-                Identifier tex = hovered ? PARTY_BTN_HOVER : PARTY_BTN_NORMAL;
-                context.drawTexture(tex, party$btnX, party$btnY, 0, 0, s, s, s, s);
+            context.drawTexture(tex, party$btnX, party$btnY, 0, 0, s, s, s, s);
 
-                if (hovered) {
-                    context.drawTooltip(this.textRenderer, Text.translatable("screen.rpgsystems.party"), mouseX, mouseY);
-                }
+            if (hovered) {
+                Text tip = hasParty
+                        ? Text.translatable("screen.rpgsystems.party")
+                        : Text.translatable("screen.rpgsystems.party.create");
+                context.drawTooltip(this.textRenderer, tip, mouseX, mouseY);
             }
         }
     }
@@ -131,11 +139,19 @@ public abstract class HandledScreenMixin<T extends ScreenHandler> extends Screen
             }
         }
 
-        if (party$shouldAttach() && ClientPartyHudData.partyId != null) {
+        if (party$shouldAttach()) {
             int s = this.party$btnSize;
             if (mouseX >= party$btnX && mouseX <= party$btnX + s &&
                     mouseY >= party$btnY && mouseY <= party$btnY + s) {
-                MinecraftClient.getInstance().setScreen(new PartyScreen());
+                boolean hasParty = ClientPartyHudData.partyId != null;
+                if (hasParty) {
+                    MinecraftClient.getInstance().setScreen(new PartyScreen());
+                } else {
+                    MinecraftClient mc = MinecraftClient.getInstance();
+                    if (mc.getNetworkHandler() != null) {
+                        mc.getNetworkHandler().sendChatCommand("party create");
+                    }
+                }
                 cir.setReturnValue(true);
                 cir.cancel();
             }
