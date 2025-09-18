@@ -10,8 +10,7 @@ import net.pixeldreamstudios.rpgsystems.accessor.LivingEntityRawDamageAccess;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
-import org.spongepowered.asm.mixin.injection.Inject;
-import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
+import org.spongepowered.asm.mixin.injection.Redirect;
 
 import java.util.UUID;
 
@@ -20,9 +19,17 @@ public abstract class LivingEntityLastRawDamageMixin implements LivingEntityRawD
     @Unique private UUID  rpgsystems$lastRawAttacker;
     @Unique private float rpgsystems$lastRawAmount;
 
-    @Inject(method = "damage", at = @At("HEAD"))
-    private void rpgsystems$captureRawDamage(DamageSource source, float amount, CallbackInfoReturnable<Boolean> cir) {
-        LivingEntity self = (LivingEntity)(Object)this;
+    @Redirect(
+            method = "applyDamage(Lnet/minecraft/entity/damage/DamageSource;F)V",
+            at = @At(
+                    value = "INVOKE",
+                    target = "Lnet/minecraft/entity/LivingEntity;modifyAppliedDamage(Lnet/minecraft/entity/damage/DamageSource;F)F"
+            )
+    )
+    private float rpgsystems$capturePostMitigation(LivingEntity self, DamageSource source, float amount) {
+
+        float postMitig = ((LivingEntityDamageAccessor) self)
+                .rpgsystems$invokeModifyAppliedDamage(source, amount);
 
         Entity origin = resolveOrigin(source);
         if (origin == null) {
@@ -30,7 +37,9 @@ public abstract class LivingEntityLastRawDamageMixin implements LivingEntityRawD
         }
 
         this.rpgsystems$lastRawAttacker = origin.getUuid();
-        this.rpgsystems$lastRawAmount   = amount;
+        this.rpgsystems$lastRawAmount   = postMitig;
+
+        return postMitig;
     }
 
     @Unique
@@ -50,7 +59,6 @@ public abstract class LivingEntityLastRawDamageMixin implements LivingEntityRawD
         if (origin instanceof LightningEntity lightning && lightning.getChanneler() != null) {
             return lightning.getChanneler();
         }
-
         return origin;
     }
 

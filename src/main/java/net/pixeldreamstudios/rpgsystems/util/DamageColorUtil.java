@@ -42,10 +42,10 @@ public final class DamageColorUtil {
     public static final int RED        = 0xFF3A3A;
     public static final int DARK_BROWN = 0x7A2E20;
 
-    // New: “holy” gold, air sky, and earthy brown tones
-    public static final int COLOR_HOLY   = 0xFFE27D; // warm golden/yellow
-    public static final int COLOR_AIR    = 0xCDEBFF; // pale sky blue
-    public static final int COLOR_EARTH  = 0x8C5E3C; // earthy brown
+    public static final int COLOR_ARCANE = 0x9966CC;
+    public static final int COLOR_HOLY   = 0xFFE27D;
+    public static final int COLOR_AIR    = 0xCDEBFF;
+    public static final int COLOR_EARTH  = 0x8C5E3C;
 
     public static int colorOf(World world, DamageSource source, LivingEntity victim) {
         return baseColorOf(world, source, victim);
@@ -75,11 +75,11 @@ public final class DamageColorUtil {
         if (source.isOf(DamageTypes.FALL) || source.isOf(DamageTypes.STALAGMITE)) return COLOR_FALL;
         if (source.isOf(DamageTypes.FLY_INTO_WALL) || source.isOf(DamageTypes.FALLING_BLOCK)) return COLOR_IMPACT;
 
-        if (isTypeId(source, "spell_power:arcane"))    return LIGHT_BLUE;
+        if (isTypeId(source, "spell_power:arcane"))    return COLOR_ARCANE;
         if (isTypeId(source, "spell_power:fire"))      return RED;
         if (isTypeId(source, "spell_power:frost"))     return COLOR_FREEZING;
         if (isTypeId(source, "spell_power:generic"))   return DARK_BLUE;
-        if (isTypeId(source, "spell_power:healing"))   return COLOR_HOLY;       // changed to yellowish “holy”
+        if (isTypeId(source, "spell_power:healing"))   return COLOR_HOLY;
         if (isTypeId(source, "spell_power:lightning")) return COLOR_LIGHTNING;
         if (isTypeId(source, "spell_power:soul"))      return COLOR_DRAGON;
 

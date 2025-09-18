@@ -5,6 +5,7 @@ import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.fabricmc.fabric.api.resource.ResourceManagerHelper;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.resource.ResourceType;
+import net.pixeldreamstudios.rpgsystems.compat.KevsLibraryCritCompat;
 import net.pixeldreamstudios.rpgsystems.compat.showbuild.ShowBuildCompatNetServer;
 import net.pixeldreamstudios.rpgsystems.config.RPGSystemsConfig;
 import net.pixeldreamstudios.rpgsystems.network.*;
@@ -53,7 +54,7 @@ public class RPGSystems implements ModInitializer {
 				TitleCommands.register(dispatcher);
 			}
 		});
-
+		KevsLibraryCritCompat.init();
 		LOGGER.info("RPG Systems loaded. Enabled systems -> party={}, pet={}, title={}",
 				RPGSystemsConfig.get().systems.party,
 				RPGSystemsConfig.get().systems.pet,

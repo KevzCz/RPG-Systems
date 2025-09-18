@@ -32,6 +32,8 @@ dependencies {
 	modCompileOnly files("libs/stamina-attributes-2.7.0.jar")
 	modCompileOnly files("libs/rpgmana-1.2.8-1.21.1.jar")
 	modCompileOnly files("libs/icon-leading-tooltip-1.0.2.jar")
+	modCompileOnly files("libs/kevs-library-1.5.9.5.jar")
+
 }
 
 processResources {
