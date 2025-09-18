@@ -28,16 +28,13 @@ public abstract class LivingEntityHealMixin {
         World world = self.getWorld();
         if (world.isClient()) return;
 
-        float post = self.getHealth();
-        float healed = post - rpgsystems$preHealHp;
-        if (healed <= 0.01f) return;
+        float applied   = Math.max(0f, self.getHealth() - rpgsystems$preHealHp);
+        float attempted = Math.max(0f, amount);
+        if (attempted <= 0.01f && applied <= 0.01f) return;
 
-        UUID source = null;
-        if (self instanceof ServerPlayerEntity sp) {
-            source = sp.getUuid();
-        }
+        UUID source = (self instanceof ServerPlayerEntity sp) ? sp.getUuid() : self.getUuid();
 
-        EnemyNet.broadcastHealingNumber(self, healed, false, source != null ? source : self.getUuid());
-
+        EnemyNet.broadcastHealingNumber(self, attempted, applied, false, source);
     }
+
 }

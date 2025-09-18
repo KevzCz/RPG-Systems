@@ -1,3 +1,4 @@
+// net.pixeldreamstudios.rpgsystems.client.enemy.config.DamageNumbersClientConfig
 package net.pixeldreamstudios.rpgsystems.client.enemy.config;
 
 import com.google.gson.Gson;
@@ -24,7 +25,6 @@ public final class DamageNumbersClientConfig {
     public double viewDistance = 32.0;
 
     private static DamageNumbersClientConfig INSTANCE;
-
     private DamageNumbersClientConfig() {}
 
     public static DamageNumbersClientConfig get() {
@@ -33,7 +33,8 @@ public final class DamageNumbersClientConfig {
             try {
                 if (Files.exists(FILE)) {
                     INSTANCE = GSON.fromJson(Files.readString(FILE), DamageNumbersClientConfig.class);
-                    if (INSTANCE.showMode == null) INSTANCE.showMode = ShowMode.ALL;
+                    if (INSTANCE == null) { INSTANCE = new DamageNumbersClientConfig(); needSave = true; }
+                    if (INSTANCE.showMode == null) { INSTANCE.showMode = ShowMode.ALL; needSave = true; }
                 } else {
                     INSTANCE = new DamageNumbersClientConfig();
                     needSave = true;
@@ -46,7 +47,6 @@ public final class DamageNumbersClientConfig {
         }
         return INSTANCE;
     }
-
 
     public static void save() {
         try {

@@ -4,8 +4,10 @@ import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.LivingEntity;
-import net.minecraft.network.packet.s2c.play.PositionFlag;
 import net.minecraft.entity.mob.MobEntity;
+import net.minecraft.entity.passive.AbstractHorseEntity;
+import net.minecraft.entity.passive.TameableEntity;
+import net.minecraft.network.packet.s2c.play.PositionFlag;
 import net.minecraft.server.command.CommandManager;
 import net.minecraft.server.command.ServerCommandSource;
 import net.minecraft.server.network.ServerPlayerEntity;
@@ -32,63 +34,110 @@ public final class PetCommands {
                         .then(CommandManager.argument("name", StringArgumentType.greedyString())
                                 .executes(ctx -> renameLookingAt(ctx.getSource(), StringArgumentType.getString(ctx, "name")))))
                 .then(CommandManager.literal("tp")
-                        .executes(ctx -> {
-                            ServerPlayerEntity p = ctx.getSource().getPlayer();
-                            MobEntity mob = findOwnedPetNear(p, 16);
-                            if (mob == null) { p.sendMessage(Text.literal("No nearby owned pet")); return 0; }
-
-                            if (mob.getWorld() == p.getWorld()) {
-                                mob.teleport(p.getX(), p.getY(), p.getZ(), true);
-                                orientToPlayer(mob, p);
-                                p.sendMessage(Text.literal("Pet teleported"));
-                                return 1;
-                            }
-                            mob.teleport(p.getServerWorld(), p.getX(), p.getY(), p.getZ(),
-                                    EnumSet.noneOf(PositionFlag.class), p.getYaw(), p.getPitch());
-                            p.sendMessage(Text.literal("Pet teleported"));
-                            return 1;
-                        }))
+                        .executes(ctx -> tpRpgs(ctx.getSource())))
+                .then(CommandManager.literal("tp_rpgs")
+                        .executes(ctx -> tpRpgs(ctx.getSource())))
+                .then(CommandManager.literal("tp_vanilla")
+                        .executes(ctx -> tpVanilla(ctx.getSource())))
         );
     }
+
+    private static int tpRpgs(ServerCommandSource src) {
+        ServerPlayerEntity p = src.getPlayer();
+        MobEntity mob = findOwnedRpgsPetNear(p, 16);
+        if (mob == null) {
+            p.sendMessage(Text.literal("No nearby owned RPGS pet"));
+            return 0;
+        }
+        teleportToPlayer(mob, p);
+        p.sendMessage(Text.literal("Pet teleported"));
+        return 1;
+    }
+
+    private static int tpVanilla(ServerCommandSource src) {
+        ServerPlayerEntity p = src.getPlayer();
+        MobEntity mob = findOwnedVanillaPetNear(p, 16);
+        if (mob == null) {
+            p.sendMessage(Text.literal("No nearby vanilla tamed pet you own"));
+            return 0;
+        }
+        teleportToPlayer(mob, p);
+        p.sendMessage(Text.literal("Pet teleported"));
+        return 1;
+    }
+
+    private static void teleportToPlayer(MobEntity mob, ServerPlayerEntity p) {
+        if (mob.getWorld() == p.getWorld()) {
+            mob.teleport(p.getX(), p.getY(), p.getZ(), true);
+            orientToPlayer(mob, p);
+            return;
+        }
+        mob.teleport(p.getServerWorld(), p.getX(), p.getY(), p.getZ(),
+                EnumSet.noneOf(PositionFlag.class), p.getYaw(), p.getPitch());
+    }
+
     private static void orientToPlayer(MobEntity mob, ServerPlayerEntity p) {
         mob.setYaw(p.getYaw());
         mob.setPitch(p.getPitch());
-        if (mob instanceof LivingEntity le) le.setHeadYaw(p.getYaw());
+        if (mob instanceof LivingEntity le) {
+            le.setHeadYaw(p.getYaw());
+        }
     }
+
     private static int claimLookingAt(ServerCommandSource src, String name) {
         ServerPlayerEntity p = src.getPlayer();
         MobEntity mob = findMobInFront(p, 5);
-        if (mob == null) { p.sendMessage(Text.literal("Look at a mob within 5 blocks")); return 0; }
+        if (mob == null) {
+            p.sendMessage(Text.literal("Look at a mob within 5 blocks"));
+            return 0;
+        }
         PetOwnable own = (PetOwnable) (Object) mob;
         own.rpgsystems$setPet(true);
         own.rpgsystems$setOwnerUuid(p.getUuid());
-        if (name != null) own.rpgsystems$setPetName(name);
+        if (name != null) {
+            own.rpgsystems$setPetName(name);
+        }
         p.sendMessage(Text.literal("Claimed pet"));
         return 1;
     }
+
     private static int unclaimLookingAt(ServerCommandSource src) {
         ServerPlayerEntity p = src.getPlayer();
         MobEntity mob = findMobInFront(p, 5);
-        if (mob == null) { p.sendMessage(Text.literal("Look at a mob within 5 blocks")); return 0; }
+        if (mob == null) {
+            p.sendMessage(Text.literal("Look at a mob within 5 blocks"));
+            return 0;
+        }
         PetOwnable own = (PetOwnable) (Object) mob;
         UUID owner = own.rpgsystems$getOwnerUuid();
-        if (owner == null || !owner.equals(p.getUuid())) { p.sendMessage(Text.literal("You are not the owner")); return 0; }
+        if (owner == null || !owner.equals(p.getUuid())) {
+            p.sendMessage(Text.literal("You are not the owner"));
+            return 0;
+        }
         own.rpgsystems$setPet(false);
         own.rpgsystems$setOwnerUuid(null);
         own.rpgsystems$setPetName("");
         p.sendMessage(Text.literal("Unclaimed pet"));
         return 1;
     }
+
     private static int renameLookingAt(ServerCommandSource src, String name) {
         ServerPlayerEntity p = src.getPlayer();
         MobEntity mob = findMobInFront(p, 5);
-        if (mob == null) { p.sendMessage(Text.literal("Look at a mob within 5 blocks")); return 0; }
+        if (mob == null) {
+            p.sendMessage(Text.literal("Look at a mob within 5 blocks"));
+            return 0;
+        }
         PetOwnable own = (PetOwnable) (Object) mob;
-        if (!p.getUuid().equals(own.rpgsystems$getOwnerUuid())) { p.sendMessage(Text.literal("You are not the owner")); return 0; }
+        if (!p.getUuid().equals(own.rpgsystems$getOwnerUuid())) {
+            p.sendMessage(Text.literal("You are not the owner"));
+            return 0;
+        }
         own.rpgsystems$setPetName(name);
         p.sendMessage(Text.literal("Renamed pet"));
         return 1;
     }
+
     private static MobEntity findMobInFront(ServerPlayerEntity p, double range) {
         Vec3d eyes = p.getCameraPosVec(1.0f);
         Vec3d look = p.getRotationVec(1.0f).normalize();
@@ -98,13 +147,47 @@ public final class PetCommands {
         if (mobs.isEmpty()) return null;
         return mobs.stream().min(Comparator.comparingDouble(m -> m.getPos().squaredDistanceTo(end))).orElse(null);
     }
-    private static MobEntity findOwnedPetNear(ServerPlayerEntity p, double radius) {
+
+    private static MobEntity findOwnedRpgsPetNear(ServerPlayerEntity p, double radius) {
         List<MobEntity> mobs = p.getWorld().getEntitiesByClass(MobEntity.class, p.getBoundingBox().expand(radius), Entity::isAlive);
         UUID me = p.getUuid();
+        MobEntity best = null;
+        double bestDist = Double.MAX_VALUE;
         for (MobEntity mob : mobs) {
             PetOwnable own = (PetOwnable) (Object) mob;
-            if (own.rpgsystems$isPet() && me.equals(own.rpgsystems$getOwnerUuid())) return mob;
+            if (own.rpgsystems$isPet() && me.equals(own.rpgsystems$getOwnerUuid())) {
+                double d = mob.squaredDistanceTo(p);
+                if (d < bestDist) {
+                    bestDist = d;
+                    best = mob;
+                }
+            }
         }
-        return null;
+        return best;
+    }
+
+    private static MobEntity findOwnedVanillaPetNear(ServerPlayerEntity p, double radius) {
+        List<MobEntity> mobs = p.getWorld().getEntitiesByClass(MobEntity.class, p.getBoundingBox().expand(radius), Entity::isAlive);
+        UUID me = p.getUuid();
+        MobEntity best = null;
+        double bestDist = Double.MAX_VALUE;
+        for (MobEntity mob : mobs) {
+            boolean owned = false;
+            if (mob instanceof TameableEntity tame) {
+                UUID u = tame.getOwnerUuid();
+                owned = tame.isTamed() && u != null && u.equals(me);
+            } else if (mob instanceof AbstractHorseEntity horse) {
+                UUID u = horse.getOwnerUuid();
+                owned = horse.isTame() && u != null && u.equals(me);
+            }
+            if (owned) {
+                double d = mob.squaredDistanceTo(p);
+                if (d < bestDist) {
+                    bestDist = d;
+                    best = mob;
+                }
+            }
+        }
+        return best;
     }
 }

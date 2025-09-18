@@ -13,10 +13,12 @@ import net.minecraft.client.render.VertexConsumerProvider;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.LivingEntity;
+import net.minecraft.util.Identifier;
 import net.minecraft.util.math.Box;
 import net.minecraft.util.math.RotationAxis;
 import net.minecraft.util.math.Vec3d;
 import net.pixeldreamstudios.rpgsystems.client.enemy.config.DamageNumbersClientConfig;
+import net.pixeldreamstudios.rpgsystems.client.enemy.config.DamageTypeConfig;
 import org.joml.Matrix4f;
 
 import java.util.ArrayList;
@@ -55,28 +57,30 @@ public final class DamageNumbersRenderer {
         ClientPlayConnectionEvents.DISCONNECT.register((h, c) -> ACTIVE.clear());
     }
 
-    public static void spawn(int entityId, float amount, boolean crit, boolean isPet, int rgb, UUID sourceUuid) {
+    public static void spawn(int entityId, float amount, boolean crit, boolean isPet,
+                             int rgbFromServer, UUID sourceUuid, Identifier damageTypeId) {
         MinecraftClient mc = MinecraftClient.getInstance();
         var cfg = DamageNumbersClientConfig.get();
-        if (!cfg.enabled) return;
-        if (mc == null || mc.world == null) return;
+        var cfgDT = DamageTypeConfig.get();
+        if (!cfg.enabled || mc == null || mc.world == null) return;
 
         if (cfg.showMode == DamageNumbersClientConfig.ShowMode.NONE) return;
-
         if (cfg.showMode == DamageNumbersClientConfig.ShowMode.PLAYERS_ONLY) {
             boolean fromPlayer = sourceUuid != null && mc.world.getPlayerByUuid(sourceUuid) != null;
             boolean allowed = fromPlayer || isPet;
             if (!allowed) return;
         }
-
         if (isPet && !cfg.showPetDamage) return;
-
         if (cfg.onlyShowPartyDamage && !isFromMyParty(sourceUuid)) return;
 
-        if (ACTIVE.size() >= MAX_ACTIVE) ACTIVE.remove(0);
-        ACTIVE.add(new Floating(mc, entityId, amount, crit, isPet, rgb, sourceUuid, mc.world.getTime()));
-    }
+        if (damageTypeId != null && !cfgDT.shouldShowType(damageTypeId)) return;
 
+        Integer override = damageTypeId != null ? cfgDT.colorOverride(damageTypeId) : null;
+        int finalRgb = override != null ? override : rgbFromServer;
+
+        if (ACTIVE.size() >= MAX_ACTIVE) ACTIVE.remove(0);
+        ACTIVE.add(new Floating(mc, entityId, amount, crit, isPet, finalRgb, sourceUuid, mc.world.getTime()));
+    }
 
     private static void onRender(WorldRenderContext context) {
         if (ACTIVE.isEmpty()) return;
@@ -159,7 +163,6 @@ public final class DamageNumbersRenderer {
         }
     }
 
-
     private static boolean isFromMyParty(UUID sourceUuid) {
         if (sourceUuid == null) return false;
         var mc = MinecraftClient.getInstance();
@@ -168,7 +171,6 @@ public final class DamageNumbersRenderer {
 
         return net.pixeldreamstudios.rpgsystems.client.party.ClientPartyHudData.isInMyParty(sourceUuid);
     }
-
 
     private static void drawTextAt(int alpha255, int rgb, String text, Vec3d pos, Camera camera, MatrixStack ms, VertexConsumerProvider vcp, float scale, float tiltDeg) {
         var mc = MinecraftClient.getInstance();
@@ -213,7 +215,8 @@ public final class DamageNumbersRenderer {
 
         Floating(MinecraftClient mc, int entityId, float amount, boolean crit, boolean pet, int rgb, UUID sourceUuid, long spawnTick) {
             this.entityId = entityId;
-            this.displayText = formatAmount(amount);
+            String base = formatAmount(amount);
+            this.displayText = crit ? base + "!" : base;
             this.crit = crit;
             this.pet = pet;
             this.rgb = rgb;
@@ -258,8 +261,6 @@ public final class DamageNumbersRenderer {
             baseZ = living.getZ();
         }
     }
-
-
 
     private static float computeAlpha(int ageTicks, float tickDelta) {
         float t = (ageTicks + tickDelta) / LIFETIME_TICKS;

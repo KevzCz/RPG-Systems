@@ -4,6 +4,7 @@ import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import net.pixeldreamstudios.rpgsystems.client.config.MiscClientConfig;
 import net.pixeldreamstudios.rpgsystems.client.enemy.config.DamageNumbersClientConfig;
+import net.pixeldreamstudios.rpgsystems.client.enemy.config.DamageTypeConfig;
 import net.pixeldreamstudios.rpgsystems.client.enemy.config.EnemyHudClientConfig;
 import net.pixeldreamstudios.rpgsystems.client.enemy.config.HealingNumbersClientConfig;
 import net.pixeldreamstudios.rpgsystems.client.party.config.PartyHudClientConfig;
@@ -23,6 +24,7 @@ public final class ClientConfigLoad {
         PartyMemberInfoClientConfig.get();
         TitlesClientConfig.get();
         MiscClientConfig.get();
+        DamageTypeConfig.get();
     }
 
 }

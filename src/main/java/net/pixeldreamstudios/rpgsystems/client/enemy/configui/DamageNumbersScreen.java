@@ -18,6 +18,7 @@ public final class DamageNumbersScreen extends Screen {
     private CheckboxWidget showPet;
     private CheckboxWidget onlyParty;
     private DistanceSlider distance;
+    private ButtonWidget damageTypesButton;
 
     private DamageNumbersClientConfig.ShowMode mode;
 
@@ -61,6 +62,12 @@ public final class DamageNumbersScreen extends Screen {
         this.addDrawableChild(distance);
         y += 36;
 
+        damageTypesButton = ButtonWidget.builder(Text.literal("Damage Types"),
+                        b -> this.client.setScreen(new DamageTypeConfigScreen(this)))
+                .dimensions(cx - w/2, y, w, 20).build();
+        this.addDrawableChild(damageTypesButton);
+        y += 28;
+
         this.addDrawableChild(ButtonWidget.builder(Text.literal("Save"), b -> {
             cfg.enabled = enabled.isChecked();
             cfg.showMode = mode;
@@ -74,9 +81,9 @@ public final class DamageNumbersScreen extends Screen {
 
     @Override
     public void render(DrawContext ctx, int mouseX, int mouseY, float delta) {
+        super.render(ctx, mouseX, mouseY, delta);
         ctx.drawCenteredTextWithShadow(this.textRenderer, "Damage Numbers", this.width / 2, 20, 0xFFFFFF);
         ctx.drawCenteredTextWithShadow(this.textRenderer, "Display and filtering", this.width / 2, 36, 0xAAAAAA);
-        super.render(ctx, mouseX, mouseY, delta);
     }
 
     private static String modeLabel(DamageNumbersClientConfig.ShowMode m) {
@@ -108,7 +115,6 @@ public final class DamageNumbersScreen extends Screen {
 
         @Override
         protected void applyValue() {
-
         }
 
         double getBlocks() {

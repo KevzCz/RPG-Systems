@@ -4,11 +4,17 @@ import net.minecraft.entity.Entity;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.Tameable;
 import net.minecraft.entity.damage.DamageSource;
+import net.minecraft.entity.damage.DamageType;
+import net.minecraft.entity.damage.DamageTypes;
+import net.minecraft.registry.RegistryKey;
+import net.minecraft.registry.entry.RegistryEntry;
+import net.minecraft.util.Identifier;
 import net.minecraft.world.World;
 import net.pixeldreamstudios.rpgsystems.accessor.LivingEntityRawDamageAccess;
 import net.pixeldreamstudios.rpgsystems.network.EnemyNet;
 import net.pixeldreamstudios.rpgsystems.party.PartyAllies;
 import net.pixeldreamstudios.rpgsystems.util.DamageColorUtil;
+import net.pixeldreamstudios.rpgsystems.util.DamageCritLinks;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
@@ -38,13 +44,12 @@ public abstract class LivingEntityDamageMixin {
         float taken = rpgsystems$preHp - post;
         if (taken <= 0.01f) return;
 
-        int rgb = DamageColorUtil.colorOf(world, source, self);
-
         Entity attacker = source.getAttacker();
-        boolean isPet = attacker instanceof Tameable;
+        Entity origin = attacker != null ? attacker : source.getSource();
+        boolean isPet = origin instanceof Tameable;
 
-        UUID owner = attacker != null ? PartyAllies.owningPlayerUuidFromAttacker(attacker) : null;
-        UUID srcUuid = owner != null ? owner : (attacker != null ? attacker.getUuid() : new UUID(0L, 0L));
+        UUID ownerUuid = PartyAllies.owningPlayerUuidFromAttacker(origin);
+        UUID srcUuid = ownerUuid != null ? ownerUuid : (origin != null ? origin.getUuid() : new UUID(0L, 0L));
 
         float displayDamage = taken;
 
@@ -55,21 +60,35 @@ public abstract class LivingEntityDamageMixin {
         if (self instanceof LivingEntityRawDamageAccess acc) {
             UUID rawAttacker = acc.rpgsystems$getLastRawDamageAttacker();
             if (rawAttacker != null) {
-                if (owner != null) {
-                    rawMatchesAttacker = rawAttacker.equals(owner);
-                } else if (attacker != null) {
-                    rawMatchesAttacker = rawAttacker.equals(attacker.getUuid());
+                UUID cmp = ownerUuid != null ? ownerUuid
+                        : (origin != null ? origin.getUuid() : self.getUuid());
+                if (cmp.equals(rawAttacker)) {
+                    rawMatchesAttacker = true;
+                    rawAmount = acc.rpgsystems$getLastRawDamageAmount();
                 }
-                if (rawMatchesAttacker) rawAmount = acc.rpgsystems$getLastRawDamageAmount();
             }
         }
-
         if (killedNow && rawMatchesAttacker && rawAmount > 0.0f) {
             displayDamage = Math.max(displayDamage, rawAmount);
         }
 
-        boolean crit = false;
+        DamageCritLinks.Info link = DamageCritLinks.consume(source);
+        boolean crit = link.isCrit();
+        boolean magicCrit = link.isMagic();
 
-        EnemyNet.broadcastDamageNumber(self, displayDamage, crit, isPet, rgb, srcUuid);
+        boolean sourceIsMagic = source.isOf(DamageTypes.MAGIC) || source.isOf(DamageTypes.INDIRECT_MAGIC);
+        if (magicCrit && !sourceIsMagic) {
+            magicCrit = true;
+        }
+
+        int rgb = DamageColorUtil.colorOf(world, source, self, crit, magicCrit, link.colorOverride);
+
+        Identifier dmgId = Identifier.of("minecraft", "unknown");
+        if (source != null) {
+            RegistryEntry<DamageType> entry = source.getTypeRegistryEntry();
+            dmgId = entry.getKey().map(RegistryKey::getValue).orElse(Identifier.of("minecraft", "unknown"));
+        }
+
+        EnemyNet.broadcastDamageNumber(self, displayDamage, crit, isPet, rgb, srcUuid, dmgId);
     }
 }

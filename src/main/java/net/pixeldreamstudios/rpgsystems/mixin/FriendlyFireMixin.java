@@ -1,6 +1,5 @@
 package net.pixeldreamstudios.rpgsystems.mixin;
 
-import net.minecraft.entity.Entity;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.damage.DamageSource;
 import net.minecraft.server.MinecraftServer;
@@ -10,21 +9,24 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
+import java.util.UUID;
+
 @Mixin(LivingEntity.class)
 public abstract class FriendlyFireMixin {
     @Inject(method = "damage", at = @At("HEAD"), cancellable = true)
     private void rpgsystems$blockFriendly(DamageSource source, float amount, CallbackInfoReturnable<Boolean> cir) {
         LivingEntity victim = (LivingEntity) (Object) this;
-        var world = victim.getWorld();
-        MinecraftServer server = world.getServer();
+        MinecraftServer server = victim.getServer();
         if (server == null) return;
 
-        Entity attacker = source.getAttacker();
-        var atkUuid = PartyAllies.owningPlayerUuidFromAttacker(attacker);
-        var vicUuid = PartyAllies.owningPlayerUuidOfVictim(victim);
+        UUID attackerUuid = PartyAllies.owningPlayerUuid(source.getAttacker());
+        if (attackerUuid == null) {
+            attackerUuid = PartyAllies.owningPlayerUuidFromDamageSource(source);
+        }
 
-        if (atkUuid != null && vicUuid != null && PartyAllies.sameParty(server, atkUuid, vicUuid)) {
+        UUID victimUuid = PartyAllies.owningPlayerUuid(victim);
 
+        if (attackerUuid != null && victimUuid != null && PartyAllies.sameParty(server, attackerUuid, victimUuid)) {
             cir.setReturnValue(false);
         }
     }

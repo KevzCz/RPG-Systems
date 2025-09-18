@@ -14,8 +14,11 @@ public final class HealingNumbersClientConfig {
             .resolve("rpgsystems").resolve("healing_numbers_client.json");
 
     public enum Mode { NONE, ALL }
+    public enum AmountMode { APPLIED, ATTEMPTED }
 
     public Mode mode = Mode.ALL;
+    public AmountMode amountMode = AmountMode.ATTEMPTED;
+
     private static HealingNumbersClientConfig INSTANCE;
 
     private HealingNumbersClientConfig() {}
@@ -29,9 +32,9 @@ public final class HealingNumbersClientConfig {
                     if (INSTANCE == null) {
                         INSTANCE = new HealingNumbersClientConfig();
                         needSave = true;
-                    } else if (INSTANCE.mode == null) {
-                        INSTANCE.mode = Mode.ALL;
-                        needSave = true;
+                    } else {
+                        if (INSTANCE.mode == null) { INSTANCE.mode = Mode.ALL; needSave = true; }
+                        if (INSTANCE.amountMode == null) { INSTANCE.amountMode = AmountMode.ATTEMPTED; needSave = true; }
                     }
                 } else {
                     INSTANCE = new HealingNumbersClientConfig();

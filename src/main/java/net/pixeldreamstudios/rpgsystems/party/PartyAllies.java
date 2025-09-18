@@ -2,18 +2,21 @@ package net.pixeldreamstudios.rpgsystems.party;
 
 import net.minecraft.entity.AreaEffectCloudEntity;
 import net.minecraft.entity.Entity;
+import net.minecraft.entity.LightningEntity;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.Ownable;
-import net.minecraft.entity.passive.TameableEntity;
 import net.minecraft.entity.passive.AbstractHorseEntity;
+import net.minecraft.entity.passive.TameableEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.entity.projectile.ProjectileEntity;
+import net.minecraft.entity.damage.DamageSource;
 import net.minecraft.server.MinecraftServer;
 
 import java.util.UUID;
 
 public final class PartyAllies {
     private PartyAllies() {}
+
     public static boolean sameParty(MinecraftServer server, UUID a, UUID b) {
         if (a == null || b == null) return false;
         if (server == null) return false;
@@ -22,6 +25,7 @@ public final class PartyAllies {
         var pb = state.getPartyByMember(b);
         return pa != null && pb != null && pa.id.equals(pb.id);
     }
+
     public static UUID owningPlayerUuid(Entity e) {
         if (e == null) return null;
 
@@ -29,6 +33,10 @@ public final class PartyAllies {
 
         if (e instanceof ProjectileEntity proj) return owningPlayerUuid(proj.getOwner());
         if (e instanceof AreaEffectCloudEntity cloud) return owningPlayerUuid(cloud.getOwner());
+
+        if (e instanceof LightningEntity lightning) {
+            return owningPlayerUuid(lightning.getChanneler());
+        }
 
         if (e instanceof Ownable ownable) {
             Entity owner = ownable.getOwner();
@@ -47,6 +55,13 @@ public final class PartyAllies {
         return null;
     }
 
+    public static UUID owningPlayerUuidFromDamageSource(DamageSource source) {
+        if (source == null) return null;
+        Entity src = source.getSource();
+        if (src == null) return null;
+        return owningPlayerUuid(src);
+    }
+
     public static UUID owningPlayerUuidFromAttacker(Entity attacker) { return owningPlayerUuid(attacker); }
-    public static UUID owningPlayerUuidOfVictim(LivingEntity victim)   { return owningPlayerUuid(victim); }
+    public static UUID owningPlayerUuidOfVictim(LivingEntity victim) { return owningPlayerUuid(victim); }
 }

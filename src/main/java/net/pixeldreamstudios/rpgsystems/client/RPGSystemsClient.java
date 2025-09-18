@@ -92,6 +92,7 @@ public final class RPGSystemsClient implements ClientModInitializer {
                 "key.categories.multiplayer"
         ));
 
+
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
             while (openPartyScreen.wasPressed()) {
                 boolean hasParty = ClientPartyHudData.partyId != null;
@@ -146,6 +147,7 @@ public final class RPGSystemsClient implements ClientModInitializer {
             if (RPGSystemsConfig.get().systems.title) {
                 TitleTextureResolver.clear();
             }
+
         });
 
         ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> {
