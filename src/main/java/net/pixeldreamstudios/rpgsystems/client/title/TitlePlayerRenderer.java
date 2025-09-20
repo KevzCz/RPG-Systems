@@ -63,6 +63,10 @@ public final class TitlePlayerRenderer {
             PlayerEntity player = entity;
             if (!player.isAlive()) continue;
 
+            PlayerEntity viewer = client.player;
+            boolean invisible = viewer != null ? player.isInvisibleTo(viewer) : player.isInvisible();
+            if (invisible) continue;
+
             Identifier titleId = player.getUuid().equals(client.player != null ? client.player.getUuid() : null)
                     ? TitleClientData.getSelfActive()
                     : TitleClientData.getActive(player.getUuid());

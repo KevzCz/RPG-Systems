@@ -25,6 +25,7 @@ public final class PartyHudOptionsScreen extends Screen {
 
     private TextFieldWidget hudXField;
     private TextFieldWidget hudYField;
+    private TextFieldWidget hudScaleField;
 
     private boolean staminaAvailable;
     private boolean manaAvailable;
@@ -39,6 +40,7 @@ public final class PartyHudOptionsScreen extends Screen {
     private int yShowArrows;
     private int yHudX;
     private int yHudY;
+    private int yHudScale;
     private int yShowHp;
     private int yShowHunger;
     private int yShowStamina;
@@ -80,6 +82,7 @@ public final class PartyHudOptionsScreen extends Screen {
         y += 24;
 
         int fieldW = 100;
+
         hudXField = new TextFieldWidget(this.textRenderer, centerX - w / 2 + w - fieldW, y, fieldW, h, Text.literal(""));
         hudXField.setText(String.valueOf(cfg.partyHudX));
         yHudX = y;
@@ -90,6 +93,12 @@ public final class PartyHudOptionsScreen extends Screen {
         hudYField.setText(String.valueOf(cfg.partyHudY));
         yHudY = y;
         addDrawableChild(hudYField);
+        y += 24;
+
+        hudScaleField = new TextFieldWidget(this.textRenderer, centerX - w / 2 + w - fieldW, y, fieldW, h, Text.literal(""));
+        hudScaleField.setText(trimFloat(cfg.hudScale));
+        yHudScale = y;
+        addDrawableChild(hudScaleField);
         y += 28;
 
         this.showHp = CheckboxWidget.builder(Text.literal("HP Bar"), this.textRenderer)
@@ -172,7 +181,6 @@ public final class PartyHudOptionsScreen extends Screen {
 
     private void setVis(net.minecraft.client.gui.widget.ClickableWidget w, boolean v) {
         w.visible = v;
-        w.active = v;
     }
 
     private void applyScroll() {
@@ -182,6 +190,7 @@ public final class PartyHudOptionsScreen extends Screen {
         showArrows.setY(yShowArrows - off);
         hudXField.setY(yHudX - off);
         hudYField.setY(yHudY - off);
+        hudScaleField.setY(yHudScale - off);
         showHp.setY(yShowHp - off);
         showHunger.setY(yShowHunger - off);
         showStamina.setY(yShowStamina - off);
@@ -193,11 +202,16 @@ public final class PartyHudOptionsScreen extends Screen {
         setVis(showArrows,   inViewportY(showArrows.getY(), rowH));
         setVis(hudXField,    inViewportY(hudXField.getY(), rowH));
         setVis(hudYField,    inViewportY(hudYField.getY(), rowH));
+        setVis(hudScaleField,inViewportY(hudScaleField.getY(), rowH));
         setVis(showHp,       inViewportY(showHp.getY(), rowH));
         setVis(showHunger,   inViewportY(showHunger.getY(), rowH));
         setVis(showStamina,  inViewportY(showStamina.getY(), rowH));
         setVis(showMana,     inViewportY(showMana.getY(), rowH));
         setVis(showRpgMana,  inViewportY(showRpgMana.getY(), rowH));
+
+        showStamina.active = staminaAvailable && showStamina.visible;
+        showMana.active    = manaAvailable    && showMana.visible;
+        showRpgMana.active = rpgManaAvailable && showRpgMana.visible;
     }
 
     private static int parseIntSafe(TextFieldWidget f, int fallback) {
@@ -206,6 +220,29 @@ public final class PartyHudOptionsScreen extends Screen {
         } catch (Throwable t) {
             return fallback;
         }
+    }
+
+    private static float parseFloatSafe(TextFieldWidget f, float fallback) {
+        try {
+            return Float.parseFloat(f.getText().trim());
+        } catch (Throwable t) {
+            return fallback;
+        }
+    }
+
+    private static float clamp(float v, float lo, float hi) {
+        if (v < lo) return lo;
+        if (v > hi) return hi;
+        return v;
+    }
+
+    private static String trimFloat(float f) {
+        String s = Float.toString(f);
+        if (s.contains(".")) {
+            while (s.endsWith("0")) s = s.substring(0, s.length() - 1);
+            if (s.endsWith(".")) s = s.substring(0, s.length() - 1);
+        }
+        return s;
     }
 
     private void applyAndSave() {
@@ -219,6 +256,10 @@ public final class PartyHudOptionsScreen extends Screen {
         cfg.showRpgManaBar = this.showRpgMana.isChecked() && rpgManaAvailable;
         cfg.partyHudX = parseIntSafe(hudXField, cfg.partyHudX);
         cfg.partyHudY = parseIntSafe(hudYField, cfg.partyHudY);
+
+        float parsedScale = parseFloatSafe(hudScaleField, cfg.hudScale);
+        cfg.hudScale = clamp(parsedScale, 0.5f, 3.0f);
+
         cfg.enforceMaxThreeBars();
         PartyHudClientConfig.save();
     }
@@ -288,10 +329,12 @@ public final class PartyHudOptionsScreen extends Screen {
         int off = (int) Math.round(scroll);
         int xLabelY = yHudX - off;
         int yLabelY = yHudY - off;
+        int sLabelY = yHudScale - off;
 
         ctx.enableScissor(0, yStart, this.width, yStart + formHeight);
         ctx.drawText(this.textRenderer, Text.literal("HUD X (from left)"), labelX, xLabelY + 4, labelColor, false);
         ctx.drawText(this.textRenderer, Text.literal("HUD Y (from top)"),  labelX, yLabelY + 4, labelColor, false);
+        ctx.drawText(this.textRenderer, Text.literal("HUD Scale (0.5 - 3.0)"), labelX, sLabelY + 4, labelColor, false);
         ctx.disableScissor();
 
         if (!warning.isEmpty()) {

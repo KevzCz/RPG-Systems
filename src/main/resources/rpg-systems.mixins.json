@@ -17,6 +17,7 @@
 		"FriendlyFireMixin",
 		"EntityRelationsHelpfulGateMixin",
 		"LivingEntityDamageMixin",
+		"PlayerEntityLastRawDamageMixin",
 		"LivingEntityDamageAccessor",
 		"LivingEntityHealMixin",
 		"LivingEntityDamageBonusMixin",

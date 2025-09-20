@@ -6,7 +6,6 @@ import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
-import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.font.TextRenderer;
@@ -28,16 +27,22 @@ import net.pixeldreamstudios.rpgsystems.RPGSystems;
 import net.pixeldreamstudios.rpgsystems.client.party.ClientPartyHudData;
 import net.pixeldreamstudios.rpgsystems.client.party.ClientPartyStatusEffects;
 import net.pixeldreamstudios.rpgsystems.client.party.config.PartyHudClientConfig;
+import net.pixeldreamstudios.rpgsystems.compat.RpgManaCompat;
+import net.pixeldreamstudios.rpgsystems.compat.TrbAttributesCompat;
 import net.pixeldreamstudios.rpgsystems.network.party.PartyStatusEffectsPayloads;
 import org.joml.Quaternionf;
 import org.joml.Vector3f;
 
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 
 @Environment(EnvType.CLIENT)
 public final class PartyHud implements HudRenderCallback {
     private static final boolean DEBUG_BOXES = false;
     private static final boolean DEBUG_EFFECTS = false;
+
+    private static final boolean DEBUG_FORCE_DUMMY = false;
+    private static final int DEBUG_DUMMY_COUNT = 10;
 
     private static final int PANEL_W = 128;
     private static final int PANEL_H = 32;
@@ -51,7 +56,7 @@ public final class PartyHud implements HudRenderCallback {
     private static final int NAME_PAD_Y = 1;
     private static final float TEXT_SCALE = 0.25f;
 
-    private static final int PLATE_SHIFT_X = 1;
+    private static final float PLATE_SHIFT_X = -13.5f;
     private static final int PLATE_SHIFT_Y = -2;
 
     private static final float LVL_INSET_X = -0.3f;
@@ -65,7 +70,7 @@ public final class PartyHud implements HudRenderCallback {
 
     private static final int BAR_GAP_FROM_MODEL = 3;
     private static final int BAR_RIGHT_PAD = 6;
-    private static final int BAR_END_SHORTEN = 5;
+    private static final int BAR_END_SHORTEN = 20;
     private static final int BAR_H_BASE = 3;
     private static final int BAR_BG         = 0xFF3E3E3E;
     private static final int BAR_BORDER     = 0x00000000;
@@ -86,16 +91,24 @@ public final class PartyHud implements HudRenderCallback {
     private static final Identifier PARTY_BG = Identifier.of("rpg-systems", "textures/gui/party_hud.png");
     private static boolean bgFiltered = false;
 
-    private static boolean staminaAvailableCached = FabricLoader.getInstance().isModLoaded("staminaattributes");
-    private static boolean manaAvailableCached = FabricLoader.getInstance().isModLoaded("manaattributes");
-    private static boolean rpgManaAvailableCached = FabricLoader.getInstance().isModLoaded("rpgmana");
+    private static final boolean staminaAvailableCached = FabricLoader.getInstance().isModLoaded("staminaattributes");
+    private static final boolean manaAvailableCached = FabricLoader.getInstance().isModLoaded("manaattributes");
+    private static final boolean rpgManaAvailableCached = FabricLoader.getInstance().isModLoaded("rpgmana");
 
     private static final float EFFECT_ICON_SIZE = 3f;
-    private static final float EFFECT_ICON_GAP  = 1f;
-    private static final int   EFFECTS_PER_COLUMN = 3;
-    private static final float POTION_RIGHT_OFFSET = -2f;
+    private static final float EFFECT_ICON_GAP  = 2f;
+    private static final int   EFFECTS_PER_COLUMN = 2;
+    private static final float POTION_RIGHT_OFFSET = -18f;
     private static final int   EFFECT_BASE_PX = 18;
+    private static final Identifier TEX_BAR_OUTLINE_HUD = Identifier.of("rpg-systems","textures/gui/party_hud/bar_outline_hud.png");
+    private static final Identifier TEX_HP_FILL_HUD     = Identifier.of("rpg-systems","textures/gui/party_hud/health_bar_hud.png");
+    private static final Identifier TEX_ABSORB_FILL_HUD = Identifier.of("rpg-systems","textures/gui/party_hud/absorption_bar_hud.png");
+    private static final Identifier TEX_MANA_FILL_HUD   = Identifier.of("rpg-systems","textures/gui/party_hud/mana_bar_hud.png");
+    private static final Identifier TEX_HUNGER_FILL_HUD = Identifier.of("rpg-systems","textures/gui/party_hud/hunger_bar_hud.png");
+    private static final int HUD_TEX_SRC_W = 108;
+    private static final int HUD_TEX_SRC_H = 8;
 
+    private static boolean hudBarTexturesFiltered = false;
     public static void init() {
         HudRenderCallback.EVENT.register(new PartyHud());
         ClientPlayNetworking.registerGlobalReceiver(
@@ -114,6 +127,81 @@ public final class PartyHud implements HudRenderCallback {
 
         if (DEBUG_EFFECTS) log("PartyHud init: payload + receiver registered");
     }
+    private static void drawHudTexturedWhole(DrawContext ctx, Identifier tex, int x, int y, int w, int h) {
+        var m = ctx.getMatrices();
+        m.push();
+        m.translate(x, y, 0f);
+        m.scale(w / (float) HUD_TEX_SRC_W, h / (float) HUD_TEX_SRC_H, 1f);
+        ctx.drawTexture(tex, 0, 0, 0, 0, HUD_TEX_SRC_W, HUD_TEX_SRC_H, HUD_TEX_SRC_W, HUD_TEX_SRC_H);
+        m.pop();
+    }
+    private static void drawHudBarSmart(DrawContext ctx, int x, int y, int w, int h, RenderBar b) {
+        switch (b.kind) {
+            case HP -> {
+                float hp  = clamp01(b.pct);
+                float abs = clamp01(b.extraPct);
+
+                drawHudTexturedSegment(ctx, TEX_HP_FILL_HUD, x, y, w, h, 0f, hp);
+
+                if (abs > 0f) {
+                    drawHudTexturedSegmentWithAlpha(ctx, TEX_ABSORB_FILL_HUD, x, y, w, h, 0f, abs, 0.75f);
+                }
+
+                drawHudTexturedWhole(ctx, TEX_BAR_OUTLINE_HUD, x, y, w, h);
+            }
+            case HUNGER -> {
+                drawHudTexturedSegment(ctx, TEX_HUNGER_FILL_HUD, x, y, w, h, 0f, clamp01(b.pct));
+                drawHudTexturedWhole(ctx, TEX_BAR_OUTLINE_HUD, x, y, w, h);
+            }
+            case MANA, RPGMANA -> {
+                drawHudTexturedSegment(ctx, TEX_MANA_FILL_HUD, x, y, w, h, 0f, clamp01(b.pct));
+                drawHudTexturedWhole(ctx, TEX_BAR_OUTLINE_HUD, x, y, w, h);
+            }
+            case STAMINA -> {
+                drawBarPretty(ctx, x, y, w, h, clamp01(b.pct), BAR_BG, BAR_BORDER, b.color);
+            }
+        }
+    }
+    private static void drawHudTexturedSegment(DrawContext ctx, Identifier tex, int x, int y, int w, int h, float startPct, float endPct) {
+        float s = Math.max(0f, Math.min(1f, startPct));
+        float e = Math.max(0f, Math.min(1f, endPct));
+        if (e <= s) return;
+
+        int srcU = Math.round(HUD_TEX_SRC_W * s);
+        int srcW = Math.max(0, Math.round(HUD_TEX_SRC_W * (e - s)));
+
+        var m = ctx.getMatrices();
+        m.push();
+        m.translate(x, y, 0f);
+        m.scale(w / (float) HUD_TEX_SRC_W, h / (float) HUD_TEX_SRC_H, 1f);
+        ctx.drawTexture(tex, srcU, 0, srcU, 0, srcW, HUD_TEX_SRC_H, HUD_TEX_SRC_W, HUD_TEX_SRC_H);
+        m.pop();
+    }
+
+    private static void drawHudTexturedSegmentWithAlpha(DrawContext ctx, Identifier tex, int x, int y, int w, int h,
+                                                        float startPct, float endPct, float alpha) {
+        float s = Math.max(0f, Math.min(1f, startPct));
+        float e = Math.max(0f, Math.min(1f, endPct));
+        if (e <= s) return;
+
+        int srcU = Math.round(HUD_TEX_SRC_W * s);
+        int srcW = Math.max(0, Math.round(HUD_TEX_SRC_W * (e - s)));
+
+        var m = ctx.getMatrices();
+        m.push();
+        m.translate(x, y, 0f);
+        m.scale(w / (float) HUD_TEX_SRC_W, h / (float) HUD_TEX_SRC_H, 1f);
+
+        RenderSystem.enableBlend();
+        RenderSystem.setShaderColor(1f, 1f, 1f, Math.max(0f, Math.min(1f, alpha)));
+        ctx.drawTexture(tex, srcU, 0, srcU, 0, srcW, HUD_TEX_SRC_H, HUD_TEX_SRC_W, HUD_TEX_SRC_H);
+        RenderSystem.setShaderColor(1f, 1f, 1f, 1f);
+        RenderSystem.disableBlend();
+
+        m.pop();
+    }
+
+    private static float clamp01(float v) { return Math.max(0f, Math.min(1f, v)); }
 
     @Override
     public void onHudRender(DrawContext ctx, RenderTickCounter tickCounter) {
@@ -124,20 +212,48 @@ public final class PartyHud implements HudRenderCallback {
         if (mc == null || mc.options.hudHidden || mc.player == null) return;
 
         ensureBgNearest();
+        ensureHudBarTexturesNearest();
+
+        final int xAnchor = cfg.partyHudX;
+        final int yAnchorStart = cfg.partyHudY;
+
+        float hudScale = cfg.hudScale;
+        if (hudScale <= 0f) hudScale = 1f;
+        if (hudScale < 0.5f) hudScale = 0.5f;
+        if (hudScale > 3.0f) hudScale = 3.0f;
+
+        final int unscaledRowStep = Math.round(PANEL_H * BG_SCALE) + ROW_GAP;
+        final int rowStep = Math.round(unscaledRowStep * hudScale);
+
+        if (DEBUG_FORCE_DUMMY) {
+            int yScreen = yAnchorStart;
+            for (int i = 0; i < DEBUG_DUMMY_COUNT; i++) {
+                String name = "Dummy_" + (i + 1);
+                int level = (i + 1) * 3;
+                UUID uuid = UUID.nameUUIDFromBytes(("rpgsystems:dummy:" + i).getBytes(StandardCharsets.UTF_8));
+                var mtx = ctx.getMatrices();
+                mtx.push();
+                mtx.translate(xAnchor, yScreen, 0);
+                mtx.scale(hudScale, hudScale, 1f);
+                drawRow(ctx, 0, 0, uuid, name, level, cfg);
+                mtx.pop();
+                yScreen += rowStep;
+            }
+            return;
+        }
 
         List<ClientPartyHudData.Member> list = ClientPartyHudData.membersSortedExcludingSelf();
-
-        final int x = cfg.partyHudX;
-        final int yStart = cfg.partyHudY;
-        final int yStep = Math.round(PANEL_H * BG_SCALE) + ROW_GAP;
-
         if (list.isEmpty()) return;
 
-        int y = yStart;
+        int yScreen = yAnchorStart;
         for (var m : list) {
-            if (DEBUG_EFFECTS) log("row anchor for " + m.name + " [" + m.uuid + "]: x=" + x + " y=" + y);
-            drawRow(ctx, x, y, m.uuid, m.name, m.totalLevel, cfg);
-            y += yStep;
+            var mtx = ctx.getMatrices();
+            mtx.push();
+            mtx.translate(xAnchor, yScreen, 0);
+            mtx.scale(hudScale, hudScale, 1f);
+            drawRow(ctx, 0, 0, m.uuid, m.name, m.totalLevel, cfg);
+            mtx.pop();
+            yScreen += rowStep;
         }
     }
 
@@ -166,8 +282,8 @@ public final class PartyHud implements HudRenderCallback {
 
         final int slotW = PLATE_W;
         final int slotH = Math.max(1, Math.round(tr.fontHeight * TEXT_SCALE)) + NAME_PAD_Y * 2;
-        final int slotX = x + scaledW - PLATE_INSET - slotW + PLATE_SHIFT_X;
-        final int slotY = y + PLATE_INSET + PLATE_SHIFT_Y;
+        final float slotXF = x + scaledW - PLATE_INSET - PLATE_W + PLATE_SHIFT_X;
+        final float slotYF = y + PLATE_INSET + PLATE_SHIFT_Y;
 
         String display = (name == null ? "Unknown" : name);
         if (display.length() > NAME_CHAR_MAX) display = display.substring(0, NAME_CHAR_MAX);
@@ -176,9 +292,9 @@ public final class PartyHud implements HudRenderCallback {
 
         int textW = Math.round(tr.getWidth(display) * TEXT_SCALE);
         int textH = Math.max(1, Math.round(tr.fontHeight * TEXT_SCALE));
-        int textX = slotX + (slotW - textW) / 2;
-        int textY = slotY + (slotH - textH) / 2;
-        drawScaledText(ctx, tr, display, textX, textY, 0xFFFFFFFF, TEXT_SCALE);
+        float textXF = slotXF + (PLATE_W - textW) / 2f;
+        float textYF = slotYF + ( (Math.max(1, Math.round(tr.fontHeight * TEXT_SCALE)) + NAME_PAD_Y * 2) - textH ) / 2f;
+        drawScaledTextF(ctx, tr, display, textXF, textYF, 0xFFFFFFFF, TEXT_SCALE);
 
         final int modelRight = modelCenterX + MODEL_SIZE / 2;
         final int barX = modelRight + BAR_GAP_FROM_MODEL;
@@ -196,7 +312,7 @@ public final class PartyHud implements HudRenderCallback {
             for (int i = 0; i < bars.size(); i++) {
                 RenderBar b = bars.get(i);
                 int by = topY + i * (barH + 1);
-                drawBarPretty(ctx, barX, by, barW, barH, b.pct, BAR_BG, BAR_BORDER, b.color);
+                drawHudBarSmart(ctx, barX, by, barW, barH, b);
                 String txt = b.text;
                 int tW = Math.round(tr.getWidth(txt) * TEXT_SCALE);
                 int tH = Math.max(1, Math.round(tr.fontHeight * TEXT_SCALE));
@@ -212,7 +328,7 @@ public final class PartyHud implements HudRenderCallback {
             if (arrow != null) {
                 int aw = Math.round(ARROW_W * BG_SCALE);
                 int ah = Math.round(ARROW_H * BG_SCALE);
-                int ax = x + scaledW - ARROW_INSET - aw;
+                int ax = x + scaledW - ARROW_INSET - aw - 15;
                 int ay = y + scaledH - ARROW_INSET - ah;
                 drawTextureScaled(ctx, arrow, ax - 1, ay + 3, ARROW_W, ARROW_H, ARROW_W, ARROW_H, BG_SCALE);
                 if (DEBUG_BOXES) drawBorder(ctx, ax, ay, aw, ah, 0x80FFFF00);
@@ -224,7 +340,7 @@ public final class PartyHud implements HudRenderCallback {
             log("effects for " + name + " [" + uuid + "]: count=" + (theirEffects == null ? 0 : theirEffects.size()) + " " + theirEffects);
         }
         if (theirEffects != null && !theirEffects.isEmpty()) {
-            float anchorX = x + scaledW + POTION_RIGHT_OFFSET;
+            float anchorX = x + scaledW + POTION_RIGHT_OFFSET - EFFECT_ICON_SIZE;
             float boxH = scaledH;
             if (DEBUG_EFFECTS) log("effect anchor for " + name + ": anchorX=" + anchorX + " topY=" + y + " boxH=" + boxH);
             drawMemberEffectIcons(ctx, anchorX, y, boxH, theirEffects);
@@ -351,7 +467,18 @@ public final class PartyHud implements HudRenderCallback {
         while (b.length() > 0 && Math.round(tr.getWidth(b.toString()) * scale) + dw > maxPx) b.deleteCharAt(b.length() - 1);
         return b + dots;
     }
-
+    private static void ensureHudBarTexturesNearest() {
+        if (hudBarTexturesFiltered) return;
+        var mc = MinecraftClient.getInstance();
+        if (mc == null) return;
+        TextureManager tm = mc.getTextureManager();
+        AbstractTexture o = tm.getTexture(TEX_BAR_OUTLINE_HUD); if (o != null) o.setFilter(false, false);
+        AbstractTexture h = tm.getTexture(TEX_HP_FILL_HUD);     if (h != null) h.setFilter(false, false);
+        AbstractTexture a = tm.getTexture(TEX_ABSORB_FILL_HUD); if (a != null) a.setFilter(false, false);
+        AbstractTexture m = tm.getTexture(TEX_MANA_FILL_HUD);   if (m != null) m.setFilter(false, false);
+        AbstractTexture g = tm.getTexture(TEX_HUNGER_FILL_HUD); if (g != null) g.setFilter(false, false);
+        hudBarTexturesFiltered = true;
+    }
     private static void ensureBgNearest() {
         if (bgFiltered) return;
         var mc = MinecraftClient.getInstance();
@@ -369,68 +496,87 @@ public final class PartyHud implements HudRenderCallback {
         bgFiltered = true;
     }
 
+    private enum Kind { HP, HUNGER, STAMINA, MANA, RPGMANA }
+
     private static final class RenderBar {
+        final Kind kind;
         final float pct;
+        final float extraPct;
         final String text;
         final int color;
-        RenderBar(float pct, String text, int color) {
-            this.pct = Math.max(0f, Math.min(1f, pct));
+        RenderBar(Kind kind, float pct, float extraPct, String text, int color) {
+            this.kind = kind;
+            this.pct = clamp01(pct);
+            this.extraPct = clamp01(extraPct);
             this.text = text;
             this.color = color;
         }
     }
 
+
     private static List<RenderBar> collectBars(UUID uuid, PartyHudClientConfig cfg) {
         List<RenderBar> out = new ArrayList<>();
         ClientPartyHudData.Member mem = ClientPartyHudData.getByUuid(uuid);
-
         if (cfg.showHpBar) {
-            float pct = 0f;
+            float pct = 0f, absPct = 0f;
             int now = -1, max = -1;
+
             if (mem != null) {
-                pct = mem.maxHealth > 0 ? Math.max(0f, Math.min(1f, mem.health / mem.maxHealth)) : 0f;
-                now = Math.round(mem.health);
                 max = Math.round(mem.maxHealth);
+                pct    = mem.maxHealth > 0 ? mem.health     / mem.maxHealth : 0f;
+                absPct = mem.maxHealth > 0 ? mem.absorption / mem.maxHealth : 0f;
+                now = Math.round(mem.health + mem.absorption);
             }
-            String txt = (now >= 0 && max >= 0) ? (now + " / " + max) : "?? / ??";
-            out.add(new RenderBar(pct, txt, BAR_HP_FILL));
+
+            String txt = (now >= 0 && max > 0) ? (now + " / " + max) : "?? / ??";
+            out.add(new RenderBar(Kind.HP, pct, absPct, txt, BAR_HP_FILL));
         }
 
         if (cfg.showHungerBar) {
-            float pct = 0f;
-            int now = -1;
-            if (mem != null && mem.hunger >= 0) {
-                pct = Math.max(0f, Math.min(1f, mem.hunger / 20f));
-                now = mem.hunger;
-            }
-            String txt = (now >= 0) ? (now + " / 20") : "?? / 20";
-            out.add(new RenderBar(pct, txt, BAR_HUNGER_FILL));
+            float pct = (mem != null && mem.hunger >= 0) ? Math.max(0f, Math.min(1f, mem.hunger / 20f)) : 0f;
+            String txt = (mem != null && mem.hunger >= 0) ? (mem.hunger + " / 20") : "?? / 20";
+            out.add(new RenderBar(Kind.HUNGER, pct, 0f, txt, BAR_HUNGER_FILL));
         }
-
         if (cfg.showStaminaBar && staminaAvailableCached) {
-            StackedValue v = queryTracked(uuid, true);
-            float pct = v.max > 0 ? v.now / v.max : 0f;
-            String txt = (v.now >= 0 && v.max > 0) ? ((int)v.now + " / " + (int)v.max) : "?? / ??";
-            out.add(new RenderBar(pct, txt, BAR_STAM_FILL));
+            float now = -1f, max = -1f;
+            if (mem != null && mem.staminaMax > 0f) {
+                now = mem.staminaNow; max = mem.staminaMax;
+            } else {
+                StackedValue v = queryTracked(uuid, true);
+                now = v.now; max = v.max;
+            }
+            float pct = max > 0 ? now / max : 0f;
+            String txt = (now >= 0 && max > 0) ? ((int)now + " / " + (int)max) : "?? / ??";
+            out.add(new RenderBar(Kind.STAMINA, pct, 0f, txt, BAR_STAM_FILL));
         }
 
         if (cfg.showManaBar && manaAvailableCached) {
-            StackedValue v = queryTracked(uuid, false);
-            float pct = v.max > 0 ? Math.max(0f, Math.min(1f, v.now / v.max)) : 0f;
-            int nowI = v.now >= 0 ? (int)v.now : 0;
-            int maxI = v.max > 0 ? (int)v.max : 0;
-            String txt = (maxI > 0) ? (nowI + " / " + maxI) : "?? / ??";
-            out.add(new RenderBar(pct, txt, BAR_MANA_FILL));
+            float now = -1f, max = -1f;
+            if (mem != null && mem.manaMax > 0f) {
+                now = mem.manaNow; max = mem.manaMax;
+            } else {
+                StackedValue v = queryTracked(uuid, false);
+                now = v.now; max = v.max;
+            }
+            float pct = max > 0 ? now / max : 0f;
+            String txt = (max > 0) ? ((int)now + " / " + (int)max) : "?? / ??";
+            out.add(new RenderBar(Kind.MANA, pct, 0f, txt, BAR_MANA_FILL));
         }
 
         if (cfg.showRpgManaBar && rpgManaAvailableCached) {
-            StackedValue v = queryRpgMana(uuid);
-            float pct = v.max > 0 ? Math.max(0f, Math.min(1f, v.now / v.max)) : 0f;
-            int nowI = v.now >= 0 ? (int)v.now : 0;
-            int maxI = v.max > 0 ? (int)v.max : 0;
-            String txt = (maxI > 0) ? (nowI + " / " + maxI) : "?? / ??";
-            out.add(new RenderBar(pct, txt, BAR_RPGMANA_FILL));
+            float now = -1f, max = -1f;
+            if (mem != null && mem.rpgManaMax > 0f) {
+                now = mem.rpgManaNow; max = mem.rpgManaMax;
+            } else {
+                StackedValue v = queryRpgMana(uuid);
+                now = v.now; max = v.max;
+            }
+            float pct = max > 0 ? now / max : 0f;
+            String txt = (max > 0) ? ((int)now + " / " + (int)max) : "?? / ??";
+            out.add(new RenderBar(Kind.RPGMANA, pct, 0f, txt, BAR_RPGMANA_FILL));
         }
+
+
         return out;
     }
 
@@ -438,17 +584,6 @@ public final class PartyHud implements HudRenderCallback {
         final float now;
         final float max;
         StackedValue(float now, float max) { this.now = now; this.max = max; }
-    }
-
-    private static Float reflectFloat(Object obj, String method) {
-        try {
-            var m = obj.getClass().getMethod(method);
-            Object o = m.invoke(obj);
-            if (o instanceof Float f) return f;
-            if (o instanceof Number n) return n.floatValue();
-        } catch (Throwable ignored) {
-        }
-        return null;
     }
 
     private static void drawBarPretty(DrawContext ctx, int x, int y, int w, int h, float pct,
@@ -495,15 +630,11 @@ public final class PartyHud implements HudRenderCallback {
                 float y = startY + r * (EFFECT_ICON_SIZE + EFFECT_ICON_GAP);
 
                 drawSpriteScaledF(ctx, x, y, z, EFFECT_ICON_SIZE, sprite);
-
-                if (DEBUG_BOXES) {
-                    drawBorder(ctx, Math.round(x), Math.round(y), Math.round(EFFECT_ICON_SIZE), Math.round(EFFECT_ICON_SIZE), 0x80FF00FF);
-                }
             }
-
             col++;
         }
     }
+
 
     private static void drawSpriteScaledF(DrawContext ctx, float x, float y, int z, float size, Sprite sprite) {
         var m = ctx.getMatrices();
@@ -518,29 +649,32 @@ public final class PartyHud implements HudRenderCallback {
     private static StackedValue queryTracked(UUID uuid, boolean stamina) {
         MinecraftClient mc = MinecraftClient.getInstance();
         if (mc == null || mc.world == null) return new StackedValue(-1, -1);
+
+        if (stamina && !staminaAvailableCached) return new StackedValue(-1, -1);
+        if (!stamina && !manaAvailableCached)   return new StackedValue(-1, -1);
+
         PlayerEntity e = mc.world.getPlayerByUuid(uuid);
         if (e == null) return new StackedValue(-1, -1);
-        String getNow = stamina ? "staminaattributes$getStamina" : "manaattributes$getMana";
-        String getMax = stamina ? "staminaattributes$getUnreservedStamina" : "manaattributes$getUnreservedMana";
-        Float nowF = reflectFloat(e, getNow);
-        Float maxF = reflectFloat(e, getMax);
-        if (nowF == null || maxF == null) return new StackedValue(-1, -1);
-        float now = Math.max(0f, nowF);
-        float max = Math.max(0f, maxF);
-        return new StackedValue(now, max);
+
+        if (stamina) {
+            float[] pair = TrbAttributesCompat.readStamina(e);
+            return new StackedValue(pair[0], pair[1]);
+        } else {
+            float[] pair = TrbAttributesCompat.readMana(e);
+            return new StackedValue(pair[0], pair[1]);
+        }
     }
 
     private static StackedValue queryRpgMana(UUID uuid) {
         MinecraftClient mc = MinecraftClient.getInstance();
         if (mc == null || mc.world == null) return new StackedValue(-1, -1);
+        if (!rpgManaAvailableCached) return new StackedValue(-1, -1);
+
         PlayerEntity e = mc.world.getPlayerByUuid(uuid);
         if (e == null) return new StackedValue(-1, -1);
-        Float nowF = reflectFloat(e, "getMana");
-        Float maxF = reflectFloat(e, "getMaxMana");
-        if (nowF == null || maxF == null) return new StackedValue(-1, -1);
-        float now = Math.max(0f, nowF);
-        float max = Math.max(0f, maxF);
-        return new StackedValue(now, max);
+
+        float[] pair = RpgManaCompat.readMana(e);
+        return new StackedValue(pair[0], pair[1]);
     }
 
     private static void log(String msg) {

@@ -25,6 +25,8 @@ public final class PartyHudClientConfig {
     public int partyHudX = -2;
     public int partyHudY = 10;
 
+    public float hudScale = 1.0f;
+
     private static Path path() {
         return FabricLoader.getInstance().getConfigDir()
                 .resolve("rpgsystems")
@@ -55,6 +57,7 @@ public final class PartyHudClientConfig {
         INSTANCE = (loaded != null) ? loaded : new PartyHudClientConfig();
 
         if (INSTANCE.enforceMaxThreeBars()) needSave = true;
+        if (INSTANCE.normalizeScale()) needSave = true;
 
         if (needSave) save();
     }
@@ -85,5 +88,13 @@ public final class PartyHudClientConfig {
         if (count > 3) { if (showHungerBar)  { showHungerBar  = false; changed = true; count--; } }
         if (count > 3) { if (showHpBar)      { showHpBar      = false; changed = true; } }
         return changed;
+    }
+
+    public boolean normalizeScale() {
+        float prev = hudScale;
+        if (hudScale <= 0f) hudScale = 1.0f;
+        if (hudScale < 0.5f) hudScale = 0.5f;
+        if (hudScale > 3.0f) hudScale = 3.0f;
+        return Float.compare(prev, hudScale) != 0;
     }
 }

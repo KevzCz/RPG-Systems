@@ -173,7 +173,7 @@ public final class PartyNet {
         });
 
         ServerTickEvents.END_SERVER_TICK.register(server -> {
-            if ((++tickCounter % 20) == 0) pushAllPartyVitals(server);
+            if ((++tickCounter % 10) == 0) pushAllPartyVitals(server);
         });
 
         ServerPlayNetworking.registerGlobalReceiver(InviteRespond.ID, (payload, context) -> {
@@ -313,10 +313,37 @@ public final class PartyNet {
                             ));
                     continue;
                 }
+
                 float hp = subject.getHealth();
                 float max = subject.getMaxHealth();
                 int hunger = subject.getHungerManager().getFoodLevel();
-                ServerPlayNetworking.send(viewer, new PartyHudPayloads.PartyMemberVitals(memberId, hp, max, hunger));
+                float absorption = subject.getAbsorptionAmount();
+
+                float staminaNow = -1f, staminaMax = -1f;
+                float manaNow    = -1f, manaMax    = -1f;
+                float rpgNow     = -1f, rpgMax     = -1f;
+
+                try {
+                    float[] st = net.pixeldreamstudios.rpgsystems.compat.TrbAttributesCompat.readStamina(subject);
+                    staminaNow = st[0]; staminaMax = st[1];
+                } catch (Throwable ignored) { }
+                try {
+                    float[] ma = net.pixeldreamstudios.rpgsystems.compat.TrbAttributesCompat.readMana(subject);
+                    manaNow = ma[0]; manaMax = ma[1];
+                } catch (Throwable ignored) { }
+                try {
+                    float[] rm = net.pixeldreamstudios.rpgsystems.compat.RpgManaCompat.readMana(subject);
+                    rpgNow = rm[0]; rpgMax = rm[1];
+                } catch (Throwable ignored) { }
+
+                ServerPlayNetworking.send(viewer,
+                        new PartyHudPayloads.PartyMemberVitals(
+                                memberId, hp, max, hunger, absorption,
+                                staminaNow, staminaMax,
+                                manaNow, manaMax,
+                                rpgNow, rpgMax
+                        ));
+
 
                 int lvl = computeTotalSkillsLevel(subject);
                 if (lvl >= 0) {
@@ -333,6 +360,7 @@ public final class PartyNet {
             }
         }
     }
+
 
 
 
