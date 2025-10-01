@@ -109,8 +109,8 @@ Titles will have:
 
 
 ### Title sprite
-- Depending on the title's id: ``` rpg-systems:free_the_end ``` = ```free the end```. 
-- It will look inside ```textures/block/title/free_the_end.png``` and also supports ```free_the_end.png.mcemeta```
+- Depending on the title's id: ``` rpg-systems:free_the_end ``` = ```free_the_end```. 
+- It will look inside ```textures/block/title/free_the_end.png``` and also supports ```free_the_end.png.mcmeta```
 
 ### Title power
 - Create a class that implements ```TitlePower```
