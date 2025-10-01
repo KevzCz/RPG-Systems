@@ -13,8 +13,30 @@ Titles will have:
   "enabled": false
   // Default is false, hides from the list if true (Optional)
   "hidden": true
-  // Optional bonuses section
+  // Optional bonuses section (effective only when equipped)
   "bonuses": [
+    {
+    // Optional
+      "attribute": [
+        { "id": "minecraft:generic.attack_damage", "amount": 0.10, "operation": "multiply_total" },
+        { "id": "minecraft:generic.max_health",     "amount": 2.0,  "operation": "add_value" }
+      ],
+    // Optional
+      "power": [
+        "rpg-systems:illuminate"
+      ],
+    // Optional
+      "spell": [
+        "paladins:heal"
+      ],
+    // Optional. Operation: Additive or Multiplied
+      "damage_bonus": [
+        { "id": "minecraft:ender_dragon", "amount": 0.15, "operation": "multiplied" }
+      ]
+    }
+  ],
+// Optional perma bonuses section (effective at all times)
+  "perma_bonuses": [
     {
     // Optional
       "attribute": [
