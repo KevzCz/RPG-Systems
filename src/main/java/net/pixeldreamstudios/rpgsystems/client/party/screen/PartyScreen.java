@@ -36,12 +36,12 @@ public final class PartyScreen extends Screen {
         ensureNearestFilter();
         computeCanvas();
         boxes = new PartyBox[] {
-                new PartyInfoBox(),
-                new PartyMembersBox(),
                 new PartyMemberInfoBox(),
                 new PartyChatBox(),
                 new PartyInviteBox(),
-                new PartyJoinRequestBox()
+                new PartyJoinRequestBox(),
+                new PartyMembersBox(),
+                new PartyInfoBox()
         };
     }
 

@@ -18,6 +18,7 @@ public final class TitlesPersistentState extends PersistentState {
         public final Set<String> unlocked = new HashSet<>();
         public final Map<String, NbtCompound> progress = new HashMap<>();
         public String active;
+        public final Set<String> permaDisabledGroups = new HashSet<>();
     }
     public static TitlesPersistentState get(MinecraftServer server) {
         return server.getWorld(World.OVERWORLD).getPersistentStateManager().getOrCreate(TYPE, KEY);
@@ -42,6 +43,10 @@ public final class TitlesPersistentState extends PersistentState {
                 for (String key : prog.getKeys()) {
                     pt.progress.put(key, prog.getCompound(key));
                 }
+            }
+            if (row.contains("PermaDisabled", NbtElement.LIST_TYPE)) {
+                NbtList dl = row.getList("PermaDisabled", NbtElement.STRING_TYPE);
+                for (int j = 0; j < dl.size(); j++) pt.permaDisabledGroups.add(dl.getString(j));
             }
             s.data.put(u, pt);
         }
@@ -68,7 +73,11 @@ public final class TitlesPersistentState extends PersistentState {
                 }
                 row.put("Progress", prog);
             }
-
+            if (!e.getValue().permaDisabledGroups.isEmpty()) {
+                NbtList dl = new NbtList();
+                for (String k : e.getValue().permaDisabledGroups) dl.add(net.minecraft.nbt.NbtString.of(k));
+                row.put("PermaDisabled", dl);
+            }
             players.add(row);
         }
         nbt.put("Players", players);

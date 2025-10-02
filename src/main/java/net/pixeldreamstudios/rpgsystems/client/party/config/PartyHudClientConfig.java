@@ -14,6 +14,8 @@ public final class PartyHudClientConfig {
     private static final String FILE_NAME = "rpgsystems_partyhud_client.json";
     private static PartyHudClientConfig INSTANCE;
 
+    public enum HudStyle { ORIGINAL, SIMPLE }
+
     public boolean hudEnabled = true;
     public boolean showArrows = true;
     public boolean showHpBar = true;
@@ -26,6 +28,8 @@ public final class PartyHudClientConfig {
     public int partyHudY = 10;
 
     public float hudScale = 1.0f;
+    public int maxVisiblePartyHuds = -1;
+    public HudStyle hudStyle = HudStyle.ORIGINAL;
 
     private static Path path() {
         return FabricLoader.getInstance().getConfigDir()
@@ -57,8 +61,9 @@ public final class PartyHudClientConfig {
         INSTANCE = (loaded != null) ? loaded : new PartyHudClientConfig();
 
         if (INSTANCE.enforceMaxThreeBars()) needSave = true;
+        if (INSTANCE.normalizeVisibilityLimit()) needSave = true;
         if (INSTANCE.normalizeScale()) needSave = true;
-
+        if (INSTANCE.hudStyle == null) { INSTANCE.hudStyle = HudStyle.ORIGINAL; needSave = true; }
         if (needSave) save();
     }
 
@@ -89,12 +94,17 @@ public final class PartyHudClientConfig {
         if (count > 3) { if (showHpBar)      { showHpBar      = false; changed = true; } }
         return changed;
     }
-
+    public boolean normalizeVisibilityLimit() {
+        int prev = maxVisiblePartyHuds;
+        if (maxVisiblePartyHuds < -1) {
+            maxVisiblePartyHuds = -1;
+        }
+        return prev != maxVisiblePartyHuds;
+    }
     public boolean normalizeScale() {
         float prev = hudScale;
         if (hudScale <= 0f) hudScale = 1.0f;
-        if (hudScale < 0.5f) hudScale = 0.5f;
-        if (hudScale > 3.0f) hudScale = 3.0f;
+        if (hudScale < 0.1f) hudScale = 0.1f;
         return Float.compare(prev, hudScale) != 0;
     }
 }

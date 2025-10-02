@@ -10,6 +10,6 @@
     }
   ],
   "conditions": [
-    { "type": "reach_level", "level": 20, "hint": "Reach player level 20." }
+    { "type": "reach_level_xp", "level": 20, "hint": "Reach player level 20." }
   ]
 }

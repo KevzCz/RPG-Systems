@@ -26,11 +26,13 @@ import java.util.UUID;
 @Mixin(LivingEntity.class)
 public abstract class LivingEntityDamageMixin {
     @Unique private float rpgsystems$preHp;
+    @Unique private float rpgsystems$preAbs;
 
     @Inject(method = "damage", at = @At("HEAD"))
     private void rpgsystems$capturePreHp(DamageSource source, float amount, CallbackInfoReturnable<Boolean> cir) {
         LivingEntity self = (LivingEntity)(Object)this;
-        rpgsystems$preHp = self.getHealth();
+        rpgsystems$preHp  = self.getHealth();
+        rpgsystems$preAbs = self.getAbsorptionAmount();
     }
 
     @Inject(method = "damage", at = @At("TAIL"))
@@ -40,8 +42,13 @@ public abstract class LivingEntityDamageMixin {
         World world = self.getWorld();
         if (world.isClient()) return;
 
-        float post = self.getHealth();
-        float taken = rpgsystems$preHp - post;
+        float postHp  = self.getHealth();
+        float postAbs = self.getAbsorptionAmount();
+
+        float preTotal  = rpgsystems$preHp + rpgsystems$preAbs;
+        float postTotal = postHp + postAbs;
+        float taken     = preTotal - postTotal;
+
         if (taken <= 0.01f) return;
 
         Entity attacker = source.getAttacker();
@@ -53,7 +60,7 @@ public abstract class LivingEntityDamageMixin {
 
         float displayDamage = taken;
 
-        boolean killedNow = post <= 0.0f;
+        boolean killedNow = postHp <= 0.0f;
         boolean rawMatchesAttacker = false;
         float rawAmount = 0.0f;
 
@@ -68,6 +75,7 @@ public abstract class LivingEntityDamageMixin {
                 }
             }
         }
+
         if (killedNow && rawMatchesAttacker && rawAmount > 0.0f) {
             displayDamage = Math.max(displayDamage, rawAmount);
         }
@@ -90,5 +98,6 @@ public abstract class LivingEntityDamageMixin {
         }
 
         EnemyNet.broadcastDamageNumber(self, displayDamage, crit, isPet, rgb, srcUuid, dmgId);
+
     }
 }

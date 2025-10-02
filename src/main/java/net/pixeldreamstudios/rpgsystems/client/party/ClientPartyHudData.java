@@ -50,12 +50,17 @@ public final class ClientPartyHudData {
         selectedMemberUuid = uuid;
     }
 
+    /** Client-side mirror of party settings. */
     public static final class PartySettingsClient {
+        /** Whether non-members are allowed to receive helpful effects from party members. */
         public boolean allowHelpfulNonMembers = false;
+        /** Whether collisions between party members are ignored. Default ON. */
+        public boolean ignorePartyCollision   = true;
     }
 
     private static final PartySettingsClient SETTINGS = new PartySettingsClient();
     public static boolean allowHelpfulNonMembers() { return SETTINGS.allowHelpfulNonMembers; }
+    public static boolean ignorePartyCollision()   { return SETTINGS.ignorePartyCollision; }
 
     public static Member getSelectedOrDefault() {
         if (selectedMemberUuid != null) {
@@ -111,7 +116,6 @@ public final class ClientPartyHudData {
             });
         });
 
-
         ClientPlayNetworking.registerGlobalReceiver(
                 PartyHudPayloads.PartyMemberLevel.ID,
                 (payload, ctx) -> ctx.client().execute(() ->
@@ -120,8 +124,11 @@ public final class ClientPartyHudData {
 
         ClientPlayNetworking.registerGlobalReceiver(
                 PartySettingsPayloads.Sync.ID, (payload, ctx) ->
-                        ctx.client().execute(() ->
-                                SETTINGS.allowHelpfulNonMembers = payload.allowHelpfulNonMembers()));
+                        ctx.client().execute(() -> {
+                            SETTINGS.allowHelpfulNonMembers = payload.allowHelpfulNonMembers();
+                            SETTINGS.ignorePartyCollision   = payload.ignorePartyCollision();
+                        })
+        );
 
         ClientPlayNetworking.registerGlobalReceiver(PartyHudPayloads.PartyRosterReset.ID, (payload, ctx) -> clearAll());
     }
@@ -132,6 +139,7 @@ public final class ClientPartyHudData {
         leaderUuid = null;
         selectedMemberUuid = null;
         SETTINGS.allowHelpfulNonMembers = false;
+        SETTINGS.ignorePartyCollision   = true;
         MEMBERS.clear();
     }
 

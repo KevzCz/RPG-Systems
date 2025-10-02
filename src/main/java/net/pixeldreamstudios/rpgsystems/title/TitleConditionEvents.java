@@ -19,6 +19,7 @@ import net.minecraft.registry.Registries;
 import net.minecraft.registry.RegistryKey;
 import net.minecraft.registry.RegistryKeys;
 import net.minecraft.registry.entry.RegistryEntry;
+import net.minecraft.registry.tag.TagKey;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
@@ -421,20 +422,34 @@ public final class TitleConditionEvents {
     }
 
     private static boolean matchesEntitySpec(LivingEntity target, Title.Condition c) {
+
+        if (c.entityTagId != null && c.entityTagId.isPresent()) {
+            TagKey<EntityType<?>> tagKey = TagKey.of(RegistryKeys.ENTITY_TYPE, c.entityTagId.get());
+            return target.getType().isIn(tagKey);
+        }
+
         if (c.entityType.isPresent()) {
             EntityType<?> wanted = Registries.ENTITY_TYPE.get(c.entityType.get());
             return target.getType() == wanted;
         }
+
         if (c.entitySpec.isEmpty()) return true;
-        String spec = c.entitySpec.get();
-        if ("any".equalsIgnoreCase(spec)) return true;
+        String spec = c.entitySpec.get().trim();
+        if (spec.isEmpty() || "any".equalsIgnoreCase(spec)) return true;
 
         Identifier id = Registries.ENTITY_TYPE.getId(target.getType());
         if (id == null) return false;
 
+        if (spec.startsWith("#")) {
+            Identifier tagId = Identifier.tryParse(spec.substring(1));
+            if (tagId == null) return false;
+            TagKey<EntityType<?>> tk = TagKey.of(RegistryKeys.ENTITY_TYPE, tagId);
+            return target.getType().isIn(tk);
+        }
+
         if (spec.endsWith(":*")) {
             int idx = spec.indexOf(':');
-            String ns = idx >= 0 ? spec.substring(0, idx) : spec;
+            String ns = (idx >= 0) ? spec.substring(0, idx) : spec;
             return id.getNamespace().equals(ns);
         }
 

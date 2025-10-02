@@ -17,6 +17,7 @@ import net.pixeldreamstudios.rpgsystems.title.TitleRegistry;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
+import java.util.function.Consumer;
 
 @Environment(EnvType.CLIENT)
 public final class TitlesListBox {
@@ -46,7 +47,7 @@ public final class TitlesListBox {
     private final TextRenderer font;
     private int scrollOffset = 0;
     private int selectedIndex = -1;
-    private final List<java.util.function.Consumer<Title>> selectionListeners = new ArrayList<>();
+    private final List<Consumer<Title>> selectionListeners = new ArrayList<>();
     private float textScale = 0.5f;
 
     private int scrollbarOffsetX = 0;
@@ -78,26 +79,13 @@ public final class TitlesListBox {
         this.bgHeight = bgHeight;
     }
 
-    public void setSelectionListener(java.util.function.Consumer<Title> listener) {
+    public void setSelectionListener(Consumer<Title> listener) {
         this.selectionListeners.clear();
         this.selectionListeners.add(listener);
     }
 
-    public void addSelectionListener(java.util.function.Consumer<Title> listener) {
+    public void setOnSelectionChanged(Consumer<Title> listener) {
         this.selectionListeners.add(listener);
-    }
-
-    public void setOnSelectionChanged(java.util.function.Consumer<Title> listener) {
-        this.selectionListeners.add(listener);
-    }
-
-    public void setTextScale(float scale) {
-        this.textScale = Math.max(0.5f, Math.min(2.0f, scale));
-    }
-
-    public void setScrollbarPosition(int offsetX, int offsetY) {
-        this.scrollbarOffsetX = offsetX;
-        this.scrollbarOffsetY = offsetY;
     }
 
     public void setScrollbarWidth(int width) {
@@ -108,6 +96,36 @@ public final class TitlesListBox {
         List<Title> all = visibleTitles();
         if (selectedIndex < 0 || selectedIndex >= all.size()) return null;
         return all.get(selectedIndex);
+    }
+
+    public void selectById(Identifier id) {
+        if (id == null) return;
+        List<Title> all = visibleTitles();
+        for (int i = 0; i < all.size(); i++) {
+            if (all.get(i).id.equals(id)) {
+                selectedIndex = i;
+                notifySelectionChanged();
+                return;
+            }
+        }
+    }
+
+    public void selectFirstVisible() {
+        List<Title> all = visibleTitles();
+        if (!all.isEmpty()) {
+            selectedIndex = 0;
+            notifySelectionChanged();
+        }
+    }
+
+    private void notifySelectionChanged() {
+        List<Title> all = visibleTitles();
+        if (selectedIndex >= 0 && selectedIndex < all.size()) {
+            Title selected = all.get(selectedIndex);
+            for (Consumer<Title> listener : selectionListeners) {
+                listener.accept(selected);
+            }
+        }
     }
 
     public void render(DrawContext ctx, int mouseX, int mouseY, float delta) {
@@ -235,7 +253,7 @@ public final class TitlesListBox {
         if (index < all.size()) {
             selectedIndex = index;
             Title selected = all.get(index);
-            for (java.util.function.Consumer<Title> listener : selectionListeners) {
+            for (Consumer<Title> listener : selectionListeners) {
                 listener.accept(selected);
             }
         }

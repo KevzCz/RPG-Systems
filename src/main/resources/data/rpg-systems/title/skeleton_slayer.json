@@ -4,12 +4,39 @@
   "description": "Bones break the same as anything else.",
   "bonuses": [
     {
+      "attribute": [
+        { "id": "minecraft:generic.attack_damage", "amount": 0.10, "operation": "multiply_total" },
+        { "id": "minecraft:generic.max_health",     "amount": 2.0,  "operation": "add_value" }
+      ],
+      "power": [
+        "rpg-systems:illuminate"
+      ],
+      "spell": [
+        "paladins:heal"
+      ],
       "damage_bonus": [
-        { "id": "minecraft:skeleton", "amount": 0.20, "operation": "multiplied" }
+        { "tag": "minecraft:undead", "amount": 100, "operation": "multiplied" }
+      ]
+    }
+  ],
+  "perma_bonuses": [
+    {
+      "attribute": [
+        { "id": "minecraft:generic.attack_damage", "amount": 0.10, "operation": "multiply_total" },
+        { "id": "minecraft:generic.max_health",     "amount": 2.0,  "operation": "add_value" }
+      ],
+      "power": [
+        "rpg-systems:illuminate"
+      ],
+      "spell": [
+        "paladins:heal"
+      ],
+      "damage_bonus": [
+        { "tag": "minecraft:undead", "amount": 0.15, "operation": "multiplied" }
       ]
     }
   ],
   "conditions": [
-    { "type": "kill_mobs", "entity_type": "minecraft:skeleton", "count": 100 }
+    { "type": "kill_mobs", "entity_tag": "minecraft:undead", "count": 100 }
   ]
 }

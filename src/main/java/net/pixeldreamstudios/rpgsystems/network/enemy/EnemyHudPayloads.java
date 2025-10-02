@@ -72,4 +72,18 @@ public final class EnemyHudPayloads {
         @Override public Id<? extends CustomPayload> getId() { return ID; }
     }
 
+    public record AbsorptionSync(int entityId, float absorption)
+            implements CustomPayload {
+        public static final Id<AbsorptionSync> ID =
+                new Id<>(Identifier.of("rpg-systems", "enemy_absorption_sync"));
+
+        public static final PacketCodec<RegistryByteBuf, AbsorptionSync> CODEC =
+                PacketCodec.tuple(
+                        PacketCodecs.VAR_INT, AbsorptionSync::entityId,
+                        PacketCodecs.FLOAT,   AbsorptionSync::absorption,
+                        AbsorptionSync::new
+                );
+
+        @Override public Id<? extends CustomPayload> getId() { return ID; }
+    }
 }

@@ -22,7 +22,6 @@ public final class TitlePayloads {
             public V decode(RegistryByteBuf buf) {
                 return base.decode(buf);
             }
-
             @Override
             public void encode(RegistryByteBuf buf, V value) {
                 base.encode(buf, value);
@@ -54,7 +53,6 @@ public final class TitlePayloads {
                 wrap(PacketCodecs.optional(Identifier.PACKET_CODEC)), SyncSelf::active,
                 SyncSelf::new
         );
-
         @Override public Id<? extends CustomPayload> getId() { return ID; }
     }
 
@@ -83,11 +81,7 @@ public final class TitlePayloads {
                 PacketCodecs.collection(ArrayList::new, Def.CODEC), SyncDefinitions::defs,
                 SyncDefinitions::new
         );
-
-        @Override
-        public Id<? extends CustomPayload> getId() {
-            return ID;
-        }
+        @Override public Id<? extends CustomPayload> getId() { return ID; }
 
         public enum CondType {
             OBTAIN_ITEM,
@@ -109,16 +103,9 @@ public final class TitlePayloads {
             CHECK_ATTRIBUTE
         }
 
-        private static final PacketCodec<RegistryByteBuf, CondType> COND_TYPE_CODEC = new PacketCodec<RegistryByteBuf, CondType>() {
-            @Override
-            public CondType decode(RegistryByteBuf buf) {
-                return CondType.values()[VAR_INT.decode(buf)];
-            }
-
-            @Override
-            public void encode(RegistryByteBuf buf, CondType value) {
-                VAR_INT.encode(buf, value.ordinal());
-            }
+        private static final PacketCodec<RegistryByteBuf, CondType> COND_TYPE_CODEC = new PacketCodec<>() {
+            @Override public CondType decode(RegistryByteBuf buf) { return CondType.values()[VAR_INT.decode(buf)]; }
+            @Override public void encode(RegistryByteBuf buf, CondType value) { VAR_INT.encode(buf, value.ordinal()); }
         };
 
         public record ConditionDef(
@@ -138,9 +125,10 @@ public final class TitlePayloads {
                 Optional<Identifier> dimension,
                 Optional<Identifier> structure,
                 Optional<Identifier> attribute,
-                double min
+                double min,
+                Optional<Identifier> entityTag
         ) {
-            public static final PacketCodec<RegistryByteBuf, ConditionDef> CODEC = new PacketCodec<RegistryByteBuf, ConditionDef>() {
+            public static final PacketCodec<RegistryByteBuf, ConditionDef> CODEC = new PacketCodec<>() {
                 @Override
                 public ConditionDef decode(RegistryByteBuf buf) {
                     CondType type = COND_TYPE_CODEC.decode(buf);
@@ -160,9 +148,9 @@ public final class TitlePayloads {
                     Optional<Identifier> structure = OPT_ID.decode(buf);
                     Optional<Identifier> attribute = OPT_ID.decode(buf);
                     double min = DOUBLE.decode(buf);
-                    return new ConditionDef(type, item, entityType, advancement, distance, count, hint, hidden, entitySpec, nbtQuery, level, block, biome, dimension, structure, attribute, min);
+                    Optional<Identifier> entityTag = OPT_ID.decode(buf);
+                    return new ConditionDef(type, item, entityType, advancement, distance, count, hint, hidden, entitySpec, nbtQuery, level, block, biome, dimension, structure, attribute, min, entityTag);
                 }
-
                 @Override
                 public void encode(RegistryByteBuf buf, ConditionDef v) {
                     COND_TYPE_CODEC.encode(buf, v.type);
@@ -182,6 +170,7 @@ public final class TitlePayloads {
                     OPT_ID.encode(buf, v.structure);
                     OPT_ID.encode(buf, v.attribute);
                     DOUBLE.encode(buf, v.min);
+                    OPT_ID.encode(buf, v.entityTag);
                 }
             };
         }
@@ -193,7 +182,6 @@ public final class TitlePayloads {
                         public EntityAttributeModifier.Operation decode(RegistryByteBuf buf) {
                             return EntityAttributeModifier.Operation.values()[VAR_INT.decode(buf)];
                         }
-
                         @Override
                         public void encode(RegistryByteBuf buf, EntityAttributeModifier.Operation value) {
                             VAR_INT.encode(buf, value.ordinal());
@@ -206,20 +194,33 @@ public final class TitlePayloads {
                     BonusDef::new
             );
         }
+
         public enum DmgOp { ADDED, MULTIPLIED }
         private static final PacketCodec<RegistryByteBuf, DmgOp> DMG_OP_CODEC = new PacketCodec<>() {
             @Override public DmgOp decode(RegistryByteBuf buf) { return DmgOp.values()[VAR_INT.decode(buf)]; }
             @Override public void encode(RegistryByteBuf buf, DmgOp v) { VAR_INT.encode(buf, v.ordinal()); }
         };
 
-        public record DamageBonusDef(Identifier target, double amount, DmgOp op) {
-            public static final PacketCodec<RegistryByteBuf, DamageBonusDef> CODEC = PacketCodec.tuple(
-                    ID_CODEC, DamageBonusDef::target,
-                    DOUBLE,  DamageBonusDef::amount,
-                    DMG_OP_CODEC, DamageBonusDef::op,
-                    DamageBonusDef::new
-            );
+        public record DamageBonusDef(Optional<Identifier> target, Optional<Identifier> tag, double amount, DmgOp op) {
+            public static final PacketCodec<RegistryByteBuf, DamageBonusDef> CODEC = new PacketCodec<>() {
+                @Override
+                public DamageBonusDef decode(RegistryByteBuf buf) {
+                    Optional<Identifier> target = OPT_ID.decode(buf);
+                    Optional<Identifier> tag = OPT_ID.decode(buf);
+                    double amount = DOUBLE.decode(buf);
+                    DmgOp op = DMG_OP_CODEC.decode(buf);
+                    return new DamageBonusDef(target, tag, amount, op);
+                }
+                @Override
+                public void encode(RegistryByteBuf buf, DamageBonusDef v) {
+                    OPT_ID.encode(buf, v.target);
+                    OPT_ID.encode(buf, v.tag);
+                    DOUBLE.encode(buf, v.amount);
+                    DMG_OP_CODEC.encode(buf, v.op);
+                }
+            };
         }
+
         public record Def(
                 Identifier id,
                 String name,
@@ -228,6 +229,10 @@ public final class TitlePayloads {
                 List<Identifier> spells,
                 List<Identifier> powers,
                 List<DamageBonusDef> damage,
+                List<BonusDef> permaBonuses,
+                List<Identifier> permaSpells,
+                List<Identifier> permaPowers,
+                List<DamageBonusDef> permaDamage,
                 List<ConditionDef> conditions,
                 boolean hidden
         ) {
@@ -240,9 +245,15 @@ public final class TitlePayloads {
                     List<Identifier> spells = PacketCodecs.collection(ArrayList::new, ID_CODEC).decode(buf);
                     List<Identifier> powers = PacketCodecs.collection(ArrayList::new, ID_CODEC).decode(buf);
                     List<DamageBonusDef> damage = PacketCodecs.collection(ArrayList::new, DamageBonusDef.CODEC).decode(buf);
+                    List<BonusDef> permaBonuses = PacketCodecs.collection(ArrayList::new, BonusDef.CODEC).decode(buf);
+                    List<Identifier> permaSpells = PacketCodecs.collection(ArrayList::new, ID_CODEC).decode(buf);
+                    List<Identifier> permaPowers = PacketCodecs.collection(ArrayList::new, ID_CODEC).decode(buf);
+                    List<DamageBonusDef> permaDamage = PacketCodecs.collection(ArrayList::new, DamageBonusDef.CODEC).decode(buf);
                     List<ConditionDef> conditions = PacketCodecs.collection(ArrayList::new, ConditionDef.CODEC).decode(buf);
                     boolean hidden = BOOL.decode(buf);
-                    return new Def(id, name, description, bonuses, spells, powers, damage, conditions, hidden);
+                    return new Def(id, name, description, bonuses, spells, powers, damage,
+                            permaBonuses, permaSpells, permaPowers, permaDamage,
+                            conditions, hidden);
                 }
                 @Override public void encode(RegistryByteBuf buf, Def v) {
                     ID_CODEC.encode(buf, v.id);
@@ -252,14 +263,17 @@ public final class TitlePayloads {
                     PacketCodecs.collection(ArrayList::new, ID_CODEC).encode(buf, new ArrayList<>(v.spells));
                     PacketCodecs.collection(ArrayList::new, ID_CODEC).encode(buf, new ArrayList<>(v.powers));
                     PacketCodecs.collection(ArrayList::new, DamageBonusDef.CODEC).encode(buf, new ArrayList<>(v.damage));
+                    PacketCodecs.collection(ArrayList::new, BonusDef.CODEC).encode(buf, new ArrayList<>(v.permaBonuses));
+                    PacketCodecs.collection(ArrayList::new, ID_CODEC).encode(buf, new ArrayList<>(v.permaSpells));
+                    PacketCodecs.collection(ArrayList::new, ID_CODEC).encode(buf, new ArrayList<>(v.permaPowers));
+                    PacketCodecs.collection(ArrayList::new, DamageBonusDef.CODEC).encode(buf, new ArrayList<>(v.permaDamage));
                     PacketCodecs.collection(ArrayList::new, ConditionDef.CODEC).encode(buf, new ArrayList<>(v.conditions));
                     BOOL.encode(buf, v.hidden);
                 }
             };
         }
-
-
     }
+
     public record SyncProgress(List<TitleProgress> progresses) implements CustomPayload {
         public static final Id<SyncProgress> ID = new Id<>(Identifier.of("rpg-systems", "titles_progress_sync"));
         public static final PacketCodec<RegistryByteBuf, SyncProgress> CODEC = PacketCodec.tuple(
@@ -283,5 +297,22 @@ public final class TitlePayloads {
                     TitleProgress::new
             );
         }
+    }
+    public record SyncPermaToggles(List<String> disabled) implements CustomPayload {
+        public static final Id<SyncPermaToggles> ID = new Id<>(Identifier.of("rpg-systems","titles_perma_toggles_sync"));
+        public static final PacketCodec<RegistryByteBuf, SyncPermaToggles> CODEC = PacketCodec.tuple(
+                wrap(PacketCodecs.collection(ArrayList::new, PacketCodecs.STRING)), SyncPermaToggles::disabled,
+                SyncPermaToggles::new
+        );
+        @Override public Id<? extends CustomPayload> getId() { return ID; }
+    }
+
+    public record RequestSetPermaToggles(List<String> disabled) implements CustomPayload {
+        public static final Id<RequestSetPermaToggles> ID = new Id<>(Identifier.of("rpg-systems","titles_perma_toggles_set"));
+        public static final PacketCodec<RegistryByteBuf, RequestSetPermaToggles> CODEC = PacketCodec.tuple(
+                wrap(PacketCodecs.collection(ArrayList::new, PacketCodecs.STRING)), RequestSetPermaToggles::disabled,
+                RequestSetPermaToggles::new
+        );
+        @Override public Id<? extends CustomPayload> getId() { return ID; }
     }
 }

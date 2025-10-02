@@ -1,4 +1,3 @@
-// net.pixeldreamstudios.rpgsystems.network.party.PartySettingsPayloads
 package net.pixeldreamstudios.rpgsystems.network.party;
 
 import net.minecraft.network.RegistryByteBuf;
@@ -18,11 +17,23 @@ public final class PartySettingsPayloads {
         @Override public Id<? extends CustomPayload> getId() { return ID; }
     }
 
-    public record Sync(boolean allowHelpfulNonMembers) implements CustomPayload {
+    public record SetIgnorePartyCollision(boolean ignore) implements CustomPayload {
+        public static final Id<SetIgnorePartyCollision> ID =
+                new Id<>(Identifier.of("rpg-systems","party_set_ignore_collision"));
+        public static final PacketCodec<RegistryByteBuf, SetIgnorePartyCollision> CODEC =
+                PacketCodec.tuple(PacketCodecs.BOOL, SetIgnorePartyCollision::ignore, SetIgnorePartyCollision::new);
+        @Override public Id<? extends CustomPayload> getId() { return ID; }
+    }
+
+    public record Sync(boolean allowHelpfulNonMembers, boolean ignorePartyCollision) implements CustomPayload {
         public static final Id<Sync> ID =
                 new Id<>(Identifier.of("rpg-systems","party_settings_sync"));
         public static final PacketCodec<RegistryByteBuf, Sync> CODEC =
-                PacketCodec.tuple(PacketCodecs.BOOL, Sync::allowHelpfulNonMembers, Sync::new);
+                PacketCodec.tuple(
+                        PacketCodecs.BOOL, Sync::allowHelpfulNonMembers,
+                        PacketCodecs.BOOL, Sync::ignorePartyCollision,
+                        Sync::new
+                );
         @Override public Id<? extends CustomPayload> getId() { return ID; }
     }
 }

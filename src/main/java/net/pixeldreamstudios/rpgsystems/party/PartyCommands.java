@@ -39,6 +39,10 @@ public final class PartyCommands {
                 .then(literal("rename")
                         .then(argument("name", StringArgumentType.greedyString())
                                 .executes(ctx -> rename(ctx, StringArgumentType.getString(ctx, "name")))))
+                .then(literal("promote")
+                        .then(argument("member", StringArgumentType.greedyString())
+                                .suggests(PartyCommands::suggestPartyMembers)
+                                .executes(ctx -> promoteByLabel(ctx, StringArgumentType.getString(ctx, "member")))))
                 .then(literal("invite")
                         .then(argument("player", EntityArgumentType.player())
                                 .executes(ctx -> invite(ctx, EntityArgumentType.getPlayer(ctx, "player")))))
@@ -77,6 +81,53 @@ public final class PartyCommands {
                                 .executes(ctx -> kickByLabel(ctx, StringArgumentType.getString(ctx, "member")))))
         );
     }
+    private static int promoteByLabel(CommandContext<ServerCommandSource> ctx, String label) {
+        ServerPlayerEntity leader = ctx.getSource().getPlayer();
+        if (leader == null) return 0;
+
+        var server = leader.getServer();
+        var state  = PartyPersistentState.get(server);
+        Party p    = state.getPartyByMember(leader.getUuid());
+
+        if (p == null) {
+            leader.sendMessage(Text.literal("You are not in a party."));
+            return 0;
+        }
+        if (!p.leader.equals(leader.getUuid())) {
+            leader.sendMessage(Text.literal("Only the party leader can promote."));
+            return 0;
+        }
+
+        UUID targetUuid = resolveMemberFromInput(server, state, p, label);
+        if (targetUuid == null || targetUuid.equals(leader.getUuid())) {
+            leader.sendMessage(Text.literal("Couldn’t resolve a unique member for \"" + label + "\"."));
+            return 0;
+        }
+
+        String targetName = state.nameOf(targetUuid);
+        if (targetName == null) {
+            var sp = server.getPlayerManager().getPlayer(targetUuid);
+            targetName = (sp != null) ? sp.getName().getString() : shortId(targetUuid);
+        }
+
+        p.leader = targetUuid;
+        state.markDirty();
+
+        String txt = "Leadership transferred to " + targetName + ".";
+        long now = System.currentTimeMillis();
+
+        for (UUID u : p.members) {
+            ServerPlayerEntity sp = server.getPlayerManager().getPlayer(u);
+            if (sp != null) sp.sendMessage(Text.literal(txt));
+        }
+
+        PartyNet.broadcastNotice(server, p, txt, now);
+        PartyNet.broadcastRoster(server, p);
+
+        leader.sendMessage(Text.literal("Promoted " + targetName + " to leader."));
+        return 1;
+    }
+
 
     private static int kickByLabel(CommandContext<ServerCommandSource> ctx, String label) {
         ServerPlayerEntity leader = ctx.getSource().getPlayer();
@@ -116,14 +167,18 @@ public final class PartyCommands {
         if (targetOnline != null) {
             PartyNet.sendRosterWipeTo(targetOnline);
             targetOnline.sendMessage(Text.literal("You were kicked from " + displayName(p) + "."));
-
             ServerPlayNetworking.send(targetOnline, new PartyInvitePayloads.PartyKicked(displayName(p)));
         }
 
+        String notice = targetName + " was kicked from the party.";
+        long now = System.currentTimeMillis();
+
         for (UUID u : p.members) {
             ServerPlayerEntity sp = server.getPlayerManager().getPlayer(u);
-            if (sp != null) sp.sendMessage(Text.literal(targetName + " was kicked from the party."));
+            if (sp != null) sp.sendMessage(Text.literal(notice));
         }
+
+        PartyNet.broadcastNotice(server, p, notice, now);
         PartyNet.broadcastRoster(server, p);
 
         leader.sendMessage(Text.literal("Kicked " + targetName + "."));

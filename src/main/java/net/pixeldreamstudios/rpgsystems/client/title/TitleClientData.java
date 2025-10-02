@@ -11,14 +11,16 @@ public final class TitleClientData {
     private static final Set<Identifier> selfUnlocked = new HashSet<>();
     private static Identifier selfActive;
     private static final Map<UUID, Identifier> othersActive = new HashMap<>();
-
+    private static Set<String> PERMA_DISABLED = new LinkedHashSet<>();
     private static final Map<Identifier, List<CondProg>> selfProgress = new HashMap<>();
-
+    public static void setPermaDisabled(Set<String> s){ PERMA_DISABLED = s; }
+    public static Set<String> getPermaDisabled(){ return PERMA_DISABLED; }
     public static void clear() {
         selfUnlocked.clear();
         selfActive = null;
         othersActive.clear();
         selfProgress.clear();
+        PERMA_DISABLED.clear();
     }
 
     public static void setSelf(Collection<Identifier> unlocked, Identifier active) {

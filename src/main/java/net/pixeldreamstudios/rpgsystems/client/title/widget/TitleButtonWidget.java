@@ -7,6 +7,7 @@ import net.minecraft.client.gui.screen.narration.NarrationMessageBuilder;
 import net.minecraft.client.gui.widget.PressableWidget;
 import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
+
 @Environment(EnvType.CLIENT)
 public final class TitleButtonWidget extends PressableWidget {
     private final Identifier normalTexture;
@@ -17,6 +18,7 @@ public final class TitleButtonWidget extends PressableWidget {
     public void setDrawScale(float drawScale) {
         this.drawScale = drawScale;
     }
+
 
     public TitleButtonWidget(int x, int y, int width, int height, Identifier normalTexture, Identifier hoverTexture, Runnable onPressAction) {
         super(x, y, width, height, Text.empty());
@@ -53,11 +55,10 @@ public final class TitleButtonWidget extends PressableWidget {
         matrices.push();
         matrices.translate(x + w / 2f, y + h / 2f, 0f);
         matrices.scale(drawScale, drawScale, 1f);
-        context.drawTexture(tex,
-                Math.round(-w / 2f), Math.round(-h / 2f),
-                0, 0,
-                w, h,
-                w, h);
+
+        context.drawTexture(tex, Math.round(-w / 2f), Math.round(-h / 2f), 0, 0, w, h, w, h);
+
+
         matrices.pop();
     }
 

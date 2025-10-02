@@ -12,7 +12,7 @@
     }
   ],
   "conditions": [
-    { "type": "reach_level", "level": 25, "hint": "Reach player level 25." },
+    { "type": "reach_level_xp", "level": 25, "hint": "Reach player level 25." },
     { "type": "obtain_item", "item": "minecraft:enchanting_table", "count": 1, "hint": "Obtain an Enchanting Table." },
     { "type": "advancement", "advancement": "minecraft:story/enchant_item", "hint": "Get the “Enchanter” advancement." }
   ]

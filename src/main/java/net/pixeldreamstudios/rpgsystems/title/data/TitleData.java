@@ -16,13 +16,15 @@ public record TitleData(
         Optional<String> name,
         Optional<String> description,
         List<Condition> conditions,
-        List<Bonus> bonuses
+        List<Bonus> bonuses,
+        List<Bonus> permaBonuses
 ) {
     public static final Codec<TitleData> CODEC = RecordCodecBuilder.create(i -> i.group(
             Codec.STRING.optionalFieldOf("name").forGetter(TitleData::name),
             Codec.STRING.optionalFieldOf("description").forGetter(TitleData::description),
             Codec.list(Condition.CODEC).optionalFieldOf("conditions", List.of()).forGetter(TitleData::conditions),
-            Codec.list(Bonus.CODEC).optionalFieldOf("bonuses", List.of()).forGetter(TitleData::bonuses)
+            Codec.list(Bonus.CODEC).optionalFieldOf("bonuses", List.of()).forGetter(TitleData::bonuses),
+            Codec.list(Bonus.CODEC).optionalFieldOf("perma_bonuses", List.of()).forGetter(TitleData::permaBonuses)
     ).apply(i, TitleData::new));
 
     public enum ConditionType {
@@ -56,10 +58,8 @@ public record TitleData(
         );
     }
 
-
     public static final class Codecs {
         private Codecs() {}
-
         public static <T> Codec<List<T>> oneOrMany(Codec<T> single) {
             return Codec.either(single, Codec.list(single)).xmap(
                     e -> e.map(List::of, l -> l),
@@ -121,16 +121,24 @@ public record TitleData(
     }
 
     public record DamageBonus(
-            Identifier id,
+            Optional<Identifier> id,
+            Optional<Identifier> tag,
             double amount,
             DamageOp operation
     ) {
         public static final Codec<DamageBonus> CODEC = RecordCodecBuilder.create(i -> i.group(
-                Identifier.CODEC.fieldOf("id").forGetter(DamageBonus::id),
+                Identifier.CODEC.optionalFieldOf("id").forGetter(DamageBonus::id),
+                Identifier.CODEC.optionalFieldOf("tag").forGetter(DamageBonus::tag),
                 Codec.DOUBLE.fieldOf("amount").forGetter(DamageBonus::amount),
                 DamageOp.CODEC.fieldOf("operation").forGetter(DamageBonus::operation)
-        ).apply(i, DamageBonus::new));
+        ).apply(i, (id, tag, amount, op) -> {
+            if (id.isEmpty() && tag.isEmpty()) {
+                return new DamageBonus(Optional.empty(), Optional.empty(), amount, op);
+            }
+            return new DamageBonus(id, tag, amount, op);
+        }));
     }
+
     public record Condition(
             ConditionType type,
             Optional<Identifier> item,
@@ -148,7 +156,8 @@ public record TitleData(
             Optional<Identifier> dimension,
             Optional<Identifier> structure,
             Optional<Identifier> attribute,
-            Optional<Double> min
+            Optional<Double> min,
+            Optional<Identifier> entityTag
     ) {
         private static final MapCodec<Pair<Optional<String>, Optional<String>>> ENTITY_AND_NBT =
                 RecordCodecBuilder.mapCodec(inst -> inst.group(
@@ -156,10 +165,15 @@ public record TitleData(
                         Codec.STRING.optionalFieldOf("nbt").forGetter(Pair::getSecond)
                 ).apply(inst, Pair::of));
 
+        private static final MapCodec<Pair<Optional<Identifier>, Optional<Identifier>>> ENTITY_TYPE_OR_TAG =
+                RecordCodecBuilder.mapCodec(inst -> inst.group(
+                        Identifier.CODEC.optionalFieldOf("entity_type").forGetter(Pair::getFirst),
+                        Identifier.CODEC.optionalFieldOf("entity_tag").forGetter(Pair::getSecond)
+                ).apply(inst, Pair::of));
+
         public static final Codec<Condition> CODEC = RecordCodecBuilder.create(i -> i.group(
                 ConditionType.CODEC.fieldOf("type").forGetter(Condition::type),
                 Identifier.CODEC.optionalFieldOf("item").forGetter(Condition::item),
-                Identifier.CODEC.optionalFieldOf("entity_type").forGetter(Condition::entityType),
                 Identifier.CODEC.optionalFieldOf("advancement").forGetter(Condition::advancement),
                 Codec.LONG.optionalFieldOf("distance").forGetter(Condition::distance),
                 Codec.INT.optionalFieldOf("count").forGetter(Condition::count),
@@ -172,11 +186,45 @@ public record TitleData(
                 Identifier.CODEC.optionalFieldOf("dimension").forGetter(Condition::dimension),
                 Identifier.CODEC.optionalFieldOf("structure").forGetter(Condition::structure),
                 Identifier.CODEC.optionalFieldOf("attribute").forGetter(Condition::attribute),
-                Codec.DOUBLE.optionalFieldOf("min").forGetter(Condition::min)
-        ).apply(i, (type, item, entityType, advancement, distance, count, hint, hidden, enNbt, level, block, biome, dimension, structure, attribute, min) ->
-                new Condition(
-                        type, item, entityType, advancement, distance, count, hint, hidden,
-                        enNbt.getFirst(), enNbt.getSecond(), level, block, biome, dimension, structure, attribute, min
-                )));
+                Codec.DOUBLE.optionalFieldOf("min").forGetter(Condition::min),
+                ENTITY_TYPE_OR_TAG.forGetter(c -> Pair.of(c.entityType(), c.entityTag()))
+        ).apply(i,
+                (ConditionType type,
+                 Optional<Identifier> item,
+                 Optional<Identifier> advancement,
+                 Optional<Long> distance,
+                 Optional<Integer> count,
+                 Optional<String> hint,
+                 Optional<Boolean> hidden,
+                 Pair<Optional<String>, Optional<String>> enNbt,
+                 Optional<Integer> level,
+                 Optional<Identifier> block,
+                 Optional<Identifier> biome,
+                 Optional<Identifier> dimension,
+                 Optional<Identifier> structure,
+                 Optional<Identifier> attribute,
+                 Optional<Double> min,
+                 Pair<Optional<Identifier>, Optional<Identifier>> typeOrTag) ->
+                        new Condition(
+                                type,
+                                item,
+                                typeOrTag.getFirst(),
+                                advancement,
+                                distance,
+                                count,
+                                hint,
+                                hidden,
+                                enNbt.getFirst(),
+                                enNbt.getSecond(),
+                                level,
+                                block,
+                                biome,
+                                dimension,
+                                structure,
+                                attribute,
+                                min,
+                                typeOrTag.getSecond()
+                        )));
     }
+
 }

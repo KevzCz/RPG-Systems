@@ -47,9 +47,11 @@ public final class PartyInfoBox implements PartyBox {
     private static final int SETTINGS_ROW_H = 12;
 
     private static final String OPT_HELPFUL_NONMEMBERS = "Heal/Buff non-members";
+    private static final String OPT_IGNORE_COLLISION   = "Ignore party collision";
     private static final LinkedHashMap<String, Boolean> SETTINGS = new LinkedHashMap<>();
     static {
         SETTINGS.put(OPT_HELPFUL_NONMEMBERS, ClientPartyHudData.allowHelpfulNonMembers());
+        SETTINGS.put(OPT_IGNORE_COLLISION,   ClientPartyHudData.ignorePartyCollision());
     }
     private int overlayX = 0, overlayY = 0, overlayW = 0, overlayH = 0;
     private static final int GEAR_SPIN_DURATION_MS = 300;
@@ -142,6 +144,8 @@ public final class PartyInfoBox implements PartyBox {
         m.pop();
 
         SETTINGS.put(OPT_HELPFUL_NONMEMBERS, ClientPartyHudData.allowHelpfulNonMembers());
+        SETTINGS.put(OPT_IGNORE_COLLISION,   ClientPartyHudData.ignorePartyCollision());
+
         if (showSettings) {
             int rows = Math.max(1, SETTINGS.size());
             int innerPad = 6;
@@ -198,14 +202,6 @@ public final class PartyInfoBox implements PartyBox {
                 return true;
             }
 
-            if (!isLocalPlayerLeader()) {
-                var mc = MinecraftClient.getInstance();
-                if (mc != null && mc.player != null) {
-                    mc.player.sendMessage(net.minecraft.text.Text.literal("Only the party leader can change settings."), false);
-                }
-                return true;
-            }
-
             int innerPad = 6;
             int titleH = 12;
             int rowGap = 2;
@@ -216,15 +212,25 @@ public final class PartyInfoBox implements PartyBox {
                 int rowTop = yRow;
                 int rowBottom = yRow + SETTINGS_ROW_H;
                 if (mouseY >= rowTop && mouseY < rowBottom) {
-                    boolean newVal = !Boolean.TRUE.equals(e.getValue());
-                    SETTINGS.put(e.getKey(), newVal);
+                    boolean currentVal = Boolean.TRUE.equals(e.getValue());
+                    boolean newVal = !currentVal;
+
+                    boolean leader = isLocalPlayerLeader();
+
                     if (OPT_HELPFUL_NONMEMBERS.equals(e.getKey())) {
                         if (ClientPartyHudData.partyId != null) {
-                            ClientPlayNetworking.send(
-                                    new PartySettingsPayloads.SetAllowHelpfulNonMembers(newVal)
-                            );
+                            ClientPlayNetworking.send(new PartySettingsPayloads.SetAllowHelpfulNonMembers(newVal));
+                        }
+                    } else if (OPT_IGNORE_COLLISION.equals(e.getKey())) {
+                        if (ClientPartyHudData.partyId != null) {
+                            ClientPlayNetworking.send(new PartySettingsPayloads.SetIgnorePartyCollision(newVal));
                         }
                     }
+
+                    if (leader) {
+                        SETTINGS.put(e.getKey(), newVal);
+                    }
+
                     return true;
                 }
                 yRow += SETTINGS_ROW_H + rowGap;
@@ -279,6 +285,7 @@ public final class PartyInfoBox implements PartyBox {
         }
         return false;
     }
+
     private static void startGearSpin(int dir) {
         gearAnimDir = dir;
         gearAnimStartMs = System.currentTimeMillis();

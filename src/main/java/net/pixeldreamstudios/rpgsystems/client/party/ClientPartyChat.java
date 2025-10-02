@@ -22,6 +22,14 @@ public final class ClientPartyChat {
             this.sender = sender; this.name = name; this.text = text; this.time = time;
         }
     }
+    public static final class Pinned {
+        private static String text;
+        private static long   when;
+        public static void set(String t, long epochMs) { text = (t == null || t.isBlank()) ? null : t; when = epochMs; }
+        public static void clear() { text = null; when = 0L; }
+        public static String text() { return text; }
+        public static long   timestamp() { return when; }
+    }
 
     private static final Deque<Msg> MESSAGES = new ArrayDeque<>();
     private static final int MAX = 200;
@@ -32,6 +40,19 @@ public final class ClientPartyChat {
     public static void initClientReceivers() {
         ClientPlayNetworking.registerGlobalReceiver(PartyChatPayloads.ChatMessage.ID, (payload, ctx) -> {
             push(new Msg(payload.senderUuid(), payload.senderName(), payload.message(), payload.epochMillis()));
+        });
+
+        ClientPlayNetworking.registerGlobalReceiver(PartyChatPayloads.ChatNotice.ID, (payload, ctx) -> {
+            push(new Msg(null, "Party", payload.message(), payload.epochMillis()));
+        });
+        ClientPlayNetworking.registerGlobalReceiver(PartyChatPayloads.ChatPinSet.ID, (payload, ctx) -> {
+            Pinned.set(payload.pinnedText(), payload.epochMillis());
+            push(new Msg(null, "Party", "Pinned: " + payload.pinnedText(), payload.epochMillis()));
+        });
+
+        ClientPlayNetworking.registerGlobalReceiver(PartyChatPayloads.ChatPinClear.ID, (payload, ctx) -> {
+            Pinned.clear();
+            push(new Msg(null, "Party", "Pinned message cleared.", System.currentTimeMillis()));
         });
     }
 

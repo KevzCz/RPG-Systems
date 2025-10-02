@@ -33,8 +33,9 @@ import java.util.concurrent.ConcurrentHashMap;
 @Environment(EnvType.CLIENT)
 public final class EnemyHealthBarRenderer {
 
-    private static final Identifier TEX_BAR    = Identifier.of("rpg-systems", "textures/gui/enemy/hp_bar.png");
-    private static final Identifier TEX_BORDER = Identifier.of("rpg-systems", "textures/gui/enemy/hp_border.png");
+    private static final Identifier TEX_BAR     = Identifier.of("rpg-systems", "textures/gui/enemy/hp_bar.png");
+    private static final Identifier TEX_BORDER  = Identifier.of("rpg-systems", "textures/gui/enemy/hp_border.png");
+    private static final Identifier TEX_ABSORB  = Identifier.of("rpg-systems", "textures/gui/enemy/absorption_bar.png");
 
     private static final float BASE_W_PX = 192f;
     private static final float BASE_H_PX = 44f;
@@ -49,14 +50,12 @@ public final class EnemyHealthBarRenderer {
     private static final int FADE_OUT_TICKS  = 12;
 
     private static final float DRAIN_RATE_PER_SEC = 0.6f;
-
     private static final float Y_OFFSET = 0.3f;
     private static final double MAX_DISTANCE_SQ = 48.0 * 48.0;
-
     private static final float MIN_SLIVER_TEXELS = 2f;
     private static final float MIN_SLIVER_PCT    = MIN_SLIVER_TEXELS / BASE_W_PX;
-
     private static final Map<Integer, HudState> HUD = new ConcurrentHashMap<>();
+    private static final Map<Integer, Float> ABS_RAW = new ConcurrentHashMap<>();
 
     private EnemyHealthBarRenderer() {}
 
@@ -67,6 +66,9 @@ public final class EnemyHealthBarRenderer {
         float delayedDamagePct;
         float delayedHealPct;
         float lastInstantPct;
+        float absInstantPct;
+        float absDelayedPct;
+        float lastAbsInstant;
 
         HudState(long nowTick, float pct) {
             this.firstShownTick = nowTick;
@@ -75,7 +77,14 @@ public final class EnemyHealthBarRenderer {
             this.delayedDamagePct = pct;
             this.delayedHealPct = pct;
             this.lastInstantPct = pct;
+
+            this.absInstantPct = 0f;
+            this.absDelayedPct = 0f;
+            this.lastAbsInstant = 0f;
         }
+    }
+    public static void onAbsorptionSync(int entityId, float absorptionRaw) {
+        ABS_RAW.put(entityId, absorptionRaw);
     }
 
     public static void init() {
@@ -87,17 +96,16 @@ public final class EnemyHealthBarRenderer {
             if (entity instanceof LivingEntity living) {
                 if (isInvisibleToClient(living)) return ActionResult.PASS;
                 long now = world.getTime();
-                int id = entity.getId();
                 float pct = clamp01((float) (living.getHealth() / Math.max(1e-6, living.getMaxHealth())));
-                HUD.compute(id, (k, st) -> st == null ? new HudState(now, pct) : setHitTime(st, now));
+                HUD.compute(entity.getId(), (k, st) -> st == null ? new HudState(now, pct) : setHitTime(st, now));
             }
             return ActionResult.PASS;
         });
 
-        ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> HUD.clear());
-        ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> HUD.clear());
+        ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> { HUD.clear(); ABS_RAW.clear(); });
+        ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> { HUD.clear(); ABS_RAW.clear(); });
 
-        WorldRenderEvents.AFTER_ENTITIES.register(context -> {
+        WorldRenderEvents.LAST.register(context -> {
             var world = context.world();
             var matrices = context.matrixStack();
             var camera = context.camera();
@@ -115,11 +123,11 @@ public final class EnemyHealthBarRenderer {
 
             for (var entity : world.getEntities()) {
                 if (!(entity instanceof LivingEntity living)) continue;
-                if (!living.isAlive()) { HUD.remove(entity.getId()); continue; }
+                if (!living.isAlive()) { HUD.remove(entity.getId()); ABS_RAW.remove(entity.getId()); continue; }
                 if (living instanceof PlayerEntity && client.player != null && living.getId() == client.player.getId()) {
                     continue;
                 }
-                if (isInvisibleToClient(living)) { HUD.remove(entity.getId()); continue; }
+                if (isInvisibleToClient(living)) { HUD.remove(entity.getId()); ABS_RAW.remove(entity.getId()); continue; }
 
                 HudState st = HUD.get(entity.getId());
                 if (st == null) continue;
@@ -136,6 +144,7 @@ public final class EnemyHealthBarRenderer {
                     visAlpha = clamp01(1f - (sinceHit - VISIBLE_TICKS) / (float) FADE_OUT_TICKS);
                 } else {
                     HUD.remove(entity.getId());
+                    ABS_RAW.remove(entity.getId());
                     continue;
                 }
                 if (visAlpha <= 0.01f) continue;
@@ -151,29 +160,47 @@ public final class EnemyHealthBarRenderer {
 
                     if (instantPct + 0.0005f < st.lastInstantPct) {
                         st.delayedDamagePct = Math.max(st.delayedDamagePct, st.lastInstantPct);
-                        st.delayedHealPct = instantPct;
+                        st.delayedHealPct   = instantPct;
                     } else if (instantPct - 0.0005f > st.lastInstantPct) {
-                        st.delayedHealPct = Math.min(st.delayedHealPct, st.lastInstantPct);
+                        st.delayedHealPct   = Math.min(st.delayedHealPct, st.lastInstantPct);
                         st.delayedDamagePct = instantPct;
                     }
-
                     if (st.delayedDamagePct > instantPct) {
                         st.delayedDamagePct = Math.max(instantPct, st.delayedDamagePct - DRAIN_RATE_PER_SEC * dtSec);
                     } else {
                         st.delayedDamagePct = instantPct;
                     }
-
                     if (st.delayedHealPct < instantPct) {
                         st.delayedHealPct = Math.min(instantPct, st.delayedHealPct + DRAIN_RATE_PER_SEC * dtSec);
                     } else {
                         st.delayedHealPct = instantPct;
                     }
+                    st.lastInstantPct = instantPct;
+
+                    float maxHp = Math.max(1e-6f, living.getMaxHealth());
+                    float raw   = ABS_RAW.getOrDefault(entity.getId(), 0f);
+                    float absInstantPct = clamp01(raw / maxHp);
+                    st.absInstantPct = absInstantPct;
+
+                    if (absInstantPct + 0.0005f < st.lastAbsInstant) {
+                        st.absDelayedPct = Math.max(st.absDelayedPct, st.lastAbsInstant);
+                    }
+                    if (st.absDelayedPct > absInstantPct) {
+                        st.absDelayedPct = Math.max(absInstantPct, st.absDelayedPct - DRAIN_RATE_PER_SEC * dtSec);
+                    } else {
+
+                        st.absDelayedPct = absInstantPct;
+                    }
+                    st.lastAbsInstant = absInstantPct;
 
                     st.lastWorldTick = nowTick;
-                    st.lastInstantPct = instantPct;
                 }
 
-                if (instantPct <= 0f && st.delayedDamagePct <= 0f && st.delayedHealPct <= 0f) continue;
+                if (instantPct <= 0f
+                        && st.delayedDamagePct <= 0f
+                        && st.delayedHealPct <= 0f
+                        && st.absInstantPct <= 0f
+                        && st.absDelayedPct <= 0f) continue;
 
                 Box box = living.getBoundingBox();
                 if (!isOnScreen(context, box)) continue;
@@ -202,7 +229,13 @@ public final class EnemyHealthBarRenderer {
                 faceCamera(matrices, camera);
                 matrices.scale(worldW, worldH, 1f);
 
-                drawBars(matrices, instantPct, st.delayedDamagePct, st.delayedHealPct, finalAlpha);
+                drawBars(matrices,
+                        instantPct,
+                        st.delayedDamagePct,
+                        st.delayedHealPct,
+                        st.absInstantPct,
+                        st.absDelayedPct,
+                        finalAlpha);
 
                 matrices.pop();
             }
@@ -231,7 +264,7 @@ public final class EnemyHealthBarRenderer {
         if (!(e instanceof LivingEntity living)) return;
 
         if (living instanceof PlayerEntity && living.getId() == mc.player.getId()) return;
-        if (isInvisibleToClient(living)) { HUD.remove(living.getId()); return; }
+        if (isInvisibleToClient(living)) { HUD.remove(living.getId()); ABS_RAW.remove(living.getId()); return; }
 
         double dSq = living.squaredDistanceTo(mc.player);
         if (dSq > MAX_DISTANCE_SQ) return;
@@ -251,14 +284,37 @@ public final class EnemyHealthBarRenderer {
         matrices.multiply(RotationAxis.POSITIVE_X.rotationDegrees(camera.getPitch()));
     }
 
-    private static void drawBars(MatrixStack matrices, float instantPct, float delayedDamagePct, float delayedHealPct, float alpha) {
+
+    private static void drawBars(MatrixStack matrices,
+                                 float instantPct, float delayedDamagePct, float delayedHealPct,
+                                 float absInstantPct, float absDelayedPct,
+                                 float alpha) {
         RenderSystem.enableBlend();
         RenderSystem.enableDepthTest();
 
+        // Let our quads WRITE depth so later passes respect occlusion.
+        RenderSystem.depthMask(true);
+
+        // Slightly bias toward the camera to avoid precision acne vs. entity surface
+        RenderSystem.enablePolygonOffset();
+        // factor, units — tune if needed (more negative pulls toward camera)
+        RenderSystem.polygonOffset(-1.0f, -10.0f);
+
+        // Border extents (unchanged)
         float halfW = 0.5f;
         float halfH = 0.5f;
-        int light = LightmapTextureManager.pack(15, 15);
 
+        // Shift the INSIDE bars down by exactly 1 texture pixel; border stays put.
+        float onePx = 1f / BASE_H_PX;
+        float barTop =  halfH - onePx;
+        float barBot = -halfH - onePx;
+
+        // Tiny Z separations between layers (more negative = closer to camera in billboard space)
+        final float Z_BORDER = -0.0001f; // on very top of our stack
+        final float Z_HP     = -0.0003f;
+        final float Z_ABS    = -0.0006f;
+
+        int light = LightmapTextureManager.pack(15, 15);
         Matrix4f mat = matrices.peek().getPositionMatrix();
 
         float leftX  = -halfW;
@@ -269,36 +325,79 @@ public final class EnemyHealthBarRenderer {
 
         float instDrawPct = instantPct > 0f ? clamp01(Math.max(instantPct, MIN_SLIVER_PCT)) : 0f;
 
+        // delayed damage (behind instant)
         float dmgFrom = Math.max(instDrawPct, delayedDamagePct);
         if (dmgFrom - instDrawPct > MIN_SLIVER_PCT) {
             float x0 = rightX - width * dmgFrom;
             float x1 = rightX - width * instDrawPct;
-            float u0 = dmgFrom;
-            float u1 = instDrawPct;
-
-            drawTexturedQuad(TEX_BAR, mat, x0, -halfH, x1, halfH, u0, vTop, u1, vBot, light, 1f, 0.35f, 0.35f, alpha);
+            drawTexturedQuadZ(TEX_BAR, mat, x0, barBot, x1, barTop, dmgFrom, vTop, instDrawPct, vBot, light,
+                    1f, 0.35f, 0.35f, alpha, Z_HP);
         }
 
+        // delayed heal (behind instant)
         float healTo = Math.min(instDrawPct, Math.max(delayedHealPct, 0f));
         if (instDrawPct - healTo > MIN_SLIVER_PCT) {
             float x0 = rightX - width * instDrawPct;
             float x1 = rightX - width * healTo;
-            float u0 = instDrawPct;
-            float u1 = healTo;
-
-            drawTexturedQuad(TEX_BAR, mat, x0, -halfH, x1, halfH, u0, vTop, u1, vBot, light, 0.35f, 1f, 0.35f, alpha);
+            drawTexturedQuadZ(TEX_BAR, mat, x0, barBot, x1, barTop, instDrawPct, vTop, healTo, vBot, light,
+                    0.35f, 1f, 0.35f, alpha, Z_HP);
         }
 
+        // instant HP
         if (instDrawPct > 0f) {
             float x0 = rightX - width * instDrawPct;
             float x1 = rightX;
-            float u0 = instDrawPct;
-            float u1 = 0f;
-
-            drawTexturedQuad(TEX_BAR, mat, x0, -halfH, x1, halfH, u0, vTop, u1, vBot, light, 1f, 1f, 1f, alpha);
+            drawTexturedQuadZ(TEX_BAR, mat, x0, barBot, x1, barTop, instDrawPct, vTop, 0f, vBot, light,
+                    1f, 1f, 1f, alpha, Z_HP);
         }
 
-        drawTexturedQuad(TEX_BORDER, mat, leftX, -halfH, rightX, halfH, 1f, vTop, 0f, vBot, light, 1f, 1f, 1f, alpha);
+        // absorption delayed
+        float absInstDraw = absInstantPct > 0f ? clamp01(Math.max(absInstantPct, MIN_SLIVER_PCT)) : 0f;
+        float absDmgFrom  = Math.max(absInstDraw, absDelayedPct);
+        if (absDmgFrom - absInstDraw > MIN_SLIVER_PCT) {
+            float x0 = rightX - width * absDmgFrom;
+            float x1 = rightX - width * absInstDraw;
+            drawTexturedQuadZ(TEX_ABSORB, mat, x0, barBot, x1, barTop, absDmgFrom, vTop, absInstDraw, vBot, light,
+                    1f, 0.35f, 0.35f, alpha, Z_ABS);
+        }
+
+        // absorption instant
+        if (absInstDraw > 0f) {
+            float x0 = rightX - width * absInstDraw;
+            float x1 = rightX;
+            drawTexturedQuadZ(TEX_ABSORB, mat, x0, barBot, x1, barTop, absInstDraw, vTop, 0f, vBot, light,
+                    1f, 1f, 1f, alpha * 0.75f, Z_ABS);
+        }
+
+        // border on top (no Y shift)
+        drawTexturedQuadZ(TEX_BORDER, mat, leftX, -halfH, rightX, halfH, 1f, vTop, 0f, vBot, light,
+                1f, 1f, 1f, alpha, Z_BORDER);
+
+        // restore state
+        RenderSystem.disablePolygonOffset();
+        RenderSystem.polygonOffset(0f, 0f);
+    }
+
+
+
+    private static void drawTexturedQuadZ(Identifier tex, Matrix4f mat,
+                                          float x0, float y0, float x1, float y1,
+                                          float u0, float v0, float u1, float v1,
+                                          int light,
+                                          float r, float g, float b, float a,
+                                          float z) {
+        RenderSystem.setShader(GameRenderer::getPositionColorTexLightmapProgram);
+        RenderSystem.setShaderTexture(0, tex);
+
+        Tessellator tess = Tessellator.getInstance();
+        BufferBuilder buf = tess.begin(VertexFormat.DrawMode.QUADS, VertexFormats.POSITION_COLOR_TEXTURE_LIGHT);
+
+        buf.vertex(mat, x0, y1, z).color(r, g, b, a).texture(u0, v1).light(light);
+        buf.vertex(mat, x1, y1, z).color(r, g, b, a).texture(u1, v1).light(light);
+        buf.vertex(mat, x1, y0, z).color(r, g, b, a).texture(u1, v0).light(light);
+        buf.vertex(mat, x0, y0, z).color(r, g, b, a).texture(u0, v0).light(light);
+
+        BufferRenderer.drawWithGlobalProgram(buf.end());
     }
 
     private static void drawTexturedQuad(Identifier tex, Matrix4f mat,
@@ -351,5 +450,4 @@ public final class EnemyHealthBarRenderer {
         float padding = 0.025f;
         return visAlpha * (worldH + padding);
     }
-
 }

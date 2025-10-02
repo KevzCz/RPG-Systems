@@ -10,7 +10,8 @@
 		"client.SpellTargetHelpfulFilterMixin",
 		"client.HandledScreenMixin",
 		"client.EntityRendererMixin",
-		"client.ProjectileIgnoreAlliesClientMixin"
+		"client.ProjectileIgnoreAlliesClientMixin",
+		"client.EntityCollisionClientMixin"
 	],
 	"mixins": [
 		"NoFriendlyTargetMixin",
@@ -25,6 +26,7 @@
 		"LivingEntityLastRawDamageMixin",
 		"SpellHelperCritLinkMixin",
 		"PlayerEntityCritLinkMixin",
+		"EntityCollisionServerMixin",
 		"pet.MobEntityPetMixin",
 		"pet.AbstractHorseEntityPetHookMixin",
 		"pet.TameableEntityPetHookMixin"

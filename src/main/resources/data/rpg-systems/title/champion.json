@@ -11,7 +11,7 @@
   ],
   "conditions": [
     { "type": "kill_mobs", "entity": "any", "count": 100, "hint": "Defeat 100 mobs." },
-    { "type": "reach_level", "level": 30, "hint": "Reach player level 30." },
+    { "type": "reach_level_xp", "level": 30, "hint": "Reach player level 30." },
     { "type": "craft_item", "item": "minecraft:diamond_chestplate", "count": 1, "hint": "Craft a Diamond Chestplate." }
   ]
 }

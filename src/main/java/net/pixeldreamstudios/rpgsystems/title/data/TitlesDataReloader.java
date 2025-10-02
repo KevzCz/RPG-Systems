@@ -71,11 +71,35 @@ public final class TitlesDataReloader extends JsonDataLoader implements Identifi
                     for (Identifier spell : group.spells()) b.addSpell(spell);
                     for (Identifier power : group.powers()) b.addPower(power);
                     for (TitleData.DamageBonus db : group.damageBonuses()) {
-                        b.addDamageBonus(db.id(), db.amount(), db.operation() == TitleData.DamageOp.MULTIPLIED
-                                ? Title.DamageOp.MULTIPLIED : Title.DamageOp.ADDED);
+                        if (db.id().isPresent()) {
+                            b.addDamageBonus(db.id().get(), db.amount(),
+                                    db.operation() == TitleData.DamageOp.MULTIPLIED ? Title.DamageOp.MULTIPLIED : Title.DamageOp.ADDED);
+                        } else if (db.tag().isPresent()) {
+                            b.addDamageBonusTag(db.tag().get(), db.amount(),
+                                    db.operation() == TitleData.DamageOp.MULTIPLIED ? Title.DamageOp.MULTIPLIED : Title.DamageOp.ADDED);
+                        }
                     }
                 }
 
+                for (TitleData.Bonus group : data.permaBonuses()) {
+                    for (TitleData.AttrBonus ab : group.attributes()) {
+                        RegistryKey<EntityAttribute> key = RegistryKey.of(RegistryKeys.ATTRIBUTE, ab.id());
+                        RegistryEntry<EntityAttribute> entry = Registries.ATTRIBUTE.getEntry(key)
+                                .orElseThrow(() -> new IllegalArgumentException("Unknown attribute: " + ab.id()));
+                        b.addPerma(entry, ab.amount(), ab.operation());
+                    }
+                    for (Identifier spell : group.spells()) b.addPermaSpell(spell);
+                    for (Identifier power : group.powers()) b.addPermaPower(power);
+                    for (TitleData.DamageBonus db : group.damageBonuses()) {
+                        if (db.id().isPresent()) {
+                            b.addPermaDamageBonus(db.id().get(), db.amount(),
+                                    db.operation() == TitleData.DamageOp.MULTIPLIED ? Title.DamageOp.MULTIPLIED : Title.DamageOp.ADDED);
+                        } else if (db.tag().isPresent()) {
+                            b.addPermaDamageBonusTag(db.tag().get(), db.amount(),
+                                    db.operation() == TitleData.DamageOp.MULTIPLIED ? Title.DamageOp.MULTIPLIED : Title.DamageOp.ADDED);
+                        }
+                    }
+                }
 
                 for (TitleData.Condition jc : data.conditions()) {
                     Title.Condition.Type t = switch (jc.type()) {
@@ -115,7 +139,8 @@ public final class TitlesDataReloader extends JsonDataLoader implements Identifi
                             jc.dimension(),
                             jc.structure(),
                             jc.attribute(),
-                            jc.min().orElse(0.0)
+                            jc.min().orElse(0.0),
+                            jc.entityTag()
                     ));
                 }
 

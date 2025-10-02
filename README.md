@@ -13,7 +13,7 @@ Titles will have:
   "enabled": false
   // Default is false, hides from the list if true (Optional)
   "hidden": true
-  // Optional bonuses section (effective only when equipped)
+  // Optional bonuses section
   "bonuses": [
     {
     // Optional
@@ -31,29 +31,8 @@ Titles will have:
       ],
     // Optional. Operation: Additive or Multiplied
       "damage_bonus": [
-        { "id": "minecraft:ender_dragon", "amount": 0.15, "operation": "multiplied" }
-      ]
-    }
-  ],
-// Optional perma bonuses section (effective at all times)
-  "perma_bonuses": [
-    {
-    // Optional
-      "attribute": [
-        { "id": "minecraft:generic.attack_damage", "amount": 0.10, "operation": "multiply_total" },
-        { "id": "minecraft:generic.max_health",     "amount": 2.0,  "operation": "add_value" }
-      ],
-    // Optional
-      "power": [
-        "rpg-systems:illuminate"
-      ],
-    // Optional
-      "spell": [
-        "paladins:heal"
-      ],
-    // Optional. Operation: Additive or Multiplied
-      "damage_bonus": [
-        { "id": "minecraft:ender_dragon", "amount": 0.15, "operation": "multiplied" }
+        { "id": "minecraft:ender_dragon", "amount": 0.15, "operation": "multiplied" },
+        { "tag": "#minecraft:undead", "amount": 0.15, "operation": "multiplied" }
       ]
     }
   ],
@@ -82,16 +61,15 @@ Titles will have:
 ### Conditions
 
 | Type                     | What it tracks                                  | required/optional json fields                                                                                       | Examples                                                                            |
-| ------------------------ | ----------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| ------------------------ | ----------------------------------------------- |---------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------|
 | `obtain_item`            | Peak amount of an item you’ve ever held at once | `item` (id), `count` (int, default 1)                                                                               | `{ "type":"obtain_item", "item":"minecraft:crafting_table", "count":1 }`            |
-| `kill_mobs`              | Number of kills of certain mobs                 | `entity_type` (id) **or** `entity` (`"any"`/`"ns:id"`/`"ns:*"`), `count` (int, default 1), `nbt` (string, optional) | `{ "type":"kill_mobs", "entity_type":"minecraft:zombie", "count":100 }`             |
-| `deal_damage_total`      | Total damage dealt (sum of hits)                | `entity_type` or `entity`, `count` (damage threshold), `nbt` (optional)                                             | `{ "type":"deal_damage_total", "entity":"any", "count":500 }`                       |
-| `deal_damage_max`        | Highest single-hit damage                       | `entity_type` or `entity`, `count` (min single-hit), `nbt` (optional)                                               | `{ "type":"deal_damage_max", "entity":"any", "count":20 }`                          |
+| `kill_mobs`              | Number of kills of certain mobs                 | `entity_type` (id)  or `entity_tag` **or** `entity` (`"any"`/`"ns:id"`/`"ns:*"`), `count` (int, default 1), `nbt` (string, optional) | `{ "type":"kill_mobs", "entity_type":"minecraft:zombie", "count":100 }`             |
+| `deal_damage_total`      | Total damage dealt (sum of hits)                | `entity_type` or `entity_tag`  or `entity`, `count` (damage threshold), `nbt` (optional)                                             | `{ "type":"deal_damage_total", "entity":"any", "count":500 }`                       |
+| `deal_damage_max`        | Highest single-hit damage                       | `entity_type` or `entity_tag`  or `entity`, `count` (min single-hit), `nbt` (optional)                                               | `{ "type":"deal_damage_max", "entity":"any", "count":20 }`                          |
 | `interact_block`         | Right-click interactions on a block             | `block` (id), `count` (int, default 1)                                                                              | `{ "type":"interact_block", "block":"minecraft:crafting_table", "count":5 }`        |
-| `interact_entity`        | Right-click interactions on mobs                | `entity_type` or `entity`, `count` (int, default 1), `nbt` (optional)                                               | `{ "type":"interact_entity", "entity_type":"minecraft:villager", "count":1 }`       |
+| `interact_entity`        | Right-click interactions on mobs                | `entity_type` or `entity_tag` or `entity`, `count` (int, default 1), `nbt` (optional)                               | `{ "type":"interact_entity", "entity_type":"minecraft:villager", "count":1 }`       |
 | `advancement`            | Completion of a specific advancement            | `advancement` (id)                                                                                                  | `{ "type":"advancement", "advancement":"minecraft:adventure/hero_of_the_village" }` |
-| `reach_level`            | Player XP level (green number)                  | `level` (int)                                                                                                       | `{ "type":"reach_level", "level":30 }`                                              |
-| `reach_level_xp`         | Alias of `reach_level`                          | `level` (int)                                                                                                       | `{ "type":"reach_level_xp", "level":20 }`                                           |
+| `reach_level_xp`         | Player XP level                         | `level` (int)                                                                                                       | `{ "type":"reach_level_xp", "level":20 }`                                           |
 | `reach_level_pufferfish` | Total Puffish Skills level                      | `level` (int)                                                                                                       | `{ "type":"reach_level_pufferfish", "level":10 }`                                   |
 | `walk_blocks`            | Distance walked (on ground)                     | `distance` (int, blocks)                                                                                            | `{ "type":"walk_blocks", "distance":5000 }`                                         |
 | `craft_item`             | Lifetime crafted count of an item               | `item` (id), `count` (int, default 1)                                                                               | `{ "type":"craft_item", "item":"minecraft:diamond_pickaxe", "count":1 }`            |
@@ -109,8 +87,8 @@ Titles will have:
 
 
 ### Title sprite
-- Depending on the title's id: ``` rpg-systems:free_the_end ``` = ```free_the_end```. 
-- It will look inside ```textures/block/title/free_the_end.png``` and also supports ```free_the_end.png.mcmeta```
+- Depending on the title's id: ``` rpg-systems:free_the_end ``` = ```free the end```. 
+- It will look inside ```textures/block/title/free_the_end.png``` and also supports ```free_the_end.png.mcemeta```
 
 ### Title power
 - Create a class that implements ```TitlePower```

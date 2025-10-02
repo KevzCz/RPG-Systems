@@ -24,6 +24,8 @@ import net.pixeldreamstudios.rpgsystems.network.title.TitlePayloads;
 import net.pixeldreamstudios.rpgsystems.title.Title;
 import net.pixeldreamstudios.rpgsystems.title.TitleRegistry;
 import net.pixeldreamstudios.rpgsystems.title.TitlesPersistentState;
+import net.pixeldreamstudios.rpgsystems.util.TitlePowerBonusUtil;
+import net.pixeldreamstudios.rpgsystems.util.TitleSpellBonusUtil;
 
 import java.util.*;
 
@@ -37,7 +39,35 @@ public final class TitleNet {
         PayloadTypeRegistry.playS2C().register(TitlePayloads.SyncDefinitions.ID, TitlePayloads.SyncDefinitions.CODEC);
         PayloadTypeRegistry.playS2C().register(TitlePayloads.SyncProgress.ID, TitlePayloads.SyncProgress.CODEC);
         PayloadTypeRegistry.playS2C().register(TitleListSyncPayload.ID, TitleListSyncPayload.CODEC);
+        PayloadTypeRegistry.playC2S().register(TitlePayloads.RequestSetPermaToggles.ID, TitlePayloads.RequestSetPermaToggles.CODEC);
+        PayloadTypeRegistry.playS2C().register(TitlePayloads.SyncPermaToggles.ID, TitlePayloads.SyncPermaToggles.CODEC);
+        ServerPlayNetworking.registerGlobalReceiver(TitlePayloads.RequestSetPermaToggles.ID, (payload, ctx) -> {
+            ServerPlayerEntity player = ctx.player();
+            TitlesPersistentState state = TitlesPersistentState.get(player.getServer());
+            var pt = state.getOrCreate(player.getUuid());
 
+            pt.permaDisabledGroups.clear();
+            pt.permaDisabledGroups.addAll(payload.disabled());
+            state.markDirty();
+
+            // Rebuild perma effects immediately
+            var unlocked = net.pixeldreamstudios.rpgsystems.api.TitleApi
+                    .getActive(player) // not needed for perma, but we’ll rebuild everything
+                    .map(a -> a) // noop
+                    ;
+
+            // Use your existing code paths:
+            var list = new ArrayList<Title>(pt.unlocked.size());
+            for (String s : pt.unlocked) {
+                try { var id = Identifier.of(s); var t = TitleRegistry.get(id); if (t != null) list.add(t); } catch (Exception ignored) {}
+            }
+            TitleApi.rebuildPermaAttributes(player, list);
+            TitleSpellBonusUtil.rebuildAllTitleSpells(player, TitleApi.getActive(player).orElse(null), list);
+            TitlePowerBonusUtil.rebuildAllTitlePowers(player, TitleApi.getActive(player).orElse(null), list);
+
+            // Sync new toggle state back to client
+            ServerPlayNetworking.send(player, new TitlePayloads.SyncPermaToggles(new ArrayList<>(pt.permaDisabledGroups)));
+        });
         ServerPlayNetworking.registerGlobalReceiver(TitlePayloads.RequestSetActive.ID, (payload, context) -> {
             ServerPlayerEntity player = context.player();
             Optional<Identifier> requested = payload.active();
@@ -56,6 +86,8 @@ public final class TitleNet {
             broadcastActiveToAll(server, handler.player.getUuid(), activeOf(server, handler.player.getUuid()));
             broadcastAllActivesTo(server, handler.player);
             TitleApi.refreshActiveOnLogin(handler.player);
+            ServerPlayNetworking.send(handler.player,
+                    new TitlePayloads.SyncPermaToggles(new ArrayList<>(TitlesPersistentState.get(server).getOrCreate(handler.player.getUuid()).permaDisabledGroups)));
         });
         ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> {
             sendAllTitles(handler.player);
@@ -82,6 +114,9 @@ public final class TitleNet {
                 context.client().execute(() ->
                         TitleClientData.setActive(payload.playerUuid(), payload.active().orElse(null))
                 )
+        );
+        ClientPlayNetworking.registerGlobalReceiver(TitlePayloads.SyncPermaToggles.ID, (payload, ctx) ->
+                ctx.client().execute(() -> TitleClientData.setPermaDisabled(new java.util.LinkedHashSet<>(payload.disabled())))
         );
         ClientPlayNetworking.registerGlobalReceiver(TitleListSyncPayload.ID, (payload, context) -> {
             context.client().execute(() -> {
@@ -115,26 +150,44 @@ public final class TitleNet {
                             b.add(entry, jb.amount(), jb.operation());
                         }
                         for (TitlePayloads.SyncDefinitions.DamageBonusDef db : d.damage()) {
-                            b.addDamageBonus(db.target(), db.amount(),
-                                    db.op() == TitlePayloads.SyncDefinitions.DmgOp.MULTIPLIED
-                                            ? Title.DamageOp.MULTIPLIED : Title.DamageOp.ADDED);
+                            if (db.target().isPresent()) {
+                                b.addDamageBonus(db.target().get(), db.amount(),
+                                        db.op() == TitlePayloads.SyncDefinitions.DmgOp.MULTIPLIED
+                                                ? Title.DamageOp.MULTIPLIED : Title.DamageOp.ADDED);
+                            } else if (db.tag().isPresent()) {
+                                b.addDamageBonusTag(db.tag().get(), db.amount(),
+                                        db.op() == TitlePayloads.SyncDefinitions.DmgOp.MULTIPLIED
+                                                ? Title.DamageOp.MULTIPLIED : Title.DamageOp.ADDED);
+                            }
                         }
 
-                        for (Identifier sid : d.spells()) {
-                            b.addSpell(sid);
-                        }
+                        for (Identifier sid : d.spells()) b.addSpell(sid);
+                        for (Identifier pid : d.powers()) b.addPower(pid);
 
-                        for (Identifier pid : d.powers()) {
-                            b.addPower(pid);
+                        for (var jb : d.permaBonuses()) {
+                            var key = RegistryKey.of(RegistryKeys.ATTRIBUTE, jb.attribute());
+                            RegistryEntry<EntityAttribute> entry = Registries.ATTRIBUTE.getEntry(key)
+                                    .orElseThrow(() -> new IllegalArgumentException("Unknown attribute: " + jb.attribute()));
+                            b.addPerma(entry, jb.amount(), jb.operation());
                         }
-
+                        for (Identifier sid : d.permaSpells()) b.addPermaSpell(sid);
+                        for (Identifier pid : d.permaPowers()) b.addPermaPower(pid);
+                        for (var db : d.permaDamage()) {
+                            if (db.target().isPresent()) {
+                                b.addPermaDamageBonus(db.target().get(), db.amount(),
+                                        db.op() == TitlePayloads.SyncDefinitions.DmgOp.MULTIPLIED ? Title.DamageOp.MULTIPLIED : Title.DamageOp.ADDED);
+                            } else if (db.tag().isPresent()) {
+                                b.addPermaDamageBonusTag(db.tag().get(), db.amount(),
+                                        db.op() == TitlePayloads.SyncDefinitions.DmgOp.MULTIPLIED ? Title.DamageOp.MULTIPLIED : Title.DamageOp.ADDED);
+                            }
+                        }
                         for (TitlePayloads.SyncDefinitions.ConditionDef cd : d.conditions()) {
                             Title.Condition.Type t = switch (cd.type()) {
                                 case OBTAIN_ITEM            -> Title.Condition.Type.OBTAIN_ITEM;
                                 case KILL_MOBS              -> Title.Condition.Type.KILL_MOBS;
                                 case ADVANCEMENT            -> Title.Condition.Type.ADVANCEMENT;
                                 case WALK_BLOCKS            -> Title.Condition.Type.WALK_BLOCKS;
-                                case REACH_LEVEL            -> Title.Condition.Type.REACH_LEVEL_XP;
+                                case REACH_LEVEL            -> Title.Condition.Type.REACH_LEVEL;
                                 case REACH_LEVEL_XP         -> Title.Condition.Type.REACH_LEVEL_XP;
                                 case REACH_LEVEL_PUFFERFISH -> Title.Condition.Type.REACH_LEVEL_PUFFERFISH;
                                 case CRAFT_ITEM             -> Title.Condition.Type.CRAFT_ITEM;
@@ -155,7 +208,8 @@ public final class TitleNet {
                                     cd.distance(), cd.count(), cd.hint(), cd.hidden(),
                                     cd.entitySpec(), cd.nbtQuery(), cd.level(),
                                     cd.block(), cd.biome(), cd.dimension(),
-                                    cd.structure(), cd.attribute(), cd.min()
+                                    cd.structure(), cd.attribute(), cd.min(),
+                                    cd.entityTag()
                             ));
                         }
 
@@ -188,6 +242,7 @@ public final class TitleNet {
 
         ServerPlayNetworking.send(player, new net.pixeldreamstudios.rpgsystems.network.title.TitlePayloads.SyncSelf(unlocked, active));
     }
+
     public static void sendAllTitles(ServerPlayerEntity player) {
         List<TitleListSyncPayload.Entry> entries = new ArrayList<>();
         for (Title t : TitleRegistry.all().values()) {
@@ -197,13 +252,15 @@ public final class TitleNet {
         }
         ServerPlayNetworking.send(player, new TitleListSyncPayload(entries));
     }
+
     public static void syncProgressTo(MinecraftServer server, ServerPlayerEntity player) {
         TitlesPersistentState state = TitlesPersistentState.get(server);
         TitlesPersistentState.PlayerTitles pt = state.getOrCreate(player.getUuid());
 
-        List<net.pixeldreamstudios.rpgsystems.network.title.TitlePayloads.SyncProgress.TitleProgress> out = new ArrayList<>();
+        var entries = new ArrayList<>(TitleRegistry.all().entrySet()); // snapshot
 
-        for (Map.Entry<Identifier, Title> e : TitleRegistry.all().entrySet()) {
+        List<TitlePayloads.SyncProgress.TitleProgress> out = new ArrayList<>();
+        for (var e : entries) {
             Identifier id = e.getKey();
             Title t = e.getValue();
             if (t.conditions.isEmpty()) continue;
@@ -242,23 +299,51 @@ public final class TitleNet {
                     sdefs.add(b.spellId.get());
                     continue;
                 }
-
                 if (b.powerId != null && b.powerId.isPresent()) {
                     pdefs.add(b.powerId.get());
                     continue;
                 }
                 if (b.damageTarget != null && b.damageTarget.isPresent()) {
-                    TitlePayloads.SyncDefinitions.DmgOp op =
-                            (b.damageOp == Title.DamageOp.MULTIPLIED)
-                                    ? TitlePayloads.SyncDefinitions.DmgOp.MULTIPLIED
-                                    : TitlePayloads.SyncDefinitions.DmgOp.ADDED;
-                    ddefs.add(new TitlePayloads.SyncDefinitions.DamageBonusDef(b.damageTarget.get(), b.damageAmount, op));
+                    var op = (b.damageOp == Title.DamageOp.MULTIPLIED)
+                            ? TitlePayloads.SyncDefinitions.DmgOp.MULTIPLIED
+                            : TitlePayloads.SyncDefinitions.DmgOp.ADDED;
+                    ddefs.add(new TitlePayloads.SyncDefinitions.DamageBonusDef(b.damageTarget, Optional.empty(), b.damageAmount, op));
+                } else if (b.damageTag != null && b.damageTag.isPresent()) {
+                    var op = (b.damageOp == Title.DamageOp.MULTIPLIED)
+                            ? TitlePayloads.SyncDefinitions.DmgOp.MULTIPLIED
+                            : TitlePayloads.SyncDefinitions.DmgOp.ADDED;
+                    ddefs.add(new TitlePayloads.SyncDefinitions.DamageBonusDef(Optional.empty(), b.damageTag, b.damageAmount, op));
                 }
                 if (b.attribute != null) {
                     Identifier attrId = Registries.ATTRIBUTE.getId(b.attribute.value());
                     if (attrId != null) {
                         bdefs.add(new TitlePayloads.SyncDefinitions.BonusDef(attrId, b.amount, b.operation));
                     }
+                }
+            }
+
+            List<TitlePayloads.SyncDefinitions.BonusDef> p_bdefs = new ArrayList<>();
+            List<TitlePayloads.SyncDefinitions.DamageBonusDef> p_ddefs = new ArrayList<>();
+            List<Identifier> p_sdefs = new ArrayList<>();
+            List<Identifier> p_pdefs = new ArrayList<>();
+
+            for (Title.Bonus b : t.permaBonuses) {
+                if (b.spellId != null && b.spellId.isPresent()) { p_sdefs.add(b.spellId.get()); continue; }
+                if (b.powerId != null && b.powerId.isPresent()) { p_pdefs.add(b.powerId.get()); continue; }
+                if (b.damageTarget != null && b.damageTarget.isPresent()) {
+                    var op = (b.damageOp == Title.DamageOp.MULTIPLIED)
+                            ? TitlePayloads.SyncDefinitions.DmgOp.MULTIPLIED
+                            : TitlePayloads.SyncDefinitions.DmgOp.ADDED;
+                    p_ddefs.add(new TitlePayloads.SyncDefinitions.DamageBonusDef(b.damageTarget, Optional.empty(), b.damageAmount, op));
+                } else if (b.damageTag != null && b.damageTag.isPresent()) {
+                    var op = (b.damageOp == Title.DamageOp.MULTIPLIED)
+                            ? TitlePayloads.SyncDefinitions.DmgOp.MULTIPLIED
+                            : TitlePayloads.SyncDefinitions.DmgOp.ADDED;
+                    p_ddefs.add(new TitlePayloads.SyncDefinitions.DamageBonusDef(Optional.empty(), b.damageTag, b.damageAmount, op));
+                }
+                if (b.attribute != null) {
+                    Identifier attrId = Registries.ATTRIBUTE.getId(b.attribute.value());
+                    if (attrId != null) p_bdefs.add(new TitlePayloads.SyncDefinitions.BonusDef(attrId, b.amount, b.operation));
                 }
             }
 
@@ -288,22 +373,17 @@ public final class TitleNet {
                         type, c.item, c.entityType, c.advancement,
                         c.distance, c.count, c.hint, c.hidden,
                         c.entitySpec, c.nbtQuery, c.level, c.block, c.biome, c.dimension,
-                        c.structure, c.attributeId, c.minValue
+                        c.structure, c.attributeId, c.minValue,
+                        c.entityTagId
                 ));
             }
 
             defs.add(new TitlePayloads.SyncDefinitions.Def(
-                    id,
-                    name,
-                    Optional.ofNullable(desc.isEmpty() ? null : desc),
-                    bdefs,
-                    sdefs,
-                    pdefs,
-                    ddefs,
-                    cdefs,
-                    t.hidden
+                    id, name, Optional.ofNullable(desc.isEmpty() ? null : desc),
+                    bdefs, sdefs, pdefs, ddefs,
+                    p_bdefs, p_sdefs, p_pdefs, p_ddefs,
+                    cdefs, t.hidden
             ));
-
         }
         ServerPlayNetworking.send(player, new TitlePayloads.SyncDefinitions(defs));
     }

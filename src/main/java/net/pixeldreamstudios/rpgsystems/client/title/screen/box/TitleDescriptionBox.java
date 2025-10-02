@@ -6,10 +6,12 @@ import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.gui.DrawContext;
+import net.minecraft.entity.EntityType;
 import net.minecraft.entity.attribute.EntityAttributeModifier;
-import net.minecraft.item.Item;
 import net.minecraft.registry.Registries;
 import net.minecraft.registry.RegistryKeys;
+import net.minecraft.registry.entry.RegistryEntry;
+import net.minecraft.registry.tag.TagKey;
 import net.minecraft.text.MutableText;
 import net.minecraft.text.OrderedText;
 import net.minecraft.text.Style;
@@ -50,6 +52,20 @@ public final class TitleDescriptionBox {
     private static final int ICON_SIZE = 9;
     private static final int INFO_GAP  = 2;
 
+    private static final int SCROLLBAR_BORDER_COLOR = 0x66000000;
+    private static final int SCROLLBAR_THUMB_COLOR = 0x99FFFFFF;
+    private static final int SCROLLBAR_THUMB_HOVER_COLOR = 0xBBFFFFFF;
+    private static final int PLATE_TEXT_COLOR      = 0xFFFFFFFF;
+    private static final int PLATE_MAIN_BG         = 0xFF3A4C6A;
+    private static final int PLATE_MAIN_BR         = 0xFF1F2A3D;
+    private static final int PLATE_SUB_BG          = 0xFF2E3748;
+    private static final int PLATE_SUB_BR          = 0xFF1A2230;
+    private static final int PLATE_TAG_BG          = 0x33222A36;
+    private static final int PLATE_TAG_BR          = 0x66A0B0C0;
+    private static final int PLATE_GAP_BELOW       = 4;
+    private static final int SECTION_GAP_TO_CHILD  = 3;
+    private static final int CATEGORY_GAP          = 3;
+
     private int screenX;
     private int screenY;
     private int bgWidth;
@@ -65,10 +81,6 @@ public final class TitleDescriptionBox {
     private int scrollbarWidth = 1;
     private boolean draggingScrollbar = false;
     private int dragGrabOffsetY = 0;
-
-    private static final int SCROLLBAR_BORDER_COLOR = 0x66000000;
-    private static final int SCROLLBAR_THUMB_COLOR = 0x99FFFFFF;
-    private static final int SCROLLBAR_THUMB_HOVER_COLOR = 0xBBFFFFFF;
 
     private void drawDivider(DrawContext ctx, int x, int y, int w) {
         ctx.fill(x, y, x + w, y + 1, COLOR_DIVIDER);
@@ -91,8 +103,22 @@ public final class TitleDescriptionBox {
         boolean contains(double mx, double my) { return mx>=x && mx<=x+w && my>=y && my<=y+h; }
     }
 
+    private static final class TagSpot {
+        final int x, y, w, h;
+        final Identifier tagId;
+        final List<Identifier> entityIds;
+        final List<Text> entityNames;
+        TagSpot(int x, int y, int w, int h, Identifier tagId,
+                List<Identifier> entityIds, List<Text> entityNames) {
+            this.x=x; this.y=y; this.w=w; this.h=h;
+            this.tagId = tagId; this.entityIds = entityIds; this.entityNames = entityNames;
+        }
+        boolean contains(double mx, double my) { return mx>=x && mx<=x+w && my>=y && my<=y+h; }
+    }
+
     private final List<HintSpot> hintSpots = new ArrayList<>();
     private final List<MobSpot> mobSpots = new ArrayList<>();
+    private final List<TagSpot> tagSpots = new ArrayList<>();
 
     public TitleDescriptionBox(int screenX, int screenY, int bgWidth, int bgHeight) {
         this.font = MinecraftClient.getInstance().textRenderer;
@@ -104,17 +130,8 @@ public final class TitleDescriptionBox {
 
     public void setScreenOrigin(int screenX, int screenY) { this.screenX = screenX; this.screenY = screenY; }
     public void setBackgroundSize(int bgWidth, int bgHeight) { this.bgWidth = bgWidth; this.bgHeight = bgHeight; }
-    public void setTextScale(float scale) { this.textScale = Math.max(0.5f, Math.min(2.0f, scale)); }
     public void setTitle(Title title) { this.current = title; this.scrollY = 0; }
 
-    public void setScrollbarPosition(int offsetX, int offsetY) {
-        this.scrollbarOffsetX = offsetX;
-        this.scrollbarOffsetY = offsetY;
-    }
-
-    public void setScrollbarWidth(int width) {
-        this.scrollbarWidth = Math.max(2, Math.min(12, width));
-    }
 
     public void render(DrawContext ctx, int mouseX, int mouseY) {
         int boxW = bgWidth - LEFT_BOX_LEFT_PADDING - LEFT_BOX_WIDTH - GUTTER - RIGHT_PADDING;
@@ -123,6 +140,7 @@ public final class TitleDescriptionBox {
 
         hintSpots.clear();
         mobSpots.clear();
+        tagSpots.clear();
 
         if (current == null) {
             maxScrollCached = 0;
@@ -179,7 +197,7 @@ public final class TitleDescriptionBox {
                 boolean inline = cl.inlineIcon && TitleIconRenderer.hasIcon(cl.source) && cl.pre != null && cl.post != null;
 
                 int iconSizePx = 0;
-                List<OrderedText> restLines;
+                List<OrderedText> restLines = List.of();
                 OrderedText firstPostLine = null;
                 OrderedText preOT = null;
 
@@ -218,6 +236,24 @@ public final class TitleDescriptionBox {
                     String restRaw = postRaw.substring(Math.min(firstCut, postRaw.length()));
 
                     firstPostLine = Text.literal(firstRaw).asOrderedText();
+                    int normalWrap = Math.max(1, Math.round(availableTextW / textScale));
+                    restLines = restRaw.isEmpty() ? List.of() : font.wrapLines(Text.literal(restRaw), normalWrap);
+
+                    int linesDrawn = 1 + restLines.size();
+                    blockH = Math.max(checkSizePx, lineH * linesDrawn);
+                } else if (cl.tagName != null && cl.tagId != null && cl.pre != null && cl.post != null) {
+                    preOT = cl.pre.asOrderedText();
+                    int preWpx = Math.round(font.getWidth(preOT) * textScale);
+                    OrderedText tagOT = cl.tagName.asOrderedText();
+                    int tagWpx = Math.round(font.getWidth(tagOT) * textScale);
+
+                    int firstRemainPx = Math.max(0, availableTextW - preWpx - tagWpx);
+                    String postRaw = cl.post.getString();
+                    int firstCut = cutIndexByPixelWidth(postRaw, Math.max(1, Math.round(firstRemainPx / textScale)));
+                    String firstRaw = postRaw.substring(0, Math.min(firstCut, postRaw.length()));
+                    String restRaw = postRaw.substring(Math.min(firstCut, postRaw.length()));
+                    firstPostLine = Text.literal(firstRaw).asOrderedText();
+
                     int normalWrap = Math.max(1, Math.round(availableTextW / textScale));
                     restLines = restRaw.isEmpty() ? List.of() : font.wrapLines(Text.literal(restRaw), normalWrap);
 
@@ -270,14 +306,39 @@ public final class TitleDescriptionBox {
 
                     int mobX = textX + preWpx;
                     int mobY = ty - scrollY;
-                    boolean hoveringMob = mouseX >= mobX && mouseX <= mobX + mobWpx && mouseY >= mobY && mouseY <= mobY + lineH;
+                    int lineH2 = Math.max(1, Math.round(9 * textScale));
+                    boolean hoveringMob = mouseX >= mobX && mouseX <= mobX + mobWpx && mouseY >= mobY && mouseY <= mobY + lineH2;
                     int mobColor = hoveringMob ? (cl.color & 0x00FFFFFF) | 0xCC000000 : cl.color;
 
                     drawScaled(ctx, mobOT, mobX, mobY, mobColor, textScale);
 
-                    mobSpots.add(new MobSpot(mobX, mobY, mobWpx, lineH, cl.mobId, cl.mobName));
+                    mobSpots.add(new MobSpot(mobX, mobY, mobWpx, lineH2, cl.mobId, cl.mobName));
 
                     int postX = mobX + mobWpx;
+                    drawScaled(ctx, firstPostLine, postX, ty - scrollY, cl.color, textScale);
+
+                    for (int i = 0; i < (restLines != null ? restLines.size() : 0); i++) {
+                        drawScaled(ctx, restLines.get(i), textX, (ty + (i + 1) * lineH) - scrollY, cl.color, textScale);
+                    }
+                } else if (cl.tagName != null && cl.tagId != null && cl.pre != null && cl.post != null) {
+                    drawScaled(ctx, preOT, textX, ty - scrollY, cl.color, textScale);
+                    int preWpx = Math.round(font.getWidth(preOT) * textScale);
+
+                    OrderedText tagOT = cl.tagName.asOrderedText();
+                    int tagWpx = Math.round(font.getWidth(tagOT) * textScale);
+                    int tagX = textX + preWpx;
+                    int tagY = ty - scrollY;
+                    drawScaled(ctx, tagOT, tagX, tagY, cl.color, textScale);
+
+                    int tagH = Math.max(1, Math.round(9 * textScale));
+                    var entries = listEntriesForTag(cl.tagId);
+                    var ids = idsOfEntries(entries);
+                    var names = namesOfEntries(entries);
+                    if (!ids.isEmpty()) {
+                        tagSpots.add(new TagSpot(tagX, tagY, tagWpx, tagH, cl.tagId, ids, names));
+                    }
+
+                    int postX = tagX + tagWpx;
                     drawScaled(ctx, firstPostLine, postX, ty - scrollY, cl.color, textScale);
 
                     for (int i = 0; i < (restLines != null ? restLines.size() : 0); i++) {
@@ -305,80 +366,26 @@ public final class TitleDescriptionBox {
             y += scaled(6);
         }
 
-        if (!current.bonuses.isEmpty()) {
-            drawScaled(ctx, Text.translatable("title.rpgsystems.bonuses").asOrderedText(),
-                    innerX, y - scrollY, COLOR_HEADER, textScale);
-            y += scaled(10);
+        boolean hasEquipped = hasAnyEquipped();
+        boolean hasPerma = hasAnyPerma();
 
-            List<Text> attrLines = formatBonuses();
-            int wrapWidth = Math.max(1, Math.round(innerW / textScale));
-            for (Text bt : attrLines) {
-                List<OrderedText> wrapped = font.wrapLines(bt, wrapWidth);
-                for (OrderedText ot : wrapped) {
-                    drawScaled(ctx, ot, innerX, y - scrollY, COLOR_BONUS_TEXT, textScale);
-                    y += scaled(9);
-                }
-                y += UI_MARGIN_Y;
+        if (hasEquipped || hasPerma) {
+            y += drawFullWidthPill(ctx, innerX, y - scrollY, innerW, Text.literal("Bonuses"),
+                    PLATE_MAIN_BG, PLATE_MAIN_BR, PLATE_TEXT_COLOR, textScale) + PLATE_GAP_BELOW;
+
+            if (hasEquipped) {
+                y += drawCenteredPill(ctx, innerX, innerW, y - scrollY,
+                        Text.literal("Equipped"), PLATE_SUB_BG, PLATE_SUB_BR, 0xFFE6ECF8, textScale * 0.95f)
+                        + SECTION_GAP_TO_CHILD;
+                y = drawEquippedSection(ctx, innerX, innerW, y);
             }
 
-            final float smallScale = Math.max(0.5f, textScale * 0.90f);
-            final int smallLineH = Math.max(1, Math.round(9 * smallScale));
-            final int textHSmall = Math.max(1, Math.round(font.fontHeight * smallScale));
-
-            List<Identifier> spells = collectSpellIds();
-            if (!spells.isEmpty()) {
-                y += scaled(2);
-                drawScaled(ctx, Text.literal("Grant spells:").asOrderedText(),
-                        innerX, y - scrollY, COLOR_HEADER, smallScale);
-                y += Math.max(1, Math.round(font.fontHeight * smallScale + 1));
-
-                final int iconSize = Math.max(1, Math.round(12 * smallScale));
-                final int gap      = Math.max(1, Math.round(BULLET_PAD * smallScale));
-
-                for (Identifier sid : spells) {
-                    Identifier icon = SpellRender.iconTexture(sid);
-                    Text name = resolveSpellName(sid);
-
-                    int blockH = Math.max(iconSize, textHSmall);
-                    int iconY  = (y - scrollY) + (blockH - iconSize) / 2;
-                    int nameY  = (y - scrollY) + (blockH - textHSmall) / 2;
-
-                    ctx.drawTexture(icon, innerX, iconY, 0, 0, iconSize, iconSize, iconSize, iconSize);
-                    drawScaled(ctx, name.asOrderedText(),
-                            innerX + iconSize + gap, nameY + 1,
-                            COLOR_BONUS_TEXT, smallScale);
-
-                    y += blockH + UI_MARGIN_Y;
-                }
-            }
-
-            List<Identifier> powers = collectPowerIds();
-            if (!powers.isEmpty()) {
-                y += scaled(2);
-                drawScaled(ctx, Text.literal("Grant powers:").asOrderedText(), innerX, y - scrollY, COLOR_HEADER, smallScale);
-                y += Math.max(1, Math.round(10 * smallScale));
-
-                for (Identifier pid : powers) {
-                    Text line = Text.literal("• ").append(resolvePowerName(pid));
-                    drawScaled(ctx, line.asOrderedText(), innerX, y - scrollY, COLOR_BONUS_TEXT, smallScale);
-                    y += smallLineH + UI_MARGIN_Y;
-                }
-            }
-            List<Text> dmgLines = formatDamageBonuses();
-            if (!dmgLines.isEmpty()) {
-                y += scaled(2);
-                drawScaled(ctx, Text.translatable("title.rpgsystems.bonus_damage_against").asOrderedText(),
-                        innerX, y - scrollY, COLOR_HEADER, textScale);
-                y += scaled(10);
-
-                wrapWidth = Math.max(1, Math.round(innerW / textScale));
-                for (Text t : dmgLines) {
-                    for (OrderedText ot : font.wrapLines(t, wrapWidth)) {
-                        drawScaled(ctx, ot, innerX, y - scrollY, COLOR_BONUS_TEXT, textScale);
-                        y += scaled(9);
-                    }
-                    y += UI_MARGIN_Y;
-                }
+            if (hasPerma) {
+                y += CATEGORY_GAP;
+                y += drawCenteredPill(ctx, innerX, innerW, y - scrollY,
+                        Text.literal("Permanent"), PLATE_SUB_BG, PLATE_SUB_BR, 0xFFE6ECF8, textScale * 0.95f)
+                        + SECTION_GAP_TO_CHILD;
+                y = drawPermaSection(ctx, innerX, innerW, y);
             }
         }
 
@@ -394,6 +401,275 @@ public final class TitleDescriptionBox {
         renderScrollbar(ctx, mouseX, mouseY, innerX, viewportTop, innerW, viewportH, contentHeight);
     }
 
+    private boolean hasAnyEquipped() {
+        if (current == null) return false;
+        for (Title.Bonus b : current.bonuses) {
+            if (b.attribute != null
+                    || (b.spellId != null && b.spellId.isPresent())
+                    || (b.powerId != null && b.powerId.isPresent())
+                    || (b.damageTarget != null && b.damageTarget.isPresent())
+                    || (b.damageTag != null && b.damageTag.isPresent())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean hasAnyPerma() {
+        if (current == null) return false;
+        for (Title.Bonus b : current.permaBonuses) {
+            if (b.attribute != null
+                    || (b.spellId != null && b.spellId.isPresent())
+                    || (b.powerId != null && b.powerId.isPresent())
+                    || (b.damageTarget != null && b.damageTarget.isPresent())
+                    || (b.damageTag != null && b.damageTag.isPresent())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private int drawEquippedSection(DrawContext ctx, int innerX, int innerW, int y) {
+        List<Text> attrLines = formatBonusesAttributes(current.bonuses);
+        List<Identifier> spells = collectIds(current.bonuses, true, false);
+        List<Identifier> powers = collectIds(current.bonuses, false, true);
+
+        int yy = y;
+        if (!attrLines.isEmpty()) {
+            yy += drawLeftTagPill(ctx, innerX, yy - scrollY, Text.literal("Attributes")) + CATEGORY_GAP;
+            yy = drawWrappedList(ctx, innerX, innerW, yy, attrLines, COLOR_BONUS_TEXT, textScale);
+        }
+        if (!spells.isEmpty()) {
+            yy += drawLeftTagPill(ctx, innerX, yy - scrollY, Text.literal("Spells")) + CATEGORY_GAP;
+            yy = drawSpellList(ctx, innerX, innerW, yy, spells, textScale * 0.90f);
+        }
+        if (!powers.isEmpty()) {
+            yy += drawLeftTagPill(ctx, innerX, yy - scrollY, Text.literal("Powers")) + CATEGORY_GAP;
+            yy = drawPowerList(ctx, innerX, innerW, yy, powers, textScale * 0.90f);
+        }
+
+        if (hasDamage(current.bonuses)) {
+            yy += drawLeftTagPill(ctx, innerX, yy - scrollY, Text.literal("Damage against")) + CATEGORY_GAP;
+            yy = drawDamageList(ctx, innerX, innerW, yy, current.bonuses, textScale);
+        }
+        return yy;
+    }
+
+    private int drawPermaSection(DrawContext ctx, int innerX, int innerW, int y) {
+        List<Text> attrLines = formatBonusesAttributes(current.permaBonuses);
+        List<Identifier> spells = collectIds(current.permaBonuses, true, false);
+        List<Identifier> powers = collectIds(current.permaBonuses, false, true);
+
+        int yy = y;
+        if (!attrLines.isEmpty()) {
+            yy += drawLeftTagPill(ctx, innerX, yy - scrollY, Text.literal("Attributes")) + CATEGORY_GAP;
+            yy = drawWrappedList(ctx, innerX, innerW, yy, attrLines, COLOR_BONUS_TEXT, textScale);
+        }
+        if (!spells.isEmpty()) {
+            yy += drawLeftTagPill(ctx, innerX, yy - scrollY, Text.literal("Spells")) + CATEGORY_GAP;
+            yy = drawSpellList(ctx, innerX, innerW, yy, spells, textScale * 0.90f);
+        }
+        if (!powers.isEmpty()) {
+            yy += drawLeftTagPill(ctx, innerX, yy - scrollY, Text.literal("Powers")) + CATEGORY_GAP;
+            yy = drawPowerList(ctx, innerX, innerW, yy, powers, textScale * 0.90f);
+        }
+        if (hasDamage(current.permaBonuses)) {
+            yy += drawLeftTagPill(ctx, innerX, yy - scrollY, Text.literal("Damage against")) + CATEGORY_GAP;
+            yy = drawDamageList(ctx, innerX, innerW, yy, current.permaBonuses, textScale);
+        }
+        return yy;
+    }
+
+    private boolean hasDamage(List<Title.Bonus> list) {
+        for (Title.Bonus b : list) {
+            if ((b.damageTarget != null && b.damageTarget.isPresent())
+                    || (b.damageTag != null && b.damageTag.isPresent())) return true;
+        }
+        return false;
+    }
+
+    private int drawWrappedList(DrawContext ctx, int innerX, int innerW, int y, List<Text> lines, int color, float scale) {
+        int wrapWidth = Math.max(1, Math.round(innerW / scale));
+        for (Text t : lines) {
+            List<OrderedText> wrapped = font.wrapLines(t, wrapWidth);
+            for (OrderedText ot : wrapped) {
+                drawScaled(ctx, ot, innerX, y - scrollY, color, scale);
+                y += Math.max(1, Math.round(font.fontHeight * scale));
+            }
+            y += UI_MARGIN_Y;
+        }
+        return y;
+    }
+
+    private int drawDamageList(DrawContext ctx, int innerX, int innerW, int y, List<Title.Bonus> bonuses, float scale) {
+        final int color = COLOR_BONUS_TEXT;
+        final int lineH = Math.max(1, Math.round(9 * scale));
+        for (Title.Bonus b : bonuses) {
+            Text targetText;
+            Identifier mobId = null;
+            Identifier tagId = null;
+
+            if (b.damageTarget != null && b.damageTarget.isPresent()) {
+                mobId = b.damageTarget.get();
+                targetText = plainName(Text.translatable(Registries.ENTITY_TYPE.get(mobId).getTranslationKey()))
+                        .copy().setStyle(Style.EMPTY.withUnderline(true));
+            } else if (b.damageTag != null && b.damageTag.isPresent()) {
+                tagId = b.damageTag.get();
+                targetText = Text.literal(toTitleCase(tagId.getPath())).setStyle(Style.EMPTY.withUnderline(true));
+            } else {
+                continue;
+            }
+
+            String sgn = (b.damageOp == Title.DamageOp.ADDED)
+                    ? ((b.damageAmount >= 0 ? "+" : "") + trim(b.damageAmount))
+                    : ((b.damageAmount * 100.0 >= 0 ? "+" : "") + trim(b.damageAmount * 100.0) + "%");
+
+            Text pre = Text.literal("• ");
+            Text mid = Text.literal(" ");
+            Text post = Text.literal(" " + sgn);
+
+            int x = innerX;
+            OrderedText preOT = pre.asOrderedText();
+            drawScaled(ctx, preOT, x, y - scrollY, color, scale);
+            x += Math.round(font.getWidth(preOT) * scale);
+
+            OrderedText mainOT = targetText.asOrderedText();
+            int w = Math.round(font.getWidth(mainOT) * scale);
+            drawScaled(ctx, mainOT, x, y - scrollY, color, scale);
+            int h = Math.max(1, Math.round(font.fontHeight * scale));
+
+            if (mobId != null) {
+                mobSpots.add(new MobSpot(x, y - scrollY, w, h, mobId, targetText));
+            } else if (tagId != null) {
+                var entries = listEntriesForTag(tagId);
+                var ids = idsOfEntries(entries);
+                var names = namesOfEntries(entries);
+                if (!ids.isEmpty()) tagSpots.add(new TagSpot(x, y - scrollY, w, h, tagId, ids, names));
+            }
+
+            x += w;
+
+            drawScaled(ctx, mid.asOrderedText(), x, y - scrollY, color, scale);
+            x += Math.round(font.getWidth(mid) * scale);
+
+            drawScaled(ctx, post.asOrderedText(), x, y - scrollY, color, scale);
+            y += lineH + UI_MARGIN_Y;
+        }
+        return y;
+    }
+
+    private int drawSpellList(DrawContext ctx, int innerX, int innerW, int y, List<Identifier> spells, float scale) {
+        final int iconSize = Math.max(1, Math.round(12 * scale));
+        final int gap      = Math.max(1, Math.round(BULLET_PAD * scale));
+        final int textH    = Math.max(1, Math.round(font.fontHeight * scale));
+
+        for (Identifier sid : spells) {
+            Identifier icon = SpellRender.iconTexture(sid);
+            Text name = resolveSpellName(sid);
+
+            int blockH = Math.max(iconSize, textH);
+            int iconY  = (y - scrollY) + (blockH - iconSize) / 2;
+            int nameY  = (y - scrollY) + (blockH - textH) / 2;
+
+            ctx.drawTexture(icon, innerX, iconY, 0, 0, iconSize, iconSize, iconSize, iconSize);
+            drawScaled(ctx, name.asOrderedText(), innerX + iconSize + gap, nameY + 1, COLOR_BONUS_TEXT, scale);
+
+            y += blockH + UI_MARGIN_Y;
+        }
+        return y;
+    }
+
+    private int drawPowerList(DrawContext ctx, int innerX, int innerW, int y, List<Identifier> powers, float scale) {
+        final int lineH = Math.max(1, Math.round(9 * scale));
+        for (Identifier pid : powers) {
+            Text line = Text.literal("• ").append(resolvePowerName(pid));
+            drawScaled(ctx, line.asOrderedText(), innerX, y - scrollY, COLOR_BONUS_TEXT, scale);
+            y += lineH + UI_MARGIN_Y;
+        }
+        return y;
+    }
+    private int drawLeftTagPill(DrawContext ctx, int x, int y, Text label) {
+        float scale = textScale * 0.90f;
+        OrderedText ot = label.asOrderedText();
+        int padX = Math.max(6, scaled(8));
+        int padY = Math.max(2, scaled(3));
+        int textW = Math.round(font.getWidth(ot) * scale);
+        int textH = Math.max(1, Math.round(font.fontHeight * scale));
+        int w = textW + padX * 2;
+        int h = textH + padY * 2;
+
+        int radius = Math.max(2, Math.round(4 * scale));
+        drawRoundedRect(ctx, x, y, w, h, radius, PLATE_TAG_BG, PLATE_TAG_BR);
+
+        int textX = x + (w - textW) / 2;
+        int textY = y + (h - textH) / 2;
+        drawScaled(ctx, ot, textX, textY, 0xFFD6E0EA, scale);
+        return h;
+    }
+
+    private int drawFullWidthPill(DrawContext ctx, int x, int y, int width, Text label, int bg, int br, int textColor, float scale) {
+        int padY = Math.max(2, scaled(3));
+        int textH = Math.max(1, Math.round(font.fontHeight * scale));
+        int h = textH + padY * 2;
+
+        int radius = Math.max(2, Math.round(4 * scale));
+        drawRoundedRect(ctx, x, y, width, h, radius, bg, br);
+
+        OrderedText ot = label.asOrderedText();
+        int textW = Math.round(font.getWidth(ot) * scale);
+        int textX = x + (width - textW) / 2;
+        int textY = y + (h - textH) / 2;
+        drawScaled(ctx, ot, textX, textY, textColor, scale);
+        return h;
+    }
+
+    private int drawCenteredPill(DrawContext ctx, int innerX, int innerW, int y, Text label, int bg, int br, int textColor, float scale) {
+        OrderedText ot = label.asOrderedText();
+        int padX = Math.max(6, scaled(8));
+        int padY = Math.max(2, scaled(3));
+        int textW = Math.round(font.getWidth(ot) * scale);
+        int textH = Math.max(1, Math.round(font.fontHeight * scale));
+        int w = textW + padX * 2;
+        int h = textH + padY * 2;
+
+        int x = innerX + (innerW - w) / 2;
+
+        int radius = Math.max(2, Math.round(4 * scale));
+        drawRoundedRect(ctx, x, y, w, h, radius, bg, br);
+
+        int textX = x + (w - textW) / 2;
+        int textY = y + (h - textH) / 2;
+        drawScaled(ctx, ot, textX, textY, textColor, scale);
+        return h;
+    }
+
+    private void drawRoundedRect(DrawContext ctx, int x, int y, int w, int h, int r, int bg, int br) {
+        int right = x + w;
+        int bottom = y + h;
+
+        ctx.fill(x + r, y, right - r, bottom, bg);
+        ctx.fill(x, y + r, right, bottom - r, bg);
+
+        drawCorner(ctx, x + r, y + r, r, true, true, bg);
+        drawCorner(ctx, right - r - 1, y + r, r, false, true, bg);
+        drawCorner(ctx, x + r, bottom - r - 1, r, true, false, bg);
+        drawCorner(ctx, right - r - 1, bottom - r - 1, r, false, false, bg);
+
+        ctx.drawBorder(x, y, w, h, br);
+    }
+
+    private void drawCorner(DrawContext ctx, int cx, int cy, int r, boolean left, boolean top, int color) {
+        int signX = left ? -1 : 1;
+        int signY = top ? -1 : 1;
+        for (int i = 0; i < r; i++) {
+            int dx = r - i;
+            int dy = i;
+            int px = cx + signX * dx;
+            int py = cy + signY * dy;
+            ctx.fill(px, py, px + 1, py + 1, color);
+        }
+    }
+
     private static int centerY(int startY, int scrollY, int blockH, int h) {
         return startY - scrollY + (blockH - h) / 2;
     }
@@ -405,6 +681,16 @@ public final class TitleDescriptionBox {
                 ctx.getMatrices().push();
                 ctx.getMatrices().translate(0, 0, 400);
                 drawMobTooltip(ctx, mouseX, mouseY, s);
+                ctx.getMatrices().pop();
+                return;
+            }
+        }
+
+        for (TagSpot s : tagSpots) {
+            if (s.contains(mouseX, mouseY)) {
+                ctx.getMatrices().push();
+                ctx.getMatrices().translate(0, 0, 400);
+                drawTagTooltip(ctx, mouseX, mouseY, s);
                 ctx.getMatrices().pop();
                 return;
             }
@@ -510,6 +796,18 @@ public final class TitleDescriptionBox {
         ctx.enableScissor(areaLeft, areaTop, areaLeft + previewAreaW, areaTop + previewAreaH);
         TitleIconRenderer.renderEntityPreview(ctx, s.mobId, renderLeft, renderTop, BASE);
         ctx.disableScissor();
+    }
+
+    private void drawTagTooltip(DrawContext ctx, int mouseX, int mouseY, TagSpot s) {
+        long time = (MinecraftClient.getInstance().world != null)
+                ? MinecraftClient.getInstance().world.getTime()
+                : System.currentTimeMillis() / 50L;
+        int n = Math.max(1, s.entityIds.size());
+        int idx = (int) (Math.floorDiv(time, 20) % n);
+
+        Identifier mobId = s.entityIds.get(idx);
+        Text mobName = s.entityNames.get(idx);
+        drawMobTooltip(ctx, mouseX, mouseY, new MobSpot(s.x, s.y, s.w, s.h, mobId, mobName));
     }
 
     private static String modNameOf(String namespace) {
@@ -646,11 +944,11 @@ public final class TitleDescriptionBox {
         return Math.max(8, Math.min(trackHeight, h));
     }
 
-    private List<Text> formatBonuses() {
+    private List<Text> formatBonusesAttributes(List<Title.Bonus> bonuses) {
         List<Text> out = new ArrayList<>();
         boolean ilt = isIconLeadingTooltipPresent();
 
-        for (Title.Bonus b : current.bonuses) {
+        for (Title.Bonus b : bonuses) {
             if ((b.spellId != null && b.spellId.isPresent())
                     || (b.powerId != null && b.powerId.isPresent())
                     || b.attribute == null) {
@@ -672,11 +970,22 @@ public final class TitleDescriptionBox {
                     Text restText = Text.literal(rest);
 
                     if (b.operation == EntityAttributeModifier.Operation.ADD_VALUE) {
-                        out.add(Text.literal("• ").append(iconText).append(Text.literal(sign + trim(b.amount) + " ")).append(restText));
+                        out.add(Text.empty()
+                                .append(iconText)
+                                .append(Text.literal(sign + trim(b.amount) + " "))
+                                .append(restText));
                     } else if (b.operation == EntityAttributeModifier.Operation.ADD_MULTIPLIED_BASE) {
-                        out.add(Text.literal("• ").append(iconText).append(Text.literal(sign + trim(b.amount * 100.0) + "% ")).append(restText).append(Text.literal(" (base)")));
+                        out.add(Text.empty()
+                                .append(iconText)
+                                .append(Text.literal(sign + trim(b.amount * 100.0) + "% "))
+                                .append(restText)
+                                .append(Text.literal(" (base)")));
                     } else {
-                        out.add(Text.literal("• ").append(iconText).append(Text.literal(sign + trim(b.amount * 100.0) + "% ")).append(restText).append(Text.literal(" (total)")));
+                        out.add(Text.empty()
+                                .append(iconText)
+                                .append(Text.literal(sign + trim(b.amount * 100.0) + "% "))
+                                .append(restText)
+                                .append(Text.literal(" (total)")));
                     }
                     continue;
                 }
@@ -693,33 +1002,11 @@ public final class TitleDescriptionBox {
         return out;
     }
 
-    private List<Text> formatDamageBonuses() {
-        List<Text> out = new ArrayList<>();
-        for (Title.Bonus b : current.bonuses) {
-            if (b.damageTarget != null && b.damageTarget.isPresent()) {
-                var type = Registries.ENTITY_TYPE.get(b.damageTarget.get());
-                Text mob = Text.translatable(type.getTranslationKey());
-                Text amountTxt = (b.damageOp == Title.DamageOp.ADDED)
-                        ? Text.literal(" +" + trim(b.damageAmount))
-                        : Text.literal(" " + trim(b.damageAmount * 100.0) + "%");
-                out.add(Text.literal("• ").append(mob).append(amountTxt));
-            }
-        }
-        return out;
-    }
-
-    private List<Identifier> collectSpellIds() {
+    private List<Identifier> collectIds(List<Title.Bonus> bonuses, boolean spells, boolean powers) {
         List<Identifier> list = new ArrayList<>();
-        for (Title.Bonus b : current.bonuses) {
-            if (b.spellId != null && b.spellId.isPresent()) list.add(b.spellId.get());
-        }
-        return list;
-    }
-
-    private List<Identifier> collectPowerIds() {
-        List<Identifier> list = new ArrayList<>();
-        for (Title.Bonus b : current.bonuses) {
-            if (b.powerId != null && b.powerId.isPresent()) list.add(b.powerId.get());
+        for (Title.Bonus b : bonuses) {
+            if (spells && b.spellId != null && b.spellId.isPresent()) list.add(b.spellId.get());
+            if (powers && b.powerId != null && b.powerId.isPresent()) list.add(b.powerId.get());
         }
         return list;
     }
@@ -769,19 +1056,31 @@ public final class TitleDescriptionBox {
         final Text mobName;
         final Identifier mobId;
 
-        CondLine(Text text, Text hint, int color, boolean done, Title.Condition source) {
-            this(text, null, null, false, hint, color, done, source, null, null);
-        }
-        CondLine(Text pre, Text post, boolean inlineIcon, Text hint, int color, boolean done, Title.Condition source) {
-            this(null, pre, post, inlineIcon, hint, color, done, source, null, null);
-        }
-        CondLine(Text pre, Text mobName, Identifier mobId, Text post, Text hint, int color, boolean done, Title.Condition source) {
-            this(null, pre, post, false, hint, color, done, source, mobName, mobId);
-        }
-        private CondLine(Text text, Text pre, Text post, boolean inlineIcon, Text hint, int color, boolean done, Title.Condition source, Text mobName, Identifier mobId) {
+        final Text tagName;
+        final Identifier tagId;
+
+        private CondLine(Text text, Text pre, Text post, boolean inlineIcon, Text hint, int color, boolean done,
+                         Title.Condition source, Text mobName, Identifier mobId, Text tagName, Identifier tagId) {
             this.text = text; this.pre = pre; this.post = post; this.inlineIcon = inlineIcon;
             this.hint = hint; this.color = color; this.done = done; this.source = source;
             this.mobName = mobName; this.mobId = mobId;
+            this.tagName = tagName; this.tagId = tagId;
+        }
+
+        static CondLine text(Text text, Text hint, int color, boolean done, Title.Condition source) {
+            return new CondLine(text, null, null, false, hint, color, done, source, null, null, null, null);
+        }
+
+        static CondLine inlineIcon(Text pre, Text post, Text hint, int color, boolean done, Title.Condition source) {
+            return new CondLine(null, pre, post, true, hint, color, done, source, null, null, null, null);
+        }
+
+        static CondLine mob(Text pre, Text mobName, Identifier mobId, Text post, Text hint, int color, boolean done, Title.Condition source) {
+            return new CondLine(null, pre, post, false, hint, color, done, source, mobName, mobId, null, null);
+        }
+
+        static CondLine tag(Text pre, Text tagName, Identifier tagId, Text post, Text hint, int color, boolean done, Title.Condition source) {
+            return new CondLine(null, pre, post, false, hint, color, done, source, null, null, tagName, tagId);
         }
     }
 
@@ -804,7 +1103,7 @@ public final class TitleDescriptionBox {
                 MutableText line = Text.literal(c.hint.get())
                         .append(Text.literal(" "))
                         .append(progressTail(c, cur, doneFlag));
-                out.add(new CondLine(line, null, color, doneFlag, c));
+                out.add(CondLine.text(line, null, color, doneFlag, c));
                 continue;
             }
 
@@ -815,12 +1114,20 @@ public final class TitleDescriptionBox {
                     int color = reached ? COLOR_DONE : COLOR_TODO;
                     Text tail = Text.literal(" (" + Math.min(cur, target) + "/" + target + ")");
 
+                    if (c.entityTagId != null && c.entityTagId.isPresent()) {
+                        Identifier tagId = c.entityTagId.get();
+                        Text pre = Text.literal("Defeat " + target + " any ");
+                        Text tagText = Text.literal(toTitleCase(tagId.getPath())).setStyle(Style.EMPTY.withUnderline(true));
+                        out.add(CondLine.tag(pre, tagText, tagId, tail, c.hint.map(Text::literal).orElse(null), color, reached, c));
+                        break;
+                    }
+
                     if (c.entityType.isPresent()) {
                         var id = c.entityType.get();
                         Text mobName = plainName(Text.translatable(Registries.ENTITY_TYPE.get(id).getTranslationKey()));
                         Text pre = Text.literal("Defeat " + target + " ");
                         Text post = tail;
-                        out.add(new CondLine(pre, mobName, id, post, c.hint.map(Text::literal).orElse(null), color, reached, c));
+                        out.add(CondLine.mob(pre, mobName, id, post, c.hint.map(Text::literal).orElse(null), color, reached, c));
                     } else if (c.entitySpec.isPresent()) {
                         String spec = c.entitySpec.get();
                         Identifier mid = Identifier.tryParse(spec);
@@ -828,35 +1135,34 @@ public final class TitleDescriptionBox {
                             Text mobName = plainName(Text.translatable(Registries.ENTITY_TYPE.get(mid).getTranslationKey()));
                             Text pre = Text.literal("Defeat " + target + " ");
                             Text post = tail;
-                            out.add(new CondLine(pre, mobName, mid, post, c.hint.map(Text::literal).orElse(null), color, reached, c));
+                            out.add(CondLine.mob(pre, mobName, mid, post, c.hint.map(Text::literal).orElse(null), color, reached, c));
                         } else if ("any".equalsIgnoreCase(spec)) {
                             Text line = Text.translatable("title.rpgsystems.condition.kill_any", target).append(tail);
-                            out.add(new CondLine(line, c.hint.map(Text::literal).orElse(null), color, reached, c));
+                            out.add(CondLine.text(line, c.hint.map(Text::literal).orElse(null), color, reached, c));
                         } else if (spec.endsWith(":*")) {
                             String ns = spec.substring(0, spec.indexOf(':'));
                             Text line = Text.literal("Defeat " + target + " mobs from " + ns).append(tail);
-                            out.add(new CondLine(line, c.hint.map(Text::literal).orElse(null), color, reached, c));
+                            out.add(CondLine.text(line, c.hint.map(Text::literal).orElse(null), color, reached, c));
                         } else {
                             Text line = Text.literal("Defeat " + target + " mobs: " + spec).append(tail);
-                            out.add(new CondLine(line, c.hint.map(Text::literal).orElse(null), color, reached, c));
+                            out.add(CondLine.text(line, c.hint.map(Text::literal).orElse(null), color, reached, c));
                         }
                     } else {
                         Text line = Text.translatable("title.rpgsystems.condition.kill_any", target).append(tail);
-                        out.add(new CondLine(line, c.hint.map(Text::literal).orElse(null), color, reached, c));
+                        out.add(CondLine.text(line, c.hint.map(Text::literal).orElse(null), color, reached, c));
                     }
                 }
 
                 case OBTAIN_ITEM -> {
                     if (c.item.isPresent()) {
                         int target = Math.max(1, c.count);
-                        Item item = Registries.ITEM.get(c.item.get());
                         boolean reached = doneFlag || (cur >= target);
                         int color = reached ? COLOR_DONE : COLOR_TODO;
 
                         Text pre  = Text.literal("Obtain " + target + " ");
                         Text post = Text.literal(" (" + Math.min(cur, target) + "/" + target + ")");
 
-                        out.add(new CondLine(pre, post, true, c.hint.map(Text::literal).orElse(null), color, reached, c));
+                        out.add(CondLine.inlineIcon(pre, post, c.hint.map(Text::literal).orElse(null), color, reached, c));
                     }
                 }
 
@@ -866,7 +1172,7 @@ public final class TitleDescriptionBox {
                     int color = reached ? COLOR_DONE : COLOR_TODO;
                     MutableText line = Text.translatable("title.rpgsystems.condition.walk", target)
                             .append(Text.literal(" (" + Math.min(cur, target) + "/" + target + ")"));
-                    out.add(new CondLine(line, c.hint.map(Text::literal).orElse(null), color, reached, c));
+                    out.add(CondLine.text(line, c.hint.map(Text::literal).orElse(null), color, reached, c));
                 }
                 case CRAFT_ITEM -> {
                     int target = Math.max(1, c.count);
@@ -876,7 +1182,7 @@ public final class TitleDescriptionBox {
                     if (c.item.isPresent()) {
                         Text pre  = Text.literal("Craft " + target + " ");
                         Text post = Text.literal(" (" + Math.min(cur, target) + "/" + target + ")");
-                        out.add(new CondLine(pre, post, true, c.hint.map(Text::literal).orElse(null), color, reached, c));
+                        out.add(CondLine.inlineIcon(pre, post, c.hint.map(Text::literal).orElse(null), color, reached, c));
                     }
                 }
 
@@ -888,11 +1194,11 @@ public final class TitleDescriptionBox {
                     if (c.block.isPresent()) {
                         Text pre  = Text.literal("Mine " + target + " ");
                         Text post = Text.literal(" (" + Math.min(cur, target) + "/" + target + ")");
-                        out.add(new CondLine(pre, post, true, c.hint.map(Text::literal).orElse(null), color, reached, c));
+                        out.add(CondLine.inlineIcon(pre, post, c.hint.map(Text::literal).orElse(null), color, reached, c));
                     } else {
                         MutableText line = Text.literal("Mine " + target + " blocks")
                                 .append(Text.literal(" (" + Math.min(cur, target) + "/" + target + ")"));
-                        out.add(new CondLine(line, c.hint.map(Text::literal).orElse(null), color, reached, c));
+                        out.add(CondLine.text(line, c.hint.map(Text::literal).orElse(null), color, reached, c));
                     }
                 }
 
@@ -902,7 +1208,7 @@ public final class TitleDescriptionBox {
                     int color = reached ? COLOR_DONE : COLOR_TODO;
                     MutableText line = Text.translatable("title.rpgsystems.condition.reach_xp", target)
                             .append(Text.literal(" (" + Math.min(cur, target) + "/" + target + ")"));
-                    out.add(new CondLine(line, c.hint.map(Text::literal).orElse(null), color, reached, c));
+                    out.add(CondLine.text(line, c.hint.map(Text::literal).orElse(null), color, reached, c));
                 }
                 case REACH_LEVEL_PUFFERFISH -> {
                     int target = Math.max(1, c.level);
@@ -910,7 +1216,7 @@ public final class TitleDescriptionBox {
                     int color = reached ? COLOR_DONE : COLOR_TODO;
                     MutableText line = Text.translatable("title.rpgsystems.condition.reach_pufferfish", target)
                             .append(Text.literal(" (" + Math.min(cur, target) + "/" + target + ")"));
-                    out.add(new CondLine(line, c.hint.map(Text::literal).orElse(null), color, reached, c));
+                    out.add(CondLine.text(line, c.hint.map(Text::literal).orElse(null), color, reached, c));
                 }
                 case ADVANCEMENT -> {
                     boolean reached = doneFlag;
@@ -919,7 +1225,7 @@ public final class TitleDescriptionBox {
                             ? Text.translatable("title.rpgsystems.condition.advancement", c.advancement.get().toString())
                             : Text.translatable("title.rpgsystems.condition.advancement", "");
                     MutableText line = base.append(Text.literal(" (" + (reached ? 1 : 0) + "/1)"));
-                    out.add(new CondLine(line, c.hint.map(Text::literal).orElse(null), color, reached, c));
+                    out.add(CondLine.text(line, c.hint.map(Text::literal).orElse(null), color, reached, c));
                 }
                 case VISIT_BIOME -> {
                     boolean reached = doneFlag;
@@ -928,7 +1234,7 @@ public final class TitleDescriptionBox {
                             ? Text.literal("Visit ").append(Text.translatable("biome." + c.biome.get().getNamespace() + "." + c.biome.get().getPath()))
                             : Text.literal("Visit a biome");
                     line = line.append(Text.literal(" (" + (reached ? 1 : 0) + "/1)"));
-                    out.add(new CondLine(line, c.hint.map(Text::literal).orElse(null), color, reached, c));
+                    out.add(CondLine.text(line, c.hint.map(Text::literal).orElse(null), color, reached, c));
                 }
                 case ENTER_DIMENSION -> {
                     boolean reached = doneFlag;
@@ -937,7 +1243,7 @@ public final class TitleDescriptionBox {
                             ? Text.literal("Enter " + c.dimension.get())
                             : Text.literal("Enter a dimension");
                     line = line.append(Text.literal(" (" + (reached ? 1 : 0) + "/1)"));
-                    out.add(new CondLine(line, c.hint.map(Text::literal).orElse(null), color, reached, c));
+                    out.add(CondLine.text(line, c.hint.map(Text::literal).orElse(null), color, reached, c));
                 }
                 case INTERACT_BLOCK -> {
                     int target = Math.max(1, c.count);
@@ -946,11 +1252,11 @@ public final class TitleDescriptionBox {
                     if (c.block.isPresent()) {
                         Text pre  = Text.literal("Interact with ");
                         Text post = Text.literal(" (" + Math.min(cur, target) + "/" + target + ")");
-                        out.add(new CondLine(pre, post, true, c.hint.map(Text::literal).orElse(null), color, reached, c));
+                        out.add(CondLine.inlineIcon(pre, post, c.hint.map(Text::literal).orElse(null), color, reached, c));
                     } else {
                         MutableText line = Text.literal("Interact with a block")
                                 .append(Text.literal(" (" + Math.min(cur, target) + "/" + target + ")"));
-                        out.add(new CondLine(line, c.hint.map(Text::literal).orElse(null), color, reached, c));
+                        out.add(CondLine.text(line, c.hint.map(Text::literal).orElse(null), color, reached, c));
                     }
                 }
                 case INTERACT_ENTITY -> {
@@ -961,7 +1267,13 @@ public final class TitleDescriptionBox {
                     if (c.entityType.isPresent()) {
                         Text pre  = Text.literal("Interact with ");
                         Text post = Text.literal(" (" + Math.min(cur, target) + "/" + target + ")");
-                        out.add(new CondLine(pre, post, true, c.hint.map(Text::literal).orElse(null), color, reached, c));
+                        out.add(CondLine.inlineIcon(pre, post, c.hint.map(Text::literal).orElse(null), color, reached, c));
+                    } else if (c.entityTagId != null && c.entityTagId.isPresent()) {
+                        Identifier tagId = c.entityTagId.get();
+                        Text pre  = Text.literal("Interact with any ");
+                        Text tagText = Text.literal(toTitleCase(tagId.getPath())).setStyle(Style.EMPTY.withUnderline(true));
+                        Text post = Text.literal(" (" + Math.min(cur, target) + "/" + target + ")");
+                        out.add(CondLine.tag(pre, tagText, tagId, post, c.hint.map(Text::literal).orElse(null), color, reached, c));
                     } else {
                         Text who;
                         if (c.entitySpec.isPresent()) {
@@ -983,7 +1295,7 @@ public final class TitleDescriptionBox {
                         }
                         MutableText line = Text.literal("Interact with ").append(who)
                                 .append(Text.literal(" (" + Math.min(cur, target) + "/" + target + ")"));
-                        out.add(new CondLine(line, c.hint.map(Text::literal).orElse(null), color, reached, c));
+                        out.add(CondLine.text(line, c.hint.map(Text::literal).orElse(null), color, reached, c));
                     }
                 }
                 case FIND_STRUCTURE -> {
@@ -1006,47 +1318,63 @@ public final class TitleDescriptionBox {
 
                     MutableText line = Text.literal("Discover ").append(what)
                             .append(Text.literal(" (" + (reached ? 1 : 0) + "/1)"));
-                    out.add(new CondLine(line, c.hint.map(Text::literal).orElse(null), color, reached, c));
+                    out.add(CondLine.text(line, c.hint.map(Text::literal).orElse(null), color, reached, c));
                 }
                 case DEAL_DAMAGE_TOTAL -> {
                     long target = Math.max(1, c.count);
                     boolean reached = cur >= target || doneFlag;
                     int color = reached ? COLOR_DONE : COLOR_TODO;
 
-                    Text who = c.entitySpec.isPresent()
-                            ? Text.literal(c.entitySpec.get())
-                            : c.entityType.map(t -> plainName(Text.translatable(Registries.ENTITY_TYPE.get(t).getTranslationKey())))
-                            .orElse(Text.literal("any"));
+                    if (c.entityTagId != null && c.entityTagId.isPresent()) {
+                        Identifier tagId = c.entityTagId.get();
+                        Text pre = Text.literal("Deal " + target + " total damage to any ");
+                        Text tagText = Text.literal(toTitleCase(tagId.getPath())).setStyle(Style.EMPTY.withUnderline(true));
+                        Text post = Text.literal(" (" + Math.min(cur, target) + "/" + target + ")");
+                        out.add(CondLine.tag(pre, tagText, tagId, post, c.hint.map(Text::literal).orElse(null), color, reached, c));
+                    } else {
+                        Text who = c.entitySpec.isPresent()
+                                ? Text.literal(c.entitySpec.get())
+                                : c.entityType.map(t -> plainName(Text.translatable(Registries.ENTITY_TYPE.get(t).getTranslationKey())))
+                                .orElse(Text.literal("any"));
 
-                    MutableText line = Text.literal("Deal ")
-                            .append(Text.literal(String.valueOf(target)))
-                            .append(Text.literal(" total damage to "))
-                            .append(who)
-                            .append(Text.literal(" ("))
-                            .append(Text.literal(String.valueOf(Math.min(cur, target))))
-                            .append(Text.literal("/"))
-                            .append(Text.literal(String.valueOf(target)))
-                            .append(Text.literal(")"));
-                    out.add(new CondLine(line, c.hint.map(Text::literal).orElse(null), color, reached, c));
+                        MutableText line = Text.literal("Deal ")
+                                .append(Text.literal(String.valueOf(target)))
+                                .append(Text.literal(" total damage to "))
+                                .append(who)
+                                .append(Text.literal(" ("))
+                                .append(Text.literal(String.valueOf(Math.min(cur, target))))
+                                .append(Text.literal("/"))
+                                .append(Text.literal(String.valueOf(target)))
+                                .append(Text.literal(")"));
+                        out.add(CondLine.text(line, c.hint.map(Text::literal).orElse(null), color, reached, c));
+                    }
                 }
                 case DEAL_DAMAGE_MAX -> {
                     long target = Math.max(1, c.count);
                     boolean reached = cur >= target || doneFlag;
                     int color = reached ? COLOR_DONE : COLOR_TODO;
 
-                    Text who = c.entitySpec.isPresent()
-                            ? Text.literal(c.entitySpec.get())
-                            : c.entityType.map(t -> plainName(Text.translatable(Registries.ENTITY_TYPE.get(t).getTranslationKey())))
-                            .orElse(Text.literal("any"));
+                    if (c.entityTagId != null && c.entityTagId.isPresent()) {
+                        Identifier tagId = c.entityTagId.get();
+                        Text pre = Text.literal("Deal a single hit of at least " + target + " to any ");
+                        Text tagText = Text.literal(toTitleCase(tagId.getPath())).setStyle(Style.EMPTY.withUnderline(true));
+                        Text post = Text.literal(" (best: " + cur + ")");
+                        out.add(CondLine.tag(pre, tagText, tagId, post, c.hint.map(Text::literal).orElse(null), color, reached, c));
+                    } else {
+                        Text who = c.entitySpec.isPresent()
+                                ? Text.literal(c.entitySpec.get())
+                                : c.entityType.map(t -> plainName(Text.translatable(Registries.ENTITY_TYPE.get(t).getTranslationKey())))
+                                .orElse(Text.literal("any"));
 
-                    MutableText line = Text.literal("Deal a single hit of at least ")
-                            .append(Text.literal(String.valueOf(target)))
-                            .append(Text.literal(" to "))
-                            .append(who)
-                            .append(Text.literal(" (best: "))
-                            .append(Text.literal(String.valueOf(cur)))
-                            .append(Text.literal(")"));
-                    out.add(new CondLine(line, c.hint.map(Text::literal).orElse(null), color, reached, c));
+                        MutableText line = Text.literal("Deal a single hit of at least ")
+                                .append(Text.literal(String.valueOf(target)))
+                                .append(Text.literal(" to "))
+                                .append(who)
+                                .append(Text.literal(" (best: "))
+                                .append(Text.literal(String.valueOf(cur)))
+                                .append(Text.literal(")"));
+                        out.add(CondLine.text(line, c.hint.map(Text::literal).orElse(null), color, reached, c));
+                    }
                 }
                 case CHECK_ATTRIBUTE -> {
                     boolean reached = doneFlag;
@@ -1071,12 +1399,13 @@ public final class TitleDescriptionBox {
                             .append(attrName)
                             .append(Text.literal(" ≥ " + trim(min)))
                             .append(Text.literal(" (now: " + cur + ")"));
-                    out.add(new CondLine(line, c.hint.map(Text::literal).orElse(null), color, reached, c));
+                    out.add(CondLine.text(line, c.hint.map(Text::literal).orElse(null), color, reached, c));
                 }
             }
         }
         return out;
     }
+
 
     private static Text plainName(Text t) {
         return Text.literal(stripLeadingIconLikeChunk(t.getString()));
@@ -1199,4 +1528,50 @@ public final class TitleDescriptionBox {
         FabricLoader fl = FabricLoader.getInstance();
         return fl.isModLoaded("iconleadingtooltip") || fl.isModLoaded("icon-leading-tooltip");
     }
+
+    private static List<RegistryEntry<EntityType<?>>> listEntriesForTag(Identifier tagId) {
+        var mc = MinecraftClient.getInstance();
+        if (mc == null || mc.world == null) return List.of();
+        var reg = mc.world.getRegistryManager().get(RegistryKeys.ENTITY_TYPE);
+        var tk = TagKey.of(RegistryKeys.ENTITY_TYPE, tagId);
+        var out = new ArrayList<RegistryEntry<EntityType<?>>>();
+        reg.iterateEntries(tk).forEach(out::add);
+        return out;
+    }
+    private static List<Identifier> idsOfEntries(List<RegistryEntry<EntityType<?>>> entries) {
+        var list = new ArrayList<Identifier>(entries.size());
+        for (var e : entries) {
+            Identifier id = Registries.ENTITY_TYPE.getId(e.value());
+            if (id != null) list.add(id);
+        }
+        return list;
+    }
+    private static List<Text> namesOfEntries(List<RegistryEntry<EntityType<?>>> entries) {
+        var list = new ArrayList<Text>(entries.size());
+        for (var e : entries) {
+            list.add(plainName(Text.translatable(e.value().getTranslationKey())));
+        }
+        return list;
+    }
+    public static void renderMobTooltip(DrawContext ctx, int mouseX, int mouseY, Identifier mobId, Text mobName) {
+        MobSpot tmp = new MobSpot(0, 0, 0, 0, mobId, mobName);
+        TitleDescriptionBox dummy = new TitleDescriptionBox(0, 0, 0, 0);
+        dummy.drawMobTooltip(ctx, mouseX, mouseY, tmp);
+    }
+
+    public static void renderTagTooltip(DrawContext ctx, int mouseX, int mouseY, Identifier tagId) {
+        var entries = listEntriesForTag(tagId);
+        if (entries.isEmpty()) return;
+        long time = (MinecraftClient.getInstance().world != null)
+                ? MinecraftClient.getInstance().world.getTime()
+                : System.currentTimeMillis() / 50L;
+        int idx = (int) (Math.floorDiv(time, 20) % entries.size());
+
+        Identifier mobId = Registries.ENTITY_TYPE.getId(entries.get(idx).value());
+        if (mobId == null) return;
+        Text mobName = plainName(Text.translatable(entries.get(idx).value().getTranslationKey()));
+
+        renderMobTooltip(ctx, mouseX, mouseY, mobId, mobName);
+    }
+
 }
