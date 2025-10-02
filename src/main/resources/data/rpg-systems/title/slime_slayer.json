@@ -4,44 +4,8 @@
   "description": "No more squish.",
   "bonuses": [
     {
-      "attribute": [
-        { "id": "minecraft:generic.attack_damage", "amount": 0.10, "operation": "multiply_total" },
-        { "id": "minecraft:generic.max_health",     "amount": 2.0,  "operation": "add_value" }
-      ],
-      "power": [
-        "rpg-systems:illuminate"
-      ],
-      "spell": [
-        "paladins:heal"
-      ],
       "damage_bonus": [
-        { "tag": "minecraft:undead", "amount": 100, "operation": "multiplied" }
-      ]
-    }
-  ],
-  "perma_bonuses": [
-    {
-      "attribute": [
-        { "id": "minecraft:generic.attack_damage", "amount": 0.10, "operation": "multiply_total" },
-        { "id": "minecraft:generic.max_health",     "amount": 2.0,  "operation": "add_value" },
-        { "id": "spell_power:fire",     "amount": 2.0,  "operation": "add_value" },
-        { "id": "spell_power:frost",     "amount": 2.0,  "operation": "add_value" },
-        { "id": "spell_power:arcane",     "amount": 2.0,  "operation": "add_value" },
-        { "id": "spell_power:generic",     "amount": 2.0,  "operation": "add_value" },
-        { "id": "spell_power:fire",     "amount": 2.0,  "operation": "multiply_total" },
-        { "id": "spell_power:frost",     "amount": 2.0,  "operation": "multiply_total" },
-        { "id": "spell_power:arcane",     "amount": 2.0,  "operation": "multiply_total" },
-        { "id": "spell_power:generic",     "amount": 2.0,  "operation": "multiply_total" },
-        { "id": "minecraft:generic.max_health",     "amount": 2.0,  "operation": "multiply_total" }
-      ],
-      "power": [
-        "rpg-systems:illuminate"
-      ],
-      "spell": [
-        "paladins:heal"
-      ],
-      "damage_bonus": [
-        { "tag": "minecraft:undead", "amount": 0.15, "operation": "multiplied" }
+        { "id": "minecraft:slime", "amount": 100, "operation": "multiplied" }
       ]
     }
   ],
