@@ -23,6 +23,7 @@ public final class RPGSystemsModMenu implements ModMenuApi {
         private CheckboxWidget petEnabled;
         private CheckboxWidget titleEnabled;
         private CheckboxWidget partyLogToConsole;
+        private CheckboxWidget useFTBTeams;
 
         protected ReadOnlyConfigScreen(Screen parent) {
             super(Text.literal("RPG Systems Config (read-only)"));
@@ -55,12 +56,18 @@ public final class RPGSystemsModMenu implements ModMenuApi {
             this.partyLogToConsole = CheckboxWidget.builder(Text.literal("Log Party Chat To Server Console"), this.textRenderer)
                     .pos(centerX - w/2, y).checked(cfg.party.logChatToConsole).build();
             this.partyLogToConsole.active = false;
+            y += 24;
+
+            this.useFTBTeams = CheckboxWidget.builder(Text.literal("Use FTB Teams Integration"), this.textRenderer)
+                    .pos(centerX - w/2, y).checked(cfg.party.useFTBTeams).build();
+            this.useFTBTeams.active = false;
             y += 28;
 
             this.addDrawableChild(this.partyEnabled);
             this.addDrawableChild(this.petEnabled);
             this.addDrawableChild(this.titleEnabled);
             this.addDrawableChild(this.partyLogToConsole);
+            this.addDrawableChild(this.useFTBTeams);
 
             this.addDrawableChild(ButtonWidget.builder(Text.literal("Client Options…"),
                             b -> this.client.setScreen(new ClientConfigsScreen(this)))
@@ -80,7 +87,9 @@ public final class RPGSystemsModMenu implements ModMenuApi {
 
         @Override
         public void close() {
-            this.client.setScreen(this.parent);
+            if (this.client != null) {
+                this.client.setScreen(this.parent);
+            }
         }
     }
 }

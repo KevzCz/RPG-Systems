@@ -19,6 +19,7 @@ public final class RPGSystemsConfig {
     }
     public static final class Party {
         public boolean logChatToConsole = true;
+        public boolean useFTBTeams = false;
     }
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
     private static final String FILE_NAME = "rpgsystems.json";

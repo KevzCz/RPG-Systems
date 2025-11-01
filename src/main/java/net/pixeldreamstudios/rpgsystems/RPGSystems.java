@@ -9,6 +9,8 @@ import net.pixeldreamstudios.rpgsystems.compat.KevsLibraryCritCompat;
 import net.pixeldreamstudios.rpgsystems.compat.showbuild.ShowBuildCompatNetServer;
 import net.pixeldreamstudios.rpgsystems.config.RPGSystemsConfig;
 import net.pixeldreamstudios.rpgsystems.network.*;
+import net.pixeldreamstudios.rpgsystems.party.FTBTeamsEventListener;
+import net.pixeldreamstudios.rpgsystems.party.FTBTeamsIntegration;
 import net.pixeldreamstudios.rpgsystems.party.PartyCommands;
 import net.pixeldreamstudios.rpgsystems.pet.PetCommands;
 import net.pixeldreamstudios.rpgsystems.title.TitleCommands;
@@ -25,6 +27,8 @@ public class RPGSystems implements ModInitializer {
 	public void onInitialize() {
 		RPGSystemsConfig.load();
 		SystemNet.registerServer();
+		FTBTeamsIntegration.init();
+		FTBTeamsEventListener.register();
 		if (RPGSystemsConfig.get().systems.party) {
 			PartyNet.initCommon();
 		}
