@@ -14,6 +14,7 @@ import net.pixeldreamstudios.rpgsystems.client.party.ClientPartyHudData;
 import net.pixeldreamstudios.rpgsystems.client.party.screen.PartyScreen;
 import net.pixeldreamstudios.rpgsystems.client.title.screen.TitleScreen;
 import net.pixeldreamstudios.rpgsystems.network.SystemNet;
+import net.pixeldreamstudios.rpgsystems.party.FTBTeamsIntegration;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
@@ -107,23 +108,31 @@ public abstract class HandledScreenMixin<T extends ScreenHandler> extends Screen
 
         if (party$shouldAttach()) {
             boolean hasParty = ClientPartyHudData.partyId != null;
+            boolean usingFTBTeams = FTBTeamsIntegration.isEnabled();
+
             int s = this.party$btnSize;
             boolean hovered = mouseX >= party$btnX && mouseX <= party$btnX + s &&
                     mouseY >= party$btnY && mouseY <= party$btnY + s;
 
-            Identifier tex = hasParty
-                    ? (hovered ? PARTY_BTN_HOVER : PARTY_BTN_NORMAL)
-                    : (hovered ? PARTY_CREATE_BTN_HOVER : PARTY_CREATE_BTN_NORMAL);
+            Identifier tex;
+            if (usingFTBTeams) {
+                tex = hovered ? PARTY_BTN_HOVER : PARTY_BTN_NORMAL;
+            } else {
+                tex = hasParty
+                        ? (hovered ? PARTY_BTN_HOVER : PARTY_BTN_NORMAL)
+                        : (hovered ? PARTY_CREATE_BTN_HOVER : PARTY_CREATE_BTN_NORMAL);
+            }
 
             context.drawTexture(tex, party$btnX, party$btnY, 0, 0, s, s, s, s);
 
             if (hovered) {
-                Text tip = hasParty
+                Text tip = (usingFTBTeams || hasParty)
                         ? Text.translatable("screen.rpgsystems.party")
                         : Text.translatable("screen.rpgsystems.party.create");
                 context.drawTooltip(this.textRenderer, tip, mouseX, mouseY);
             }
         }
+
     }
 
     @Inject(method = "mouseClicked", at = @At("HEAD"), cancellable = true)
@@ -144,7 +153,9 @@ public abstract class HandledScreenMixin<T extends ScreenHandler> extends Screen
             if (mouseX >= party$btnX && mouseX <= party$btnX + s &&
                     mouseY >= party$btnY && mouseY <= party$btnY + s) {
                 boolean hasParty = ClientPartyHudData.partyId != null;
-                if (hasParty) {
+                boolean usingFTBTeams = FTBTeamsIntegration.isEnabled();
+
+                if (hasParty || usingFTBTeams) {
                     MinecraftClient.getInstance().setScreen(new PartyScreen());
                 } else {
                     MinecraftClient mc = MinecraftClient.getInstance();

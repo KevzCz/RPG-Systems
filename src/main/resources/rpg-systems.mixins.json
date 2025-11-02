@@ -29,7 +29,8 @@
 		"EntityCollisionServerMixin",
 		"pet.MobEntityPetMixin",
 		"pet.AbstractHorseEntityPetHookMixin",
-		"pet.TameableEntityPetHookMixin"
+		"pet.TameableEntityPetHookMixin",
+		"ftbteams.AbstractTeamMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

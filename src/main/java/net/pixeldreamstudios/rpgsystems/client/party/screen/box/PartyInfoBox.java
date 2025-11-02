@@ -4,12 +4,13 @@ import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.font.TextRenderer;
+import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.texture.AbstractTexture;
 import net.minecraft.client.texture.TextureManager;
 import net.minecraft.util.Identifier;
 import net.pixeldreamstudios.rpgsystems.client.party.ClientPartyHudData;
+import net.pixeldreamstudios.rpgsystems.client.party.FTBTeamsCommandHelper;
 import net.pixeldreamstudios.rpgsystems.network.party.PartySettingsPayloads;
 
 import java.util.LinkedHashMap;
@@ -277,9 +278,7 @@ public final class PartyInfoBox implements PartyBox {
 
         if (isMouseOver(btnX, btnY, BTN_W, BTN_H)) {
             var mc = MinecraftClient.getInstance();
-            if (mc != null && mc.getNetworkHandler() != null) {
-                mc.getNetworkHandler().sendChatCommand("party leave");
-            }
+            FTBTeamsCommandHelper.sendLeaveCommand();
             if (mc != null) mc.setScreen(null);
             return true;
         }

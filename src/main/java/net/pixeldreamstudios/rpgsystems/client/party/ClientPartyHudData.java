@@ -4,7 +4,6 @@ import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.minecraft.client.MinecraftClient;
-import net.pixeldreamstudios.rpgsystems.RPGSystems;
 import net.pixeldreamstudios.rpgsystems.network.party.PartyHudPayloads;
 import net.pixeldreamstudios.rpgsystems.network.party.PartySettingsPayloads;
 
@@ -79,20 +78,11 @@ public final class ClientPartyHudData {
 
     public static void initClientReceivers() {
         ClientPlayNetworking.registerGlobalReceiver(PartyHudPayloads.PartyRosterClear.ID, (payload, ctx) -> {
-            RPGSystems.LOGGER.info("[Client Party] ===== RECEIVED PARTY ROSTER CLEAR =====");
-            RPGSystems.LOGGER.info("[Client Party] Party ID: {}", payload.partyId());
-            RPGSystems.LOGGER.info("[Client Party] Party Name: {}", payload.partyName());
-            RPGSystems.LOGGER.info("[Client Party] Leader UUID: {}", payload.leaderUuid());
-
             partyId = payload.partyId();
             partyName = payload.partyName();
             leaderUuid = payload.leaderUuid();
             MEMBERS.clear();
 
-            RPGSystems.LOGGER.info("[Client Party] Client party data updated! partyId is now: {}", partyId);
-            RPGSystems.LOGGER.info("[Client Party] partyName is now: {}", partyName);
-            RPGSystems.LOGGER.info("[Client Party] leaderUuid is now: {}", leaderUuid);
-            RPGSystems.LOGGER.info("[Client Party] ===== ROSTER CLEAR COMPLETE =====");
         });
 
         ClientPlayNetworking.registerGlobalReceiver(
@@ -101,33 +91,18 @@ public final class ClientPartyHudData {
                     Member m = MEMBERS.get(payload.memberUuid());
                     if (m != null) {
                         m.online = payload.online();
-                        RPGSystems.LOGGER.debug("[Client Party] Member {} online status: {}",
-                                payload.memberUuid(), payload.online());
-                    } else {
-                        RPGSystems.LOGGER.warn("[Client Party] Received online status for unknown member: {}",
-                                payload.memberUuid());
                     }
                 })
         );
 
         ClientPlayNetworking.registerGlobalReceiver(PartyHudPayloads.PartyRosterAdd.ID, (payload, ctx) -> {
-            RPGSystems.LOGGER.info("[Client Party] ===== RECEIVED PARTY ROSTER ADD =====");
-            RPGSystems.LOGGER.info("[Client Party] Current partyId: {}", partyId);
-            RPGSystems.LOGGER.info("[Client Party] Payload partyId: {}", payload.partyId());
-            RPGSystems.LOGGER.info("[Client Party] Member Name: {}", payload.memberName());
-            RPGSystems.LOGGER.info("[Client Party] Member UUID: {}", payload.memberUuid());
 
             if (!Objects.equals(partyId, payload.partyId())) {
-                RPGSystems.LOGGER.warn("[Client Party] *** PARTY ID MISMATCH - MEMBER NOT ADDED ***");
-                RPGSystems.LOGGER.warn("[Client Party] Expected: {}, Got: {}", partyId, payload.partyId());
                 return;
             }
 
             MEMBERS.put(payload.memberUuid(), new Member(payload.memberUuid(), payload.memberName()));
 
-            RPGSystems.LOGGER.info("[Client Party] Member added successfully!");
-            RPGSystems.LOGGER.info("[Client Party] Total members now: {}", MEMBERS.size());
-            RPGSystems.LOGGER.info("[Client Party] ===== ROSTER ADD COMPLETE =====");
         });
 
         ClientPlayNetworking.registerGlobalReceiver(PartyHudPayloads.PartyMemberVitals.ID, (payload, ctx) -> {
@@ -146,11 +121,6 @@ public final class ClientPartyHudData {
                     m.rpgManaMax = payload.rpgManaMax();
                     m.online = true;
 
-                    RPGSystems.LOGGER.debug("[Client Party] Updated vitals for member {}: HP {}/{}",
-                            payload.memberUuid(), m.health, m.maxHealth);
-                } else {
-                    RPGSystems.LOGGER.warn("[Client Party] Received vitals for unknown member: {}",
-                            payload.memberUuid());
                 }
             });
         });
@@ -159,27 +129,20 @@ public final class ClientPartyHudData {
                 PartyHudPayloads.PartyMemberLevel.ID,
                 (payload, ctx) -> ctx.client().execute(() -> {
                     ClientPartyHudData.setMemberLevel(payload.memberUuid(), payload.totalLevel());
-                    RPGSystems.LOGGER.debug("[Client Party] Updated level for member {}: {}",
-                            payload.memberUuid(), payload.totalLevel());
                 })
         );
 
         ClientPlayNetworking.registerGlobalReceiver(
                 PartySettingsPayloads.Sync.ID, (payload, ctx) ->
                         ctx.client().execute(() -> {
-                            RPGSystems.LOGGER.info("[Client Party] Syncing party settings:");
-                            RPGSystems.LOGGER.info("[Client Party]   Allow Helpful Non-Members: {}", payload.allowHelpfulNonMembers());
-                            RPGSystems.LOGGER.info("[Client Party]   Ignore Party Collision: {}", payload.ignorePartyCollision());
-
                             SETTINGS.allowHelpfulNonMembers = payload.allowHelpfulNonMembers();
                             SETTINGS.ignorePartyCollision   = payload.ignorePartyCollision();
                         })
         );
 
         ClientPlayNetworking.registerGlobalReceiver(PartyHudPayloads.PartyRosterReset.ID, (payload, ctx) -> {
-            RPGSystems.LOGGER.info("[Client Party] ===== RECEIVED PARTY ROSTER RESET =====");
             clearAll();
-            RPGSystems.LOGGER.info("[Client Party] All party data cleared!");
+
         });
     }
 

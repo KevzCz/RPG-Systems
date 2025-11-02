@@ -10,6 +10,7 @@ import net.minecraft.client.texture.TextureManager;
 import net.minecraft.util.Identifier;
 import net.pixeldreamstudios.rpgsystems.client.party.ClientPartyHudData;
 import net.pixeldreamstudios.rpgsystems.client.party.ClientPartyPins;
+import net.pixeldreamstudios.rpgsystems.client.party.FTBTeamsCommandHelper;
 
 import java.util.*;
 
@@ -414,8 +415,8 @@ public final class PartyMembersBox implements PartyBox {
                     int btnY = Math.round(textTopY + (tr.fontHeight * TEXT_SCALE - KICK_H) / 2f);
                     if (mouseX >= btnX && mouseX < btnX + KICK_W && mouseY >= btnY && mouseY < btnY + KICK_H) {
                         var mc = MinecraftClient.getInstance();
-                        if (mc != null && mc.getNetworkHandler() != null && m.name != null && !m.name.isBlank()) {
-                            mc.getNetworkHandler().sendChatCommand("party kick " + m.name);
+                        if (m.name != null && !m.name.isBlank()) {
+                            FTBTeamsCommandHelper.sendKickCommand(m.name);
                         }
                         return true;
                     }
@@ -794,10 +795,7 @@ public final class PartyMembersBox implements PartyBox {
                 if (canPromote) {
                     ClientPartyHudData.Member sel = promoteCandidates.get(promoteSelectedIndex);
                     if (sel != null && sel.name != null && !sel.name.isBlank()) {
-                        var mc = MinecraftClient.getInstance();
-                        if (mc != null && mc.getNetworkHandler() != null) {
-                            mc.getNetworkHandler().sendChatCommand("party promote " + sel.name);
-                        }
+                        FTBTeamsCommandHelper.sendPromoteCommand(sel.name);
                     }
                     showPromoteDialog = false;
                 }

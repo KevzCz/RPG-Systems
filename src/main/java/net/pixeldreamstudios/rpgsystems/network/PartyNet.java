@@ -18,6 +18,7 @@ import net.pixeldreamstudios.rpgsystems.network.party.PartyHudPayloads.*;
 import net.pixeldreamstudios.rpgsystems.network.party.PartySettingsPayloads.SetAllowHelpfulNonMembers;
 import net.pixeldreamstudios.rpgsystems.network.party.PartySettingsPayloads.Sync;
 import net.pixeldreamstudios.rpgsystems.network.party.PartyStatusEffectsPayloads.MemberEffects;
+import net.pixeldreamstudios.rpgsystems.party.FTBTeamsChatBridge;
 import net.pixeldreamstudios.rpgsystems.party.FTBTeamsIntegration;
 import net.pixeldreamstudios.rpgsystems.party.Party;
 import net.pixeldreamstudios.rpgsystems.party.PartyPersistentState;
@@ -557,17 +558,17 @@ public final class PartyNet {
                 switch (sub) {
                     case "help" -> {
                         String help = """
-                    Middle click member to pin members!
-                    Click on the crown to change party leaders!
-                    Check the gear icon for settings!
-                    Party Chat commands:
-                    /p help — show this list
-                    /p info — party name, leader, members
-                    /p sharepos — share your current coords
-                    /p promote <member> — transfer leadership (native parties only)
-                    /p pin <text> — set a pinned banner 
-                    /p unpin - unpins a pinned banner 
-                    """.trim();
+            Middle click member to pin members!
+            Click on the crown to change party leaders!
+            Check the gear icon for settings!
+            Party Chat commands:
+            /p help — show this list
+            /p info — party name, leader, members
+            /p sharepos — share your current coords
+            /p promote <member> — transfer leadership (native parties only)
+            /p pin <text> — set a pinned banner 
+            /p unpin - unpins a pinned banner 
+            """.trim();
                         sendNoticeTo(sender, partyId, help, now);
                     }
                     case "info" -> {
@@ -712,6 +713,10 @@ public final class PartyNet {
                 return;
             }
 
+             if (FTBTeamsIntegration.isEnabled()) {
+                FTBTeamsChatBridge.sendToFTBTeams(sender, payload.message());
+             }
+
             ChatMessage msg = new ChatMessage(partyId, sender.getUuid(), name, payload.message(), now);
 
             if (net.pixeldreamstudios.rpgsystems.config.RPGSystemsConfig.get().party.logChatToConsole) {
@@ -731,10 +736,12 @@ public final class PartyNet {
                     new net.pixeldreamstudios.rpgsystems.api.PartyChatEvent.Message(partyId, sender, payload.message())
             );
 
-            for (UUID u : partyMembers) {
-                ServerPlayerEntity sp = sender.getServer().getPlayerManager().getPlayer(u);
-                if (sp != null) {
-                    ServerPlayNetworking.send(sp, msg);
+            if (!FTBTeamsIntegration.isEnabled()) {
+                for (UUID u : partyMembers) {
+                    ServerPlayerEntity sp = sender.getServer().getPlayerManager().getPlayer(u);
+                    if (sp != null) {
+                        ServerPlayNetworking.send(sp, msg);
+                    }
                 }
             }
         });
@@ -902,7 +909,7 @@ public final class PartyNet {
         return (p.name == null || p.name.isBlank()) ? p.id.toString() : p.name;
     }
 
-    private static void sendNoticeTo(ServerPlayerEntity to, UUID partyId, String text, long when) {
+    public static void sendNoticeTo(ServerPlayerEntity to, UUID partyId, String text, long when) {
         ServerPlayNetworking.send(to, new net.pixeldreamstudios.rpgsystems.network.party.PartyChatPayloads.ChatNotice(partyId, text, when));
     }
 
@@ -960,17 +967,12 @@ public final class PartyNet {
     }
 
     public static void sendFTBTeamsRosterTo(MinecraftServer server, ServerPlayerEntity recipient, FTBTeamsIntegration.FTBPartyData ftbData) {
-        RPGSystems.LOGGER.info("[Party Integration] Sending FTB Teams roster to {}", recipient.getName().getString());
-        RPGSystems.LOGGER.info("[Party Integration] Party: {} ({})", ftbData.partyName, ftbData.partyId);
-        RPGSystems.LOGGER.info("[Party Integration] Leader: {}", ftbData.leaderUuid);
-        RPGSystems.LOGGER.info("[Party Integration] Members ({}): {}", ftbData.members.size(), ftbData.members);
 
         ServerPlayNetworking.send(recipient, new PartyRosterClear(ftbData.partyId, ftbData.partyName, ftbData.leaderUuid));
 
         for (UUID memberId : ftbData.members) {
             ServerPlayerEntity member = server.getPlayerManager().getPlayer(memberId);
             String name = member != null ? member.getName().getString() : memberId.toString();
-
             RPGSystems.LOGGER.debug("[Party Integration] Adding member to roster: {} ({})", name, memberId);
             ServerPlayNetworking.send(recipient, new PartyRosterAdd(ftbData.partyId, memberId, name));
 

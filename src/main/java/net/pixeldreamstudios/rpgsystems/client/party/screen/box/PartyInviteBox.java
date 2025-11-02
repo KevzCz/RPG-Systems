@@ -8,6 +8,7 @@ import net.minecraft.client.gui.DrawContext;
 import net.minecraft.util.Identifier;
 import net.pixeldreamstudios.rpgsystems.client.party.ClientPartyHudData;
 import net.pixeldreamstudios.rpgsystems.client.party.ClientPartyInvites;
+import net.pixeldreamstudios.rpgsystems.client.party.FTBTeamsCommandHelper;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -355,11 +356,7 @@ public final class PartyInviteBox implements PartyBox {
 
     private static void sendInvite(String targetName) {
         if (targetName == null || targetName.isBlank()) return;
-        MinecraftClient mc = MinecraftClient.getInstance();
-        if (mc == null || mc.getNetworkHandler() == null) return;
-
-        mc.getNetworkHandler().sendChatCommand("party invite " + targetName);
-
+        FTBTeamsCommandHelper.sendInviteCommand(targetName);
     }
     private static List<ClientPartyInvites.Sent> visibleInvites() {
 

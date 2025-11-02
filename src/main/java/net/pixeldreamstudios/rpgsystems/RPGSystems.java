@@ -48,7 +48,7 @@ public class RPGSystems implements ModInitializer {
 		}
 
 		CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) -> {
-			if (RPGSystemsConfig.get().systems.party) {
+			if (RPGSystemsConfig.get().systems.party && !FTBTeamsIntegration.isEnabled()) {
 				PartyCommands.register(dispatcher);
 			}
 			if (RPGSystemsConfig.get().systems.pet) {
