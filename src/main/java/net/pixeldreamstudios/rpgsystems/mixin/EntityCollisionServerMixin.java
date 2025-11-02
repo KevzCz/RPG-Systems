@@ -3,6 +3,7 @@ package net.pixeldreamstudios.rpgsystems.mixin;
 import net.minecraft.entity.Entity;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.pixeldreamstudios.rpgsystems.party.Party;
+import net.pixeldreamstudios.rpgsystems.party.PartyAllies;
 import net.pixeldreamstudios.rpgsystems.party.PartyPersistentState;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -10,32 +11,55 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
+import java.util.UUID;
+
 @Mixin(Entity.class)
 public abstract class EntityCollisionServerMixin {
 
     private static boolean samePartyAndIgnore(Entity a, Entity b) {
-        if (!(a instanceof ServerPlayerEntity pa) || !(b instanceof ServerPlayerEntity pb)) return false;
-        var server = pa.getServer();
+        if (a == null || b == null) return false;
+
+        var server = a.getServer();
         if (server == null) return false;
 
+        UUID ownerA = PartyAllies.owningPlayerUuid(a);
+        UUID ownerB = PartyAllies.owningPlayerUuid(b);
+
+        if (ownerA == null || ownerB == null) return false;
+
+        if (!PartyAllies.sameParty(server, ownerA, ownerB)) return false;
+
         if (net.pixeldreamstudios.rpgsystems.party.FTBTeamsIntegration.isEnabled()) {
-            var ftbDataA = net.pixeldreamstudios.rpgsystems.party.FTBTeamsIntegration.getPartyDataForPlayer(pa);
-            if (ftbDataA == null) return false;
 
-            var ftbDataB = net.pixeldreamstudios.rpgsystems.party.FTBTeamsIntegration.getPartyDataForPlayer(pb);
-            if (ftbDataB == null) return false;
+            if (a instanceof ServerPlayerEntity pa) {
+                var ftbData = net.pixeldreamstudios.rpgsystems.party.FTBTeamsIntegration.getPartyDataForPlayer(pa);
+                if (ftbData != null) {
+                    return ftbData.settings.ignorePartyCollision;
+                }
+            } else if (b instanceof ServerPlayerEntity pb) {
+                var ftbData = net.pixeldreamstudios.rpgsystems.party.FTBTeamsIntegration.getPartyDataForPlayer(pb);
+                if (ftbData != null) {
+                    return ftbData.settings.ignorePartyCollision;
+                }
+            }
 
-            if (!ftbDataA.partyId.equals(ftbDataB.partyId)) return false;
+            ServerPlayerEntity owner = server.getPlayerManager().getPlayer(ownerA);
+            if (owner != null) {
+                var ftbData = net.pixeldreamstudios.rpgsystems.party.FTBTeamsIntegration.getPartyDataForPlayer(owner);
+                if (ftbData != null) {
+                    return ftbData.settings.ignorePartyCollision;
+                }
+            }
 
-            return ftbDataA.settings.ignorePartyCollision;
+            return false;
         }
 
+        // Native party system
         PartyPersistentState state = PartyPersistentState.get(server);
-        Party paParty = state.getPartyByMember(pa.getUuid());
-        if (paParty == null) return false;
-        if (!paParty.members.contains(pb.getUuid())) return false;
+        Party party = state.getPartyByMember(ownerA);
+        if (party == null) return false;
 
-        return paParty.settings.ignorePartyCollision;
+        return party.settings.ignorePartyCollision;
     }
 
     @Inject(

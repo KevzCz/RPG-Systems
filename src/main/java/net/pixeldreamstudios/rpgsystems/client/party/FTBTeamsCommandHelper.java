@@ -5,8 +5,12 @@ import net.fabricmc.api.Environment;
 import net.minecraft.client.MinecraftClient;
 import net.pixeldreamstudios.rpgsystems.party.FTBTeamsIntegration;
 
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
+
 @Environment(EnvType.CLIENT)
 public final class FTBTeamsCommandHelper {
+
     public static void sendLeaveCommand() {
         MinecraftClient mc = MinecraftClient.getInstance();
         if (mc == null || mc.getNetworkHandler() == null) return;
@@ -53,11 +57,34 @@ public final class FTBTeamsCommandHelper {
         if (FTBTeamsIntegration.isEnabled()) {
             if (ClientPartyHudData.partyId != null && ClientPartyHudData.partyName != null) {
                 String shortTeamId = ClientPartyHudData.partyId.toString().substring(0, 8);
-                String teamShortName = ClientPartyHudData.partyName + "#" + shortTeamId;
-                mc.getNetworkHandler().sendChatCommand("ftbteams party transfer_ownership_for " + teamShortName + " " + memberName);
+
+                String encodedName = urlEncodeName(ClientPartyHudData.partyName);
+                String teamIdentifier = encodedName + "#" + shortTeamId;
+
+                mc.getNetworkHandler().sendChatCommand("ftbteams party transfer_ownership_for " + teamIdentifier + " " + memberName);
             }
         } else {
             mc.getNetworkHandler().sendChatCommand("party promote " + memberName);
+        }
+    }
+
+    private static String urlEncodeName(String name) {
+        if (name == null) return "";
+
+        try {
+
+            String encoded = URLEncoder.encode(name, StandardCharsets.UTF_8);
+
+            encoded = encoded.replace("%27", "_s_")  // apostrophe
+                    .replace("%20", "_")     // space
+                    .replace("+", "_")       // plus (from space encoding)
+                    .replace("%", "_");      // any other % encoded chars
+
+            return encoded;
+        } catch (Exception e) {
+            return name.replace("'", "_s_")
+                    .replace(" ", "_")
+                    .replace("%", "_");
         }
     }
 }

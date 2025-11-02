@@ -1,5 +1,6 @@
 package net.pixeldreamstudios.rpgsystems.network;
 
+import dev.ftb.mods.ftbteams.api.TeamManager;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.event.player.AttackEntityCallback;
 import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
@@ -11,7 +12,6 @@ import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.text.Text;
 import net.minecraft.util.ActionResult;
 import net.minecraft.util.Identifier;
-import net.pixeldreamstudios.rpgsystems.RPGSystems;
 import net.pixeldreamstudios.rpgsystems.network.party.*;
 import net.pixeldreamstudios.rpgsystems.network.party.PartyChatPayloads.ChatNotice;
 import net.pixeldreamstudios.rpgsystems.network.party.PartyHudPayloads.*;
@@ -133,8 +133,9 @@ public final class PartyNet {
                                     new ChatNotice(ftbData.partyId, "Only " + leaderName + " can change party settings.", now));
                             return;
                         }
-
                         ftbData.settings.ignorePartyCollision = payload.ignore();
+                        FTBTeamsIntegration.updatePartySettings(server, ftbData.partyId, ftbData.settings);
+
                         long now = System.currentTimeMillis();
 
                         for (UUID memberId : ftbData.members) {
@@ -210,6 +211,8 @@ public final class PartyNet {
                         }
 
                         ftbData.settings.allowHelpfulNonMembers = payload.allow();
+                        FTBTeamsIntegration.updatePartySettings(server, ftbData.partyId, ftbData.settings);
+
                         long now = System.currentTimeMillis();
 
                         for (UUID memberId : ftbData.members) {
@@ -395,18 +398,48 @@ public final class PartyNet {
             ServerPlayerEntity player = context.player();
 
             if (FTBTeamsIntegration.isEnabled()) {
-                if (payload.accept()) {
-                    player.getServer().getCommandManager().executeWithPrefix(
-                            player.getCommandSource(),
-                            "ftbteams party join " + payload.partyId()
-                    );
-                } else {
-                    player.getServer().getCommandManager().executeWithPrefix(
-                            player.getCommandSource(),
-                            "ftbteams party decline " + payload.partyId()
-                    );
+                try {
+                    TeamManager manager = dev.ftb.mods.ftbteams.api.FTBTeamsAPI.api().getManager();
+                    java.util.Optional<dev.ftb.mods.ftbteams.api.Team> teamOpt = manager.getTeamByID(payload.partyId());
+
+                    if (teamOpt.isPresent()) {
+                        dev.ftb.mods.ftbteams.api.Team team = teamOpt.get();
+
+                        String shortTeamId = team.getId().toString().substring(0, 8);
+                        String displayName = team.getProperty(dev.ftb.mods.ftbteams.api.property.TeamProperties.DISPLAY_NAME);
+
+                        String encodedName = urlEncodeName(displayName);
+                        String teamIdentifier = encodedName + "#" + shortTeamId;
+
+                        if (payload.accept()) {
+                            player.getServer().getCommandManager().executeWithPrefix(
+                                    player.getCommandSource(),
+                                    "ftbteams party join " + teamIdentifier
+                            );
+                        } else {
+                            player.getServer().getCommandManager().executeWithPrefix(
+                                    player.getCommandSource(),
+                                    "ftbteams party decline " + teamIdentifier
+                            );
+                        }
+                    } else {
+                        if (payload.accept()) {
+                            player.getServer().getCommandManager().executeWithPrefix(
+                                    player.getCommandSource(),
+                                    "ftbteams party join " + payload.partyId()
+                            );
+                        } else {
+                            player.getServer().getCommandManager().executeWithPrefix(
+                                    player.getCommandSource(),
+                                    "ftbteams party decline " + payload.partyId()
+                            );
+                        }
+                    }
+
+                    ServerPlayNetworking.send(player, new InviteRemoved(payload.partyId()));
+                } catch (Exception e) {
+                    net.pixeldreamstudios.rpgsystems.RPGSystems.LOGGER.error("[FTB Teams] Error handling invite response", e);
                 }
-                ServerPlayNetworking.send(player, new InviteRemoved(payload.partyId()));
                 return;
             }
             PartyPersistentState state = PartyPersistentState.get(player.getServer());
@@ -1005,7 +1038,7 @@ public final class PartyNet {
                 name = member.getName().getString();
             } else {
                 try {
-                    dev.ftb.mods.ftbteams.api.TeamManager ftbManager = dev.ftb.mods.ftbteams.api.FTBTeamsAPI.api().getManager();
+                    TeamManager ftbManager = dev.ftb.mods.ftbteams.api.FTBTeamsAPI.api().getManager();
                     name = ftbManager.getPlayerTeamForPlayerID(memberId)
                             .map(team -> ((dev.ftb.mods.ftbteams.data.PlayerTeam) team).getPlayerName())
                             .orElse(memberId.toString());
@@ -1093,6 +1126,23 @@ public final class PartyNet {
             return -1;
         }
     }
+    private static String urlEncodeName(String name) {
+        if (name == null) return "";
 
+        try {
+            String encoded = java.net.URLEncoder.encode(name, java.nio.charset.StandardCharsets.UTF_8);
+
+            encoded = encoded.replace("%27", "_s_")
+                    .replace("%20", "_")
+                    .replace("+", "_")
+                    .replace("%", "_");
+
+            return encoded;
+        } catch (Exception e) {
+            return name.replace("'", "_s_")
+                    .replace(" ", "_")
+                    .replace("%", "_");
+        }
+    }
 
 }

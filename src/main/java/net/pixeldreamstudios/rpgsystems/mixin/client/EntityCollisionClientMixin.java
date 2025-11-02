@@ -3,22 +3,30 @@ package net.pixeldreamstudios.rpgsystems.mixin.client;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import net.minecraft.entity.Entity;
-import net.minecraft.entity.player.PlayerEntity;
 import net.pixeldreamstudios.rpgsystems.client.party.ClientPartyHudData;
+import net.pixeldreamstudios.rpgsystems.party.PartyAllies;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
+import java.util.UUID;
+
 @Environment(EnvType.CLIENT)
 @Mixin(Entity.class)
 public abstract class EntityCollisionClientMixin {
 
     private static boolean samePartyAndIgnoreClient(Entity a, Entity b) {
-        if (!(a instanceof PlayerEntity pa) || !(b instanceof PlayerEntity pb)) return false;
+        if (a == null || b == null) return false;
+
         if (!ClientPartyHudData.ignorePartyCollision()) return false;
-        return ClientPartyHudData.isSameParty(pa.getUuid(), pb.getUuid());
+        UUID ownerA = PartyAllies.owningPlayerUuid(a);
+        UUID ownerB = PartyAllies.owningPlayerUuid(b);
+
+        if (ownerA == null || ownerB == null) return false;
+
+        return ClientPartyHudData.isSameParty(ownerA, ownerB);
     }
 
     @Inject(

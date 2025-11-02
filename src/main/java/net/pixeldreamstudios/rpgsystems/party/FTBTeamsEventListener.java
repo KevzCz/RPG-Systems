@@ -4,6 +4,7 @@ import dev.ftb.mods.ftbteams.api.Team;
 import dev.ftb.mods.ftbteams.api.event.TeamEvent;
 import dev.ftb.mods.ftbteams.api.property.TeamProperties;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.pixeldreamstudios.rpgsystems.network.PartyNet;
 import net.pixeldreamstudios.rpgsystems.network.party.PartyInvitePayloads;
@@ -119,6 +120,14 @@ public final class FTBTeamsEventListener {
 
                 PartyNet.sendRosterWipeTo(member);
             }
+
+            if (!online.isEmpty()) {
+                ServerPlayerEntity anyMember = online.iterator().next();
+                MinecraftServer server = anyMember.getServer();
+                if (server != null) {
+                    FTBTeamsIntegration.cleanupPartySettings(server, team.getId());
+                }
+            }
         });
     }
 
@@ -127,16 +136,29 @@ public final class FTBTeamsEventListener {
             return;
         }
 
-        FTBTeamsIntegration.FTBPartyData ftbData = new FTBTeamsIntegration.FTBPartyData(
-                team.getId(),
-                team.getProperty(dev.ftb.mods.ftbteams.api.property.TeamProperties.DISPLAY_NAME),
-                team.getOwner(),
-                team.getMembers(),
-                new PartySettings()
-        );
+        Collection<ServerPlayerEntity> onlineMembers = team.getOnlineMembers();
+        if (onlineMembers.isEmpty()) return;
 
-        for (ServerPlayerEntity member : team.getOnlineMembers()) {
-            PartyNet.sendFTBTeamsRosterTo(member.getServer(), member, ftbData);
+        ServerPlayerEntity anyMember = onlineMembers.iterator().next();
+        MinecraftServer server = anyMember.getServer();
+        if (server == null) return;
+
+        FTBTeamsIntegration.FTBPartyData ftbData = FTBTeamsIntegration.getPartyDataForPlayerId(server, team.getOwner());
+        if (ftbData == null) {
+            PartyPersistentState state = PartyPersistentState.get(server);
+            PartySettings settings = state.getFTBPartySettings(team.getId());
+
+            ftbData = new FTBTeamsIntegration.FTBPartyData(
+                    team.getId(),
+                    team.getProperty(TeamProperties.DISPLAY_NAME),
+                    team.getOwner(),
+                    team.getMembers(),
+                    settings
+            );
+        }
+
+        for (ServerPlayerEntity member : onlineMembers) {
+            PartyNet.sendFTBTeamsRosterTo(server, member, ftbData);
         }
     }
 }
