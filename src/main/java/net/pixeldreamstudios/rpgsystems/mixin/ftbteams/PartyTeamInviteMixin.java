@@ -2,14 +2,13 @@ package net.pixeldreamstudios.rpgsystems.mixin.ftbteams;
 
 import com.mojang.authlib.GameProfile;
 import dev.ftb.mods.ftbteams.api.property.TeamProperties;
+import dev.ftb.mods.ftbteams.data.AbstractTeam;
 import dev.ftb.mods.ftbteams.data.PartyTeam;
-import dev.ftb.mods.ftbteams.data.TeamManagerImpl;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.pixeldreamstudios.rpgsystems.network.party.PartyInvitePayloads;
 import net.pixeldreamstudios.rpgsystems.party.FTBTeamsIntegration;
 import org.spongepowered.asm.mixin.Mixin;
-import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
@@ -18,10 +17,11 @@ import java.util.Collection;
 import java.util.UUID;
 
 @Mixin(value = PartyTeam.class, remap = false)
-public abstract class PartyTeamInviteMixin {
+public abstract class PartyTeamInviteMixin extends AbstractTeam {
 
-    @Shadow(remap = false)
-    protected TeamManagerImpl manager;
+    public PartyTeamInviteMixin(dev.ftb.mods.ftbteams.data.TeamManagerImpl manager, UUID id) {
+        super(manager, id);
+    }
 
     @Inject(
             method = "invite",

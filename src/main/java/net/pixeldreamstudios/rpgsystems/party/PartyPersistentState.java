@@ -13,21 +13,32 @@ import java.util.*;
 
 public final class PartyPersistentState extends PersistentState {
     public static final String KEY = "rpgsystems_parties";
-    public static final PersistentState.Type<PartyPersistentState> TYPE = new PersistentState.Type<>(PartyPersistentState::new, PartyPersistentState::fromNbt, null);
+    public static final PersistentState.Type<PartyPersistentState> TYPE = new PersistentState.Type<>(
+            PartyPersistentState::new,
+            PartyPersistentState::fromNbt,
+            null
+    );
     public static final long INVITE_TTL_MS = 60_000L;
+
     private final Map<UUID, Party> parties = new HashMap<>();
     private final Map<UUID, UUID> membership = new HashMap<>();
     private final Map<UUID, Set<UUID>> pendingInvites = new HashMap<>();
     private final Map<UUID, String> lastKnownNames = new HashMap<>();
     private final Map<UUID, Set<UUID>> joinRequests = new HashMap<>();
     private final Map<String, Long> inviteTimes = new HashMap<>();
+
+    // NEW: Store settings for FTB Teams parties
+    private final Map<UUID, PartySettings> ftbPartySettings = new HashMap<>();
+
     public static PartyPersistentState get(MinecraftServer server) {
         PersistentStateManager mgr = server.getWorld(World.OVERWORLD).getPersistentStateManager();
         return mgr.getOrCreate(TYPE, KEY);
     }
+
     private static PartyPersistentState fromNbt(NbtCompound nbt, RegistryWrapper.WrapperLookup lookup) {
         PartyPersistentState s = new PartyPersistentState();
 
+        // Load native parties
         NbtList partyList = nbt.getList("Parties", NbtElement.COMPOUND_TYPE);
         for (int i = 0; i < partyList.size(); i++) {
             Party p = Party.fromNbt(partyList.getCompound(i));
@@ -35,6 +46,7 @@ public final class PartyPersistentState extends PersistentState {
             for (UUID u : p.members) s.membership.put(u, p.id);
         }
 
+        // Load invites
         NbtList invitesList = nbt.getList("Invites", NbtElement.COMPOUND_TYPE);
         for (int i = 0; i < invitesList.size(); i++) {
             NbtCompound tag = invitesList.getCompound(i);
@@ -44,11 +56,15 @@ public final class PartyPersistentState extends PersistentState {
             for (int j = 0; j < ids.size(); j++) set.add(ids.getCompound(j).getUuid("V"));
             if (!set.isEmpty()) s.pendingInvites.put(target, set);
         }
+
+        // Load player names
         NbtList names = nbt.getList("Names", NbtElement.COMPOUND_TYPE);
         for (int i = 0; i < names.size(); i++) {
             NbtCompound row = names.getCompound(i);
             s.lastKnownNames.put(row.getUuid("U"), row.getString("N"));
         }
+
+        // Load join requests
         NbtList jr = nbt.getList("JoinRequests", NbtElement.COMPOUND_TYPE);
         for (int i = 0; i < jr.size(); i++) {
             NbtCompound row = jr.getCompound(i);
@@ -58,6 +74,8 @@ public final class PartyPersistentState extends PersistentState {
             for (int j = 0; j < rs.size(); j++) reqs.add(rs.getCompound(j).getUuid("U"));
             if (!reqs.isEmpty()) s.joinRequests.put(partyId, reqs);
         }
+
+        // Load invite times
         NbtList times = nbt.getList("InviteTimes", NbtElement.COMPOUND_TYPE);
         for (int i = 0; i < times.size(); i++) {
             NbtCompound row = times.getCompound(i);
@@ -66,8 +84,101 @@ public final class PartyPersistentState extends PersistentState {
             long when = row.getLong("Time");
             s.inviteTimes.put(inviteKey(target, party), when);
         }
+
+        // NEW: Load FTB Teams party settings
+        NbtList ftbSettings = nbt.getList("FTBPartySettings", NbtElement.COMPOUND_TYPE);
+        for (int i = 0; i < ftbSettings.size(); i++) {
+            NbtCompound row = ftbSettings.getCompound(i);
+            UUID partyId = row.getUuid("PartyId");
+            PartySettings settings = PartySettings.fromNbt(row.getCompound("Settings"));
+            s.ftbPartySettings.put(partyId, settings);
+        }
+
         return s;
     }
+
+    @Override
+    public NbtCompound writeNbt(NbtCompound nbt, RegistryWrapper.WrapperLookup registryLookup) {
+        // Save native parties
+        NbtList partyList = new NbtList();
+        for (Party p : parties.values()) partyList.add(p.toNbt());
+        nbt.put("Parties", partyList);
+
+        // Save invites
+        NbtList invitesList = new NbtList();
+        for (Map.Entry<UUID, Set<UUID>> e : pendingInvites.entrySet()) {
+            NbtCompound row = new NbtCompound();
+            row.putUuid("Target", e.getKey());
+            NbtList ids = new NbtList();
+            for (UUID v : e.getValue()) {
+                NbtCompound c = new NbtCompound();
+                c.putUuid("V", v);
+                ids.add(c);
+            }
+            row.put("Ids", ids);
+            invitesList.add(row);
+        }
+        nbt.put("Invites", invitesList);
+
+        // Save player names
+        NbtList names = new NbtList();
+        for (Map.Entry<UUID, String> e : lastKnownNames.entrySet()) {
+            NbtCompound row = new NbtCompound();
+            row.putUuid("U", e.getKey());
+            row.putString("N", e.getValue());
+            names.add(row);
+        }
+        nbt.put("Names", names);
+
+        // Save join requests
+        NbtList jr = new NbtList();
+        for (Map.Entry<UUID, Set<UUID>> e : joinRequests.entrySet()) {
+            NbtCompound row = new NbtCompound();
+            row.putUuid("Party", e.getKey());
+            NbtList rs = new NbtList();
+            for (UUID u : e.getValue()) {
+                NbtCompound c = new NbtCompound();
+                c.putUuid("U", u);
+                rs.add(c);
+            }
+            row.put("Reqs", rs);
+            jr.add(row);
+        }
+        nbt.put("JoinRequests", jr);
+
+        // Save invite times
+        NbtList times = new NbtList();
+        for (Map.Entry<String, Long> e : inviteTimes.entrySet()) {
+            String[] parts = e.getKey().split("#", 2);
+            if (parts.length != 2) continue;
+            try {
+                UUID target = UUID.fromString(parts[0]);
+                UUID party = UUID.fromString(parts[1]);
+                NbtCompound row = new NbtCompound();
+                row.putUuid("Target", target);
+                row.putUuid("Party", party);
+                row.putLong("Time", e.getValue());
+                times.add(row);
+            } catch (IllegalArgumentException ignored) {}
+        }
+        nbt.put("InviteTimes", times);
+
+        // NEW: Save FTB Teams party settings
+        NbtList ftbSettings = new NbtList();
+        for (Map.Entry<UUID, PartySettings> e : ftbPartySettings.entrySet()) {
+            NbtCompound row = new NbtCompound();
+            row.putUuid("PartyId", e.getKey());
+            row.put("Settings", e.getValue().toNbt());
+            ftbSettings.add(row);
+        }
+        nbt.put("FTBPartySettings", ftbSettings);
+
+        return nbt;
+    }
+
+    // =========================
+    // Native Party Methods
+    // =========================
 
     public boolean sameParty(UUID a, UUID b) {
         UUID pa = membership.get(a);
@@ -83,12 +194,15 @@ public final class PartyPersistentState extends PersistentState {
         return p;
     }
 
-    public Party getParty(UUID id) { return parties.get(id); }
+    public Party getParty(UUID id) {
+        return parties.get(id);
+    }
 
     public Party getPartyByMember(UUID player) {
         UUID pid = membership.get(player);
         return pid == null ? null : parties.get(pid);
     }
+
     public boolean kick(UUID leader, UUID target) {
         Party p = getPartyByMember(leader);
         if (p == null || !p.leader.equals(leader)) return false;
@@ -101,9 +215,11 @@ public final class PartyPersistentState extends PersistentState {
         markDirty();
         return true;
     }
+
     public Collection<Party> allParties() {
         return Collections.unmodifiableCollection(parties.values());
     }
+
     public boolean invite(UUID inviter, UUID target) {
         Party p = getPartyByMember(inviter);
         if (p == null) return false;
@@ -111,7 +227,6 @@ public final class PartyPersistentState extends PersistentState {
         if (inviter.equals(target)) return false;
         if (p.isMember(target)) return false;
         if (membership.containsKey(target)) return false;
-
 
         long now = System.currentTimeMillis();
         purgeExpiredInvitesFor(target, now);
@@ -123,6 +238,7 @@ public final class PartyPersistentState extends PersistentState {
         markDirty();
         return true;
     }
+
     public Set<UUID> targetsInvitedBy(UUID partyId) {
         Set<UUID> out = new HashSet<>();
         for (Map.Entry<UUID, Set<UUID>> e : pendingInvites.entrySet()) {
@@ -138,6 +254,7 @@ public final class PartyPersistentState extends PersistentState {
         }
         return out;
     }
+
     public boolean acceptAny(UUID target) {
         purgeExpiredInvitesFor(target, System.currentTimeMillis());
         Set<UUID> invites = pendingInvites.getOrDefault(target, Collections.emptySet());
@@ -262,7 +379,12 @@ public final class PartyPersistentState extends PersistentState {
         if (p == null || !p.leader.equals(leader)) return false;
         Set<UUID> set = joinRequests.get(p.id);
         if (set == null || !set.contains(requester)) return false;
-        if (membership.containsKey(requester)) { set.remove(requester); cleanJoinRequestsBucket(p.id); markDirty(); return false; }
+        if (membership.containsKey(requester)) {
+            set.remove(requester);
+            cleanJoinRequestsBucket(p.id);
+            markDirty();
+            return false;
+        }
 
         set.remove(requester);
         cleanJoinRequestsBucket(p.id);
@@ -286,6 +408,53 @@ public final class PartyPersistentState extends PersistentState {
         markDirty();
         return true;
     }
+
+    // =========================
+    // NEW: FTB Teams Methods
+    // =========================
+
+    /**
+     * Get or create settings for an FTB Teams party.
+     * This ensures settings persist across server restarts.
+     */
+    public PartySettings getFTBPartySettings(UUID ftbPartyId) {
+        return ftbPartySettings.computeIfAbsent(ftbPartyId, id -> {
+            PartySettings s = new PartySettings();
+            // Default settings for new FTB parties
+            s.allowHelpfulNonMembers = false;
+            s.ignorePartyCollision = true;
+            markDirty();
+            return s;
+        });
+    }
+
+    /**
+     * Update settings for an FTB Teams party.
+     */
+    public void updateFTBPartySettings(UUID ftbPartyId, PartySettings settings) {
+        ftbPartySettings.put(ftbPartyId, settings);
+        markDirty();
+    }
+
+    /**
+     * Remove settings for an FTB Teams party (when party is disbanded).
+     */
+    public void removeFTBPartySettings(UUID ftbPartyId) {
+        if (ftbPartySettings.remove(ftbPartyId) != null) {
+            markDirty();
+        }
+    }
+
+    /**
+     * Check if FTB party settings exist.
+     */
+    public boolean hasFTBPartySettings(UUID ftbPartyId) {
+        return ftbPartySettings.containsKey(ftbPartyId);
+    }
+
+    // =========================
+    // Private Helper Methods
+    // =========================
 
     private void purgePartyFromInvites(UUID partyId) {
         Iterator<Map.Entry<UUID, Set<UUID>>> it = pendingInvites.entrySet().iterator();
@@ -336,69 +505,7 @@ public final class PartyPersistentState extends PersistentState {
         }
     }
 
-    private static String inviteKey(UUID target, UUID partyId) { return target + "#" + partyId; }
-
-    @Override
-    public NbtCompound writeNbt(NbtCompound nbt, RegistryWrapper.WrapperLookup registryLookup) {
-        NbtList partyList = new NbtList();
-        for (Party p : parties.values()) partyList.add(p.toNbt());
-        nbt.put("Parties", partyList);
-
-        NbtList invitesList = new NbtList();
-        for (Map.Entry<UUID, Set<UUID>> e : pendingInvites.entrySet()) {
-            NbtCompound row = new NbtCompound();
-            row.putUuid("Target", e.getKey());
-            NbtList ids = new NbtList();
-            for (UUID v : e.getValue()) {
-                NbtCompound c = new NbtCompound();
-                c.putUuid("V", v);
-                ids.add(c);
-            }
-            row.put("Ids", ids);
-            invitesList.add(row);
-        }
-        nbt.put("Invites", invitesList);
-
-        NbtList names = new NbtList();
-        for (Map.Entry<UUID, String> e : lastKnownNames.entrySet()) {
-            NbtCompound row = new NbtCompound();
-            row.putUuid("U", e.getKey());
-            row.putString("N", e.getValue());
-            names.add(row);
-        }
-        nbt.put("Names", names);
-
-        NbtList jr = new NbtList();
-        for (Map.Entry<UUID, Set<UUID>> e : joinRequests.entrySet()) {
-            NbtCompound row = new NbtCompound();
-            row.putUuid("Party", e.getKey());
-            NbtList rs = new NbtList();
-            for (UUID u : e.getValue()) {
-                NbtCompound c = new NbtCompound();
-                c.putUuid("U", u);
-                rs.add(c);
-            }
-            row.put("Reqs", rs);
-            jr.add(row);
-        }
-        nbt.put("JoinRequests", jr);
-
-        NbtList times = new NbtList();
-        for (Map.Entry<String, Long> e : inviteTimes.entrySet()) {
-            String[] parts = e.getKey().split("#", 2);
-            if (parts.length != 2) continue;
-            try {
-                UUID target = UUID.fromString(parts[0]);
-                UUID party = UUID.fromString(parts[1]);
-                NbtCompound row = new NbtCompound();
-                row.putUuid("Target", target);
-                row.putUuid("Party", party);
-                row.putLong("Time", e.getValue());
-                times.add(row);
-            } catch (IllegalArgumentException ignored) {}
-        }
-        nbt.put("InviteTimes", times);
-
-        return nbt;
+    private static String inviteKey(UUID target, UUID partyId) {
+        return target + "#" + partyId;
     }
 }

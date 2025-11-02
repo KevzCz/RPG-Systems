@@ -1,5 +1,8 @@
 package net.pixeldreamstudios.rpgsystems.client.party.screen.box;
 
+import dev.ftb.mods.ftbteams.api.FTBTeamsAPI;
+import dev.ftb.mods.ftbteams.client.gui.MyTeamScreen;
+import dev.ftb.mods.ftbteams.data.PlayerPermissions;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
@@ -12,9 +15,11 @@ import net.minecraft.util.Identifier;
 import net.pixeldreamstudios.rpgsystems.client.party.ClientPartyHudData;
 import net.pixeldreamstudios.rpgsystems.client.party.FTBTeamsCommandHelper;
 import net.pixeldreamstudios.rpgsystems.network.party.PartySettingsPayloads;
+import net.pixeldreamstudios.rpgsystems.party.FTBTeamsIntegration;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
+
 @Environment(EnvType.CLIENT)
 public final class PartyInfoBox implements PartyBox {
 
@@ -59,6 +64,10 @@ public final class PartyInfoBox implements PartyBox {
     private static long gearAnimStartMs = 0L;
     private static int gearAnimDir = 0;
     private static float gearAnimAngle = 0f;
+
+    // Settings panel gear button coordinates
+    private int settingsPanelGearX = -1, settingsPanelGearY = -1;
+    private static final int SETTINGS_GEAR_SIZE = 12;
 
     @Override
     public void render(DrawContext ctx, TextRenderer tr, int canvasX, int canvasY, int canvasW, int canvasH) {
@@ -166,7 +175,22 @@ public final class PartyInfoBox implements PartyBox {
             ctx.fill(bx, by, bx + boxW, by + boxH, SETTINGS_BG);
             drawBorder(ctx, bx, by, boxW, boxH, SETTINGS_BORDER);
 
-            drawScaledText(ctx, tr, "Settings", bx + innerPad, by + innerPad, 0xFFFFFFFF, SETTINGS_TEXT_SCALE);
+            // Draw title on the left
+            int titleTextX = bx + innerPad;
+            drawScaledText(ctx, tr, "Settings", titleTextX, by + innerPad, 0xFFFFFFFF, SETTINGS_TEXT_SCALE);
+
+            // Draw settings gear button on the right side of title bar
+            settingsPanelGearX = bx + boxW - innerPad - SETTINGS_GEAR_SIZE;
+            settingsPanelGearY = by + innerPad;
+
+            boolean hoverSettingsGear = isMouseOver(settingsPanelGearX, settingsPanelGearY, SETTINGS_GEAR_SIZE, SETTINGS_GEAR_SIZE);
+
+            m.push();
+            m.translate(settingsPanelGearX + SETTINGS_GEAR_SIZE / 2f, settingsPanelGearY + SETTINGS_GEAR_SIZE / 2f, 0f);
+            m.scale(0.6f, 0.6f, 1f);
+            int gearColor = hoverSettingsGear ? 0xFFFFFFFF : 0xFFAAAAAA;
+            ctx.drawTexture(SETTINGS_BUTTON, -GEAR_W / 2, -GEAR_H / 2, 0, 0, GEAR_W, GEAR_H, 16, 16);
+            m.pop();
 
             int listTop = by + innerPad + titleH + 4;
             int cx0 = bx + innerPad;
@@ -187,6 +211,7 @@ public final class PartyInfoBox implements PartyBox {
             }
         } else {
             overlayW = overlayH = 0;
+            settingsPanelGearX = settingsPanelGearY = -1;
         }
     }
 
@@ -196,6 +221,18 @@ public final class PartyInfoBox implements PartyBox {
 
         if (showSettings) {
             boolean clickedInside = (mouseX >= overlayX && mouseX < overlayX + overlayW && mouseY >= overlayY && mouseY < overlayY + overlayH);
+
+            // Check if settings gear was clicked inside the settings panel
+            if (settingsPanelGearX >= 0 && settingsPanelGearY >= 0) {
+                if (mouseX >= settingsPanelGearX && mouseX < settingsPanelGearX + SETTINGS_GEAR_SIZE &&
+                        mouseY >= settingsPanelGearY && mouseY < settingsPanelGearY + SETTINGS_GEAR_SIZE) {
+
+                    if (FTBTeamsIntegration.isEnabled()) {
+                        openFTBTeamsPropertyConfig();
+                    }
+                    return true;
+                }
+            }
 
             if (!clickedInside) {
                 showSettings = false;
@@ -285,6 +322,30 @@ public final class PartyInfoBox implements PartyBox {
         return false;
     }
 
+    private void openFTBTeamsPropertyConfig() {
+        var mc = MinecraftClient.getInstance();
+        if (mc == null || mc.player == null) return;
+
+        var manager = FTBTeamsAPI.api().getClientManager();
+        if (manager == null) return;
+
+        var team = manager.selfTeam();
+        if (team == null) return;
+
+        var properties = team.getProperties();
+        var playerRank = team.getRankForPlayer(mc.player.getUuid());boolean canModify = playerRank.isNoneOrBetter() || playerRank.isOfficerOrBetter();
+        PlayerPermissions permissions =
+                new PlayerPermissions(
+                        canModify,
+                        canModify,
+                        canModify
+                );
+
+        MyTeamScreen myTeamScreen =
+                new MyTeamScreen(properties, permissions);
+
+        myTeamScreen.openGui();
+    }
     private static void startGearSpin(int dir) {
         gearAnimDir = dir;
         gearAnimStartMs = System.currentTimeMillis();

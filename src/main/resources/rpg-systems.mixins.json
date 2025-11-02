@@ -30,7 +30,8 @@
 		"pet.MobEntityPetMixin",
 		"pet.AbstractHorseEntityPetHookMixin",
 		"pet.TameableEntityPetHookMixin",
-		"ftbteams.AbstractTeamMixin"
+		"ftbteams.AbstractTeamMixin",
+		"ftbteams.PartyTeamInviteMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

@@ -5,6 +5,9 @@ import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.pixeldreamstudios.rpgsystems.party.FTBTeamsIntegration;
+import net.pixeldreamstudios.rpgsystems.party.PartyAllies;
+import net.pixeldreamstudios.rpgsystems.party.PartyPersistentState;
+import net.pixeldreamstudios.rpgsystems.party.PartySettings;
 import net.spell_engine.internals.target.EntityRelations;
 import net.spell_engine.internals.target.SpellTarget;
 import org.spongepowered.asm.mixin.Mixin;
@@ -28,47 +31,42 @@ public abstract class EntityRelationsHelpfulGateMixin {
         if (server == null) return;
 
         if (intent == SpellTarget.Intent.HELPFUL) {
-            if (target == caster) return;
+            if (target == caster) return; // Allow self-cast
+
+            PartySettings casterSettings = null;
 
             if (FTBTeamsIntegration.isEnabled() && caster instanceof ServerPlayerEntity serverPlayer) {
                 FTBTeamsIntegration.FTBPartyData ftbData = FTBTeamsIntegration.getPartyDataForPlayer(serverPlayer);
-                if (ftbData == null) return;
-                if (ftbData.settings.allowHelpfulNonMembers) return;
-
-                if (target instanceof PlayerEntity tp) {
-                    boolean same = net.pixeldreamstudios.rpgsystems.party.PartyAllies
-                            .sameParty(server, caster.getUuid(), tp.getUuid());
-                    if (!same) { cir.setReturnValue(false); return; }
-                    return;
+                if (ftbData != null) {
+                    casterSettings = ftbData.settings;
                 }
-
-                var ownerUuid = net.pixeldreamstudios.rpgsystems.party.PartyAllies.owningPlayerUuid(target);
-                if (ownerUuid != null) {
-                    boolean same = net.pixeldreamstudios.rpgsystems.party.PartyAllies
-                            .sameParty(server, caster.getUuid(), ownerUuid);
-                    if (!same) { cir.setReturnValue(false); return; }
+            } else {
+                var state = PartyPersistentState.get(server);
+                var party = state.getPartyByMember(caster.getUuid());
+                if (party != null) {
+                    casterSettings = party.settings;
                 }
+            }
+
+            // If no party or allows helpful to non-members, allow the action
+            if (casterSettings == null || casterSettings.allowHelpfulNonMembers) {
                 return;
             }
 
-            var state = net.pixeldreamstudios.rpgsystems.party.PartyPersistentState.get(server);
-            var p = state.getPartyByMember(caster.getUuid());
-
-            if (p == null) return;
-            if (p.settings.allowHelpfulNonMembers) return;
+            // Check if target is in same party
+            boolean isSameParty = false;
 
             if (target instanceof PlayerEntity tp) {
-                boolean same = net.pixeldreamstudios.rpgsystems.party.PartyAllies
-                        .sameParty(server, caster.getUuid(), tp.getUuid());
-                if (!same) { cir.setReturnValue(false); return; }
-                return;
+                isSameParty = PartyAllies.sameParty(server, caster.getUuid(), tp.getUuid());
+            } else {
+                var ownerUuid = PartyAllies.owningPlayerUuid(target);
+                if (ownerUuid != null) {
+                    isSameParty = PartyAllies.sameParty(server, caster.getUuid(), ownerUuid);
+                }
             }
 
-            var ownerUuid = net.pixeldreamstudios.rpgsystems.party.PartyAllies.owningPlayerUuid(target);
-            if (ownerUuid != null) {
-                boolean same = net.pixeldreamstudios.rpgsystems.party.PartyAllies
-                        .sameParty(server, caster.getUuid(), ownerUuid);
-                if (!same) { cir.setReturnValue(false); return; }
+            if (!isSameParty) {
+                cir.setReturnValue(false);
             }
             return;
         }
@@ -76,19 +74,20 @@ public abstract class EntityRelationsHelpfulGateMixin {
         if (intent == SpellTarget.Intent.HARMFUL) {
             if (target == caster) return;
 
+            // Check if target is in same party
+            boolean isSameParty = false;
+
             if (target instanceof PlayerEntity tp) {
-                boolean same = net.pixeldreamstudios.rpgsystems.party.PartyAllies
-                        .sameParty(server, caster.getUuid(), tp.getUuid());
-                if (same) { cir.setReturnValue(false); return; }
-                return;
+                isSameParty = PartyAllies.sameParty(server, caster.getUuid(), tp.getUuid());
+            } else {
+                var ownerUuid = PartyAllies.owningPlayerUuid(target);
+                if (ownerUuid != null) {
+                    isSameParty = PartyAllies.sameParty(server, caster.getUuid(), ownerUuid);
+                }
             }
 
-            var ownerUuid = net.pixeldreamstudios.rpgsystems.party.PartyAllies.owningPlayerUuid(target);
-            if (ownerUuid != null) {
-                boolean same = net.pixeldreamstudios.rpgsystems.party.PartyAllies
-                        .sameParty(server, caster.getUuid(), ownerUuid);
-                if (same) { cir.setReturnValue(false);
-                }
+            if (isSameParty) {
+                cir.setReturnValue(false);
             }
         }
     }

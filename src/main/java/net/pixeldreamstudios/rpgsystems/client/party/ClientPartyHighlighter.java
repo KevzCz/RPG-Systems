@@ -7,6 +7,7 @@ import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.ClientPlayerEntity;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.PlayerEntity;
+import net.pixeldreamstudios.rpgsystems.party.PartyAllies;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -39,22 +40,46 @@ public final class ClientPartyHighlighter {
         }
     }
 
-    public static void disable() { enabled = false; }
+    public static void disable() {
+        enabled = false;
+    }
 
-    public static boolean isEnabled() { return enabled; }
+    public static boolean isEnabled() {
+        return enabled;
+    }
 
     public static boolean shouldGlow(Entity e) {
         if (!enabled) return false;
-        if (!(e instanceof PlayerEntity)) return false;
         if (MC == null || MC.player == null) return false;
+
         if (e.getId() == MC.player.getId()) return false;
-        return ClientPartyHudData.isMember(e.getUuid());
+
+        if (e instanceof PlayerEntity) {
+            UUID entityUuid = e.getUuid();
+            if (entityUuid != null && ClientPartyHudData.isMember(entityUuid)) {
+                return true;
+            }
+        }
+
+        UUID ownerUuid = PartyAllies.owningPlayerUuid(e);
+        if (ownerUuid != null && ClientPartyHudData.isMember(ownerUuid)) {
+            return true;
+        }
+
+        return false;
     }
 
-    /** Color to use when we’re glowing them. */
     public static int getColor(Entity e) {
-        UUID id = e.getUuid();
-        return COLOR_CACHE.computeIfAbsent(id, ClientPartyHighlighter::colorForUuid);
+        UUID colorKey;
+
+        if (e instanceof PlayerEntity) {
+            colorKey = e.getUuid();
+        } else {
+            UUID ownerUuid = PartyAllies.owningPlayerUuid(e);
+            colorKey = (ownerUuid != null) ? ownerUuid : e.getUuid();
+        }
+
+        return COLOR_CACHE.computeIfAbsent(colorKey, ClientPartyHighlighter::colorForUuid);
     }
 
     private static int colorForUuid(UUID u) {
@@ -64,6 +89,7 @@ public final class ClientPartyHighlighter {
         float lit = 0.55f;
         return hslToRgb(hue, sat, lit);
     }
+
     private static int hslToRgb(float h, float s, float l) {
         float r, g, b;
         if (s == 0f) {
@@ -80,6 +106,7 @@ public final class ClientPartyHighlighter {
         int B = Math.min(255, Math.max(0, Math.round(b * 255f)));
         return (R << 16) | (G << 8) | B;
     }
+
     private static float hue2rgb(float p, float q, float t) {
         if (t < 0) t += 1f;
         if (t > 1) t -= 1f;
