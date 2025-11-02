@@ -397,6 +397,22 @@ public final class PartyNet {
 
         ServerPlayNetworking.registerGlobalReceiver(InviteRespond.ID, (payload, context) -> {
             ServerPlayerEntity player = context.player();
+
+            if (FTBTeamsIntegration.isEnabled()) {
+                if (payload.accept()) {
+                    player.getServer().getCommandManager().executeWithPrefix(
+                            player.getCommandSource(),
+                            "ftbteams party join " + payload.partyId()
+                    );
+                } else {
+                    player.getServer().getCommandManager().executeWithPrefix(
+                            player.getCommandSource(),
+                            "ftbteams party decline " + payload.partyId()
+                    );
+                }
+                ServerPlayNetworking.send(player, new InviteRemoved(payload.partyId()));
+                return;
+            }
             PartyPersistentState state = PartyPersistentState.get(player.getServer());
             Party party = state.getParty(payload.partyId());
             String partyName = party == null || party.name.isEmpty() ? String.valueOf(payload.partyId()) : party.name;
@@ -972,7 +988,21 @@ public final class PartyNet {
 
         for (UUID memberId : ftbData.members) {
             ServerPlayerEntity member = server.getPlayerManager().getPlayer(memberId);
-            String name = member != null ? member.getName().getString() : memberId.toString();
+
+            String name;
+            if (member != null) {
+                name = member.getName().getString();
+            } else {
+                try {
+                    dev.ftb.mods.ftbteams.api.TeamManager ftbManager = dev.ftb.mods.ftbteams.api.FTBTeamsAPI.api().getManager();
+                    name = ftbManager.getPlayerTeamForPlayerID(memberId)
+                            .map(team -> ((dev.ftb.mods.ftbteams.data.PlayerTeam) team).getPlayerName())
+                            .orElse(memberId.toString());
+                } catch (Exception e) {
+                    name = memberId.toString();
+                }
+            }
+
             RPGSystems.LOGGER.debug("[Party Integration] Adding member to roster: {} ({})", name, memberId);
             ServerPlayNetworking.send(recipient, new PartyRosterAdd(ftbData.partyId, memberId, name));
 

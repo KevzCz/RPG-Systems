@@ -18,15 +18,8 @@ public final class FTBTeamsChatBridge {
         if (!FTBTeamsIntegration.isEnabled()) {
             return;
         }
-
-        // Listen to FTB Teams messages and forward to our chat system
-        // Note: FTB Teams doesn't have a direct event for this, so we'll need to
-        // hook into their sendMessage method via our event listener
     }
 
-    /**
-     * Send a message from your party chat system to FTB Teams
-     */
     public static void sendToFTBTeams(ServerPlayerEntity sender, String message) {
         if (!FTBTeamsIntegration.isEnabled()) {
             return;
@@ -35,14 +28,10 @@ public final class FTBTeamsChatBridge {
         Optional<Team> teamOpt = FTBTeamsAPI.api().getManager().getTeamForPlayer(sender);
         if (teamOpt.isPresent() && teamOpt.get().isPartyTeam()) {
             Team team = teamOpt.get();
-            // FTB Teams will handle broadcasting to all members
             team.sendMessage(sender.getUuid(), message);
         }
     }
 
-    /**
-     * Forward FTB Teams message to our party chat HUD
-     */
     public static void forwardToRPGSystems(MinecraftServer server, Team team, UUID senderId, String message) {
         if (!team.isPartyTeam()) {
             return;
@@ -51,7 +40,6 @@ public final class FTBTeamsChatBridge {
         long now = System.currentTimeMillis();
         String senderName = getSenderName(server, senderId);
 
-        // Send to all online party members using our chat payload
         for (ServerPlayerEntity member : team.getOnlineMembers()) {
             PartyChatPayloads.ChatMessage payload = new PartyChatPayloads.ChatMessage(
                     team.getId(),

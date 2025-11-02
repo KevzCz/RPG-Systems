@@ -51,7 +51,11 @@ public final class FTBTeamsCommandHelper {
         if (mc == null || mc.getNetworkHandler() == null) return;
 
         if (FTBTeamsIntegration.isEnabled()) {
-            mc.getNetworkHandler().sendChatCommand("ftbteams party transfer_ownership " + memberName);
+            if (ClientPartyHudData.partyId != null && ClientPartyHudData.partyName != null) {
+                String shortTeamId = ClientPartyHudData.partyId.toString().substring(0, 8);
+                String teamShortName = ClientPartyHudData.partyName + "#" + shortTeamId;
+                mc.getNetworkHandler().sendChatCommand("ftbteams party transfer_ownership_for " + teamShortName + " " + memberName);
+            }
         } else {
             mc.getNetworkHandler().sendChatCommand("party promote " + memberName);
         }
