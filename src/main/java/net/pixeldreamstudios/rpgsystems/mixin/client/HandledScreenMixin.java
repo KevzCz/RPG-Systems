@@ -2,6 +2,7 @@ package net.pixeldreamstudios.rpgsystems.mixin.client;
 
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
+import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
@@ -108,7 +109,6 @@ public abstract class HandledScreenMixin<T extends ScreenHandler> extends Screen
 
         if (party$shouldAttach()) {
             boolean hasParty = ClientPartyHudData.partyId != null;
-            boolean usingFTBTeams = FTBTeamsIntegration.isEnabled();
 
             int s = this.party$btnSize;
             boolean hovered = mouseX >= party$btnX && mouseX <= party$btnX + s &&
@@ -151,7 +151,7 @@ public abstract class HandledScreenMixin<T extends ScreenHandler> extends Screen
             if (mouseX >= party$btnX && mouseX <= party$btnX + s &&
                     mouseY >= party$btnY && mouseY <= party$btnY + s) {
                 boolean hasParty = ClientPartyHudData.partyId != null;
-                boolean usingFTBTeams = FTBTeamsIntegration.isEnabled();
+                boolean usingFTBTeams = FabricLoader.getInstance().isModLoaded("ftbteams") && FTBTeamsIntegration.isEnabled();
 
                 if (hasParty) {
                     MinecraftClient.getInstance().setScreen(new PartyScreen());

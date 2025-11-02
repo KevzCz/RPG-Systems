@@ -9,13 +9,14 @@ import net.minecraft.server.network.ServerPlayerEntity;
 import net.pixeldreamstudios.rpgsystems.network.party.PartyInvitePayloads;
 import net.pixeldreamstudios.rpgsystems.party.FTBTeamsIntegration;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Pseudo;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 import java.util.Collection;
 import java.util.UUID;
-
+@Pseudo
 @Mixin(value = PartyTeam.class, remap = false)
 public abstract class PartyTeamInviteMixin extends AbstractTeam {
 

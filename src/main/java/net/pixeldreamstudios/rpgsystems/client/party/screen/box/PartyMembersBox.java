@@ -10,7 +10,7 @@ import net.minecraft.client.texture.TextureManager;
 import net.minecraft.util.Identifier;
 import net.pixeldreamstudios.rpgsystems.client.party.ClientPartyHudData;
 import net.pixeldreamstudios.rpgsystems.client.party.ClientPartyPins;
-import net.pixeldreamstudios.rpgsystems.client.party.FTBTeamsCommandHelper;
+import net.pixeldreamstudios.rpgsystems.client.party.CompatCommandHelper;
 
 import java.util.*;
 
@@ -416,7 +416,7 @@ public final class PartyMembersBox implements PartyBox {
                     if (mouseX >= btnX && mouseX < btnX + KICK_W && mouseY >= btnY && mouseY < btnY + KICK_H) {
                         var mc = MinecraftClient.getInstance();
                         if (m.name != null && !m.name.isBlank()) {
-                            FTBTeamsCommandHelper.sendKickCommand(m.name);
+                            CompatCommandHelper.sendKickCommand(m.name);
                         }
                         return true;
                     }
@@ -795,7 +795,7 @@ public final class PartyMembersBox implements PartyBox {
                 if (canPromote) {
                     ClientPartyHudData.Member sel = promoteCandidates.get(promoteSelectedIndex);
                     if (sel != null && sel.name != null && !sel.name.isBlank()) {
-                        FTBTeamsCommandHelper.sendPromoteCommand(sel.name);
+                        CompatCommandHelper.sendPromoteCommand(sel.name);
                     }
                     showPromoteDialog = false;
                 }

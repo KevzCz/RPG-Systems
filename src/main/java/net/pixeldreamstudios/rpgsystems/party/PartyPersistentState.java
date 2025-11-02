@@ -27,7 +27,6 @@ public final class PartyPersistentState extends PersistentState {
     private final Map<UUID, Set<UUID>> joinRequests = new HashMap<>();
     private final Map<String, Long> inviteTimes = new HashMap<>();
 
-    // NEW: Store settings for FTB Teams parties
     private final Map<UUID, PartySettings> ftbPartySettings = new HashMap<>();
 
     public static PartyPersistentState get(MinecraftServer server) {
@@ -38,7 +37,6 @@ public final class PartyPersistentState extends PersistentState {
     private static PartyPersistentState fromNbt(NbtCompound nbt, RegistryWrapper.WrapperLookup lookup) {
         PartyPersistentState s = new PartyPersistentState();
 
-        // Load native parties
         NbtList partyList = nbt.getList("Parties", NbtElement.COMPOUND_TYPE);
         for (int i = 0; i < partyList.size(); i++) {
             Party p = Party.fromNbt(partyList.getCompound(i));
@@ -46,7 +44,6 @@ public final class PartyPersistentState extends PersistentState {
             for (UUID u : p.members) s.membership.put(u, p.id);
         }
 
-        // Load invites
         NbtList invitesList = nbt.getList("Invites", NbtElement.COMPOUND_TYPE);
         for (int i = 0; i < invitesList.size(); i++) {
             NbtCompound tag = invitesList.getCompound(i);
@@ -57,14 +54,12 @@ public final class PartyPersistentState extends PersistentState {
             if (!set.isEmpty()) s.pendingInvites.put(target, set);
         }
 
-        // Load player names
         NbtList names = nbt.getList("Names", NbtElement.COMPOUND_TYPE);
         for (int i = 0; i < names.size(); i++) {
             NbtCompound row = names.getCompound(i);
             s.lastKnownNames.put(row.getUuid("U"), row.getString("N"));
         }
 
-        // Load join requests
         NbtList jr = nbt.getList("JoinRequests", NbtElement.COMPOUND_TYPE);
         for (int i = 0; i < jr.size(); i++) {
             NbtCompound row = jr.getCompound(i);
@@ -75,7 +70,6 @@ public final class PartyPersistentState extends PersistentState {
             if (!reqs.isEmpty()) s.joinRequests.put(partyId, reqs);
         }
 
-        // Load invite times
         NbtList times = nbt.getList("InviteTimes", NbtElement.COMPOUND_TYPE);
         for (int i = 0; i < times.size(); i++) {
             NbtCompound row = times.getCompound(i);
@@ -85,7 +79,6 @@ public final class PartyPersistentState extends PersistentState {
             s.inviteTimes.put(inviteKey(target, party), when);
         }
 
-        // NEW: Load FTB Teams party settings
         NbtList ftbSettings = nbt.getList("FTBPartySettings", NbtElement.COMPOUND_TYPE);
         for (int i = 0; i < ftbSettings.size(); i++) {
             NbtCompound row = ftbSettings.getCompound(i);
@@ -99,12 +92,11 @@ public final class PartyPersistentState extends PersistentState {
 
     @Override
     public NbtCompound writeNbt(NbtCompound nbt, RegistryWrapper.WrapperLookup registryLookup) {
-        // Save native parties
+
         NbtList partyList = new NbtList();
         for (Party p : parties.values()) partyList.add(p.toNbt());
         nbt.put("Parties", partyList);
 
-        // Save invites
         NbtList invitesList = new NbtList();
         for (Map.Entry<UUID, Set<UUID>> e : pendingInvites.entrySet()) {
             NbtCompound row = new NbtCompound();
@@ -120,7 +112,6 @@ public final class PartyPersistentState extends PersistentState {
         }
         nbt.put("Invites", invitesList);
 
-        // Save player names
         NbtList names = new NbtList();
         for (Map.Entry<UUID, String> e : lastKnownNames.entrySet()) {
             NbtCompound row = new NbtCompound();
@@ -130,7 +121,6 @@ public final class PartyPersistentState extends PersistentState {
         }
         nbt.put("Names", names);
 
-        // Save join requests
         NbtList jr = new NbtList();
         for (Map.Entry<UUID, Set<UUID>> e : joinRequests.entrySet()) {
             NbtCompound row = new NbtCompound();
@@ -146,7 +136,6 @@ public final class PartyPersistentState extends PersistentState {
         }
         nbt.put("JoinRequests", jr);
 
-        // Save invite times
         NbtList times = new NbtList();
         for (Map.Entry<String, Long> e : inviteTimes.entrySet()) {
             String[] parts = e.getKey().split("#", 2);
@@ -163,7 +152,6 @@ public final class PartyPersistentState extends PersistentState {
         }
         nbt.put("InviteTimes", times);
 
-        // NEW: Save FTB Teams party settings
         NbtList ftbSettings = new NbtList();
         for (Map.Entry<UUID, PartySettings> e : ftbPartySettings.entrySet()) {
             NbtCompound row = new NbtCompound();
@@ -176,9 +164,6 @@ public final class PartyPersistentState extends PersistentState {
         return nbt;
     }
 
-    // =========================
-    // Native Party Methods
-    // =========================
 
     public boolean sameParty(UUID a, UUID b) {
         UUID pa = membership.get(a);
@@ -409,18 +394,9 @@ public final class PartyPersistentState extends PersistentState {
         return true;
     }
 
-    // =========================
-    // NEW: FTB Teams Methods
-    // =========================
-
-    /**
-     * Get or create settings for an FTB Teams party.
-     * This ensures settings persist across server restarts.
-     */
     public PartySettings getFTBPartySettings(UUID ftbPartyId) {
         return ftbPartySettings.computeIfAbsent(ftbPartyId, id -> {
             PartySettings s = new PartySettings();
-            // Default settings for new FTB parties
             s.allowHelpfulNonMembers = false;
             s.ignorePartyCollision = true;
             markDirty();
@@ -428,33 +404,20 @@ public final class PartyPersistentState extends PersistentState {
         });
     }
 
-    /**
-     * Update settings for an FTB Teams party.
-     */
     public void updateFTBPartySettings(UUID ftbPartyId, PartySettings settings) {
         ftbPartySettings.put(ftbPartyId, settings);
         markDirty();
     }
 
-    /**
-     * Remove settings for an FTB Teams party (when party is disbanded).
-     */
     public void removeFTBPartySettings(UUID ftbPartyId) {
         if (ftbPartySettings.remove(ftbPartyId) != null) {
             markDirty();
         }
     }
-
-    /**
-     * Check if FTB party settings exist.
-     */
     public boolean hasFTBPartySettings(UUID ftbPartyId) {
         return ftbPartySettings.containsKey(ftbPartyId);
     }
 
-    // =========================
-    // Private Helper Methods
-    // =========================
 
     private void purgePartyFromInvites(UUID partyId) {
         Iterator<Map.Entry<UUID, Set<UUID>>> it = pendingInvites.entrySet().iterator();

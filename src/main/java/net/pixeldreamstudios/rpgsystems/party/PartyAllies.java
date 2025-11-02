@@ -1,5 +1,6 @@
 package net.pixeldreamstudios.rpgsystems.party;
 
+import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.entity.AreaEffectCloudEntity;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.LightningEntity;
@@ -21,7 +22,7 @@ public final class PartyAllies {
         if (a == null || b == null) return false;
         if (server == null) return false;
 
-        if (net.pixeldreamstudios.rpgsystems.party.FTBTeamsIntegration.isEnabled()) {
+        if (FabricLoader.getInstance().isModLoaded("ftbteams") && FTBTeamsIntegration.isEnabled()) {
             var pa = net.pixeldreamstudios.rpgsystems.party.FTBTeamsIntegration.getPartyDataForPlayerId(server, a);
             var pb = net.pixeldreamstudios.rpgsystems.party.FTBTeamsIntegration.getPartyDataForPlayerId(server, b);
             return pa != null && pb != null && pa.partyId.equals(pb.partyId);

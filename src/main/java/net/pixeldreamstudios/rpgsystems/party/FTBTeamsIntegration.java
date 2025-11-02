@@ -4,11 +4,14 @@ import dev.ftb.mods.ftbteams.api.FTBTeamsAPI;
 import dev.ftb.mods.ftbteams.api.Team;
 import dev.ftb.mods.ftbteams.api.TeamManager;
 import dev.ftb.mods.ftbteams.api.property.TeamProperties;
+import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.pixeldreamstudios.rpgsystems.RPGSystems;
 import net.pixeldreamstudios.rpgsystems.config.RPGSystemsConfig;
+import net.pixeldreamstudios.rpgsystems.network.PartyNet;
+import net.pixeldreamstudios.rpgsystems.network.party.PartyStatusEffectsPayloads;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
@@ -57,7 +60,6 @@ public final class FTBTeamsIntegration {
             UUID leaderUuid = team.getOwner();
             Set<UUID> members = team.getMembers();
 
-            // FIXED: Get persisted settings instead of creating new ones
             MinecraftServer server = player.getServer();
             if (server == null) {
                 RPGSystems.LOGGER.warn("[FTB Teams Integration] Server is null for player {}", player.getName().getString());
@@ -102,7 +104,6 @@ public final class FTBTeamsIntegration {
             UUID leaderUuid = team.getOwner();
             Set<UUID> members = team.getMembers();
 
-            // FIXED: Get persisted settings instead of creating new ones
             PartyPersistentState state = PartyPersistentState.get(server);
             PartySettings settings = state.getFTBPartySettings(partyId);
 
@@ -199,19 +200,6 @@ public final class FTBTeamsIntegration {
         }
     }
 
-    // =========================
-    // NEW: Settings Management
-    // =========================
-
-    /**
-     * Update party settings for an FTB Teams party.
-     * This persists the settings across server restarts.
-     *
-     * @param server The server instance
-     * @param partyId The FTB Teams party UUID
-     * @param settings The new settings to apply
-     * @return true if successful, false otherwise
-     */
     public static boolean updatePartySettings(MinecraftServer server, UUID partyId, PartySettings settings) {
         if (!isEnabled()) return false;
         if (server == null || partyId == null || settings == null) return false;
@@ -231,7 +219,6 @@ public final class FTBTeamsIntegration {
                 return false;
             }
 
-            // Save settings to persistent state
             PartyPersistentState state = PartyPersistentState.get(server);
             state.updateFTBPartySettings(partyId, settings);
 
@@ -245,13 +232,6 @@ public final class FTBTeamsIntegration {
         }
     }
 
-    /**
-     * Update party settings for the party that a player is in.
-     *
-     * @param player The player whose party settings to update
-     * @param settings The new settings to apply
-     * @return true if successful, false otherwise
-     */
     public static boolean updatePartySettingsForPlayer(ServerPlayerEntity player, PartySettings settings) {
         if (!isEnabled()) return false;
         if (player == null || settings == null) return false;
@@ -268,14 +248,6 @@ public final class FTBTeamsIntegration {
 
         return updatePartySettings(server, partyId, settings);
     }
-
-    /**
-     * Get party settings for an FTB Teams party.
-     *
-     * @param server The server instance
-     * @param partyId The FTB Teams party UUID
-     * @return The party settings, or null if not found
-     */
     @Nullable
     public static PartySettings getPartySettings(MinecraftServer server, UUID partyId) {
         if (!isEnabled()) return null;
@@ -300,12 +272,6 @@ public final class FTBTeamsIntegration {
         }
     }
 
-    /**
-     * Check if a player is the leader of their FTB Teams party.
-     *
-     * @param player The player to check
-     * @return true if the player is the party leader, false otherwise
-     */
     public static boolean isPartyLeader(ServerPlayerEntity player) {
         if (!isEnabled()) return false;
 
@@ -326,13 +292,6 @@ public final class FTBTeamsIntegration {
         }
     }
 
-    /**
-     * Cleanup settings for a disbanded FTB Teams party.
-     * This should be called when an FTB Teams party is deleted.
-     *
-     * @param server The server instance
-     * @param partyId The FTB Teams party UUID
-     */
     public static void cleanupPartySettings(MinecraftServer server, UUID partyId) {
         if (!isEnabled()) return;
         if (server == null || partyId == null) return;
@@ -346,7 +305,23 @@ public final class FTBTeamsIntegration {
                     partyId, e);
         }
     }
+    public static void pushAllVitals(MinecraftServer server) {
+        for (ServerPlayerEntity viewer : server.getPlayerManager().getPlayerList()) {
+            FTBTeamsIntegration.FTBPartyData ftbData = getPartyDataForPlayer(viewer);
+            if (ftbData == null) continue;
 
+            for (UUID memberId : ftbData.members) {
+                ServerPlayerEntity subject = server.getPlayerManager().getPlayer(memberId);
+                if (subject == null) {
+                    ServerPlayNetworking.send(viewer,
+                            new PartyStatusEffectsPayloads.MemberEffects(memberId, List.of()));
+                    continue;
+                }
+
+                PartyNet.pushVitalsForMember(viewer, subject, memberId);
+            }
+        }
+    }
 
     public static class FTBPartyData {
         public final UUID partyId;

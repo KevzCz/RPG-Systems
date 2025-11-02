@@ -6,6 +6,7 @@ import dev.ftb.mods.ftbteams.data.PlayerPermissions;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
+import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.gui.DrawContext;
@@ -13,7 +14,7 @@ import net.minecraft.client.texture.AbstractTexture;
 import net.minecraft.client.texture.TextureManager;
 import net.minecraft.util.Identifier;
 import net.pixeldreamstudios.rpgsystems.client.party.ClientPartyHudData;
-import net.pixeldreamstudios.rpgsystems.client.party.FTBTeamsCommandHelper;
+import net.pixeldreamstudios.rpgsystems.client.party.CompatCommandHelper;
 import net.pixeldreamstudios.rpgsystems.network.party.PartySettingsPayloads;
 import net.pixeldreamstudios.rpgsystems.party.FTBTeamsIntegration;
 
@@ -64,8 +65,6 @@ public final class PartyInfoBox implements PartyBox {
     private static long gearAnimStartMs = 0L;
     private static int gearAnimDir = 0;
     private static float gearAnimAngle = 0f;
-
-    // Settings panel gear button coordinates
     private int settingsPanelGearX = -1, settingsPanelGearY = -1;
     private static final int SETTINGS_GEAR_SIZE = 12;
 
@@ -174,12 +173,9 @@ public final class PartyInfoBox implements PartyBox {
 
             ctx.fill(bx, by, bx + boxW, by + boxH, SETTINGS_BG);
             drawBorder(ctx, bx, by, boxW, boxH, SETTINGS_BORDER);
-
-            // Draw title on the left
             int titleTextX = bx + innerPad;
             drawScaledText(ctx, tr, "Settings", titleTextX, by + innerPad, 0xFFFFFFFF, SETTINGS_TEXT_SCALE);
 
-            // Draw settings gear button on the right side of title bar
             settingsPanelGearX = bx + boxW - innerPad - SETTINGS_GEAR_SIZE;
             settingsPanelGearY = by + innerPad;
 
@@ -222,12 +218,11 @@ public final class PartyInfoBox implements PartyBox {
         if (showSettings) {
             boolean clickedInside = (mouseX >= overlayX && mouseX < overlayX + overlayW && mouseY >= overlayY && mouseY < overlayY + overlayH);
 
-            // Check if settings gear was clicked inside the settings panel
             if (settingsPanelGearX >= 0 && settingsPanelGearY >= 0) {
                 if (mouseX >= settingsPanelGearX && mouseX < settingsPanelGearX + SETTINGS_GEAR_SIZE &&
                         mouseY >= settingsPanelGearY && mouseY < settingsPanelGearY + SETTINGS_GEAR_SIZE) {
 
-                    if (FTBTeamsIntegration.isEnabled()) {
+                    if (FabricLoader.getInstance().isModLoaded("ftbteams") && FTBTeamsIntegration.isEnabled()) {
                         openFTBTeamsPropertyConfig();
                     }
                     return true;
@@ -315,7 +310,7 @@ public final class PartyInfoBox implements PartyBox {
 
         if (isMouseOver(btnX, btnY, BTN_W, BTN_H)) {
             var mc = MinecraftClient.getInstance();
-            FTBTeamsCommandHelper.sendLeaveCommand();
+            CompatCommandHelper.sendLeaveCommand();
             if (mc != null) mc.setScreen(null);
             return true;
         }

@@ -47,9 +47,9 @@ public final class Party {
         NbtList list = nbt.getList("Members", NbtElement.COMPOUND_TYPE);
         for (int i = 0; i < list.size(); i++) p.members.add(list.getCompound(i).getUuid("U"));
         if (nbt.contains("Settings")) {
-            p.settings.allowHelpfulNonMembers =
-                    net.pixeldreamstudios.rpgsystems.party.PartySettings.fromNbt(nbt.getCompound("Settings"))
-                            .allowHelpfulNonMembers;
+            PartySettings loaded = PartySettings.fromNbt(nbt.getCompound("Settings"));
+            p.settings.allowHelpfulNonMembers = loaded.allowHelpfulNonMembers;
+            p.settings.ignorePartyCollision = loaded.ignorePartyCollision;
         }
         return p;
     }

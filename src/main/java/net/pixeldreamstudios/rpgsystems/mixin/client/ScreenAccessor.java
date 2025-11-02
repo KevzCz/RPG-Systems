@@ -1,4 +1,3 @@
-// net.pixeldreamstudios.rpgsystems.mixin.client.ScreenAccessor.java
 package net.pixeldreamstudios.rpgsystems.mixin.client;
 
 import net.fabricmc.api.EnvType;

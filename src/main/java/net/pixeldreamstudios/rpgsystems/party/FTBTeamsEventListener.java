@@ -1,9 +1,11 @@
 package net.pixeldreamstudios.rpgsystems.party;
 
 import dev.ftb.mods.ftbteams.api.Team;
+import dev.ftb.mods.ftbteams.api.TeamManager;
 import dev.ftb.mods.ftbteams.api.event.TeamEvent;
 import dev.ftb.mods.ftbteams.api.property.TeamProperties;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
+import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.pixeldreamstudios.rpgsystems.network.PartyNet;
@@ -159,6 +161,24 @@ public final class FTBTeamsEventListener {
 
         for (ServerPlayerEntity member : onlineMembers) {
             PartyNet.sendFTBTeamsRosterTo(server, member, ftbData);
+        }
+    }
+    public static String getFTBTeamMemberName(MinecraftServer server, UUID memberId, ServerPlayerEntity member) {
+        if (member != null) {
+            return member.getName().getString();
+        }
+
+        if (!FabricLoader.getInstance().isModLoaded("ftbteams")) {
+            return memberId.toString();
+        }
+
+        try {
+            TeamManager ftbManager = dev.ftb.mods.ftbteams.api.FTBTeamsAPI.api().getManager();
+            return ftbManager.getPlayerTeamForPlayerID(memberId)
+                    .map(team -> ((dev.ftb.mods.ftbteams.data.PlayerTeam) team).getPlayerName())
+                    .orElse(memberId.toString());
+        } catch (Exception e) {
+            return memberId.toString();
         }
     }
 }

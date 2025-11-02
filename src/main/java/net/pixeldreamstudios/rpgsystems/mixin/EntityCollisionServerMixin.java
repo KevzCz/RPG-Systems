@@ -1,7 +1,9 @@
 package net.pixeldreamstudios.rpgsystems.mixin;
 
+import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.entity.Entity;
 import net.minecraft.server.network.ServerPlayerEntity;
+import net.pixeldreamstudios.rpgsystems.party.FTBTeamsIntegration;
 import net.pixeldreamstudios.rpgsystems.party.Party;
 import net.pixeldreamstudios.rpgsystems.party.PartyAllies;
 import net.pixeldreamstudios.rpgsystems.party.PartyPersistentState;
@@ -29,7 +31,7 @@ public abstract class EntityCollisionServerMixin {
 
         if (!PartyAllies.sameParty(server, ownerA, ownerB)) return false;
 
-        if (net.pixeldreamstudios.rpgsystems.party.FTBTeamsIntegration.isEnabled()) {
+        if (FabricLoader.getInstance().isModLoaded("ftbteams") && FTBTeamsIntegration.isEnabled()) {
 
             if (a instanceof ServerPlayerEntity pa) {
                 var ftbData = net.pixeldreamstudios.rpgsystems.party.FTBTeamsIntegration.getPartyDataForPlayer(pa);
@@ -54,7 +56,6 @@ public abstract class EntityCollisionServerMixin {
             return false;
         }
 
-        // Native party system
         PartyPersistentState state = PartyPersistentState.get(server);
         Party party = state.getPartyByMember(ownerA);
         if (party == null) return false;

@@ -1,5 +1,6 @@
 package net.pixeldreamstudios.rpgsystems.mixin;
 
+import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.player.PlayerEntity;
@@ -31,11 +32,11 @@ public abstract class EntityRelationsHelpfulGateMixin {
         if (server == null) return;
 
         if (intent == SpellTarget.Intent.HELPFUL) {
-            if (target == caster) return; // Allow self-cast
+            if (target == caster) return;
 
             PartySettings casterSettings = null;
 
-            if (FTBTeamsIntegration.isEnabled() && caster instanceof ServerPlayerEntity serverPlayer) {
+            if (FabricLoader.getInstance().isModLoaded("ftbteams") && FTBTeamsIntegration.isEnabled() && caster instanceof ServerPlayerEntity serverPlayer) {
                 FTBTeamsIntegration.FTBPartyData ftbData = FTBTeamsIntegration.getPartyDataForPlayer(serverPlayer);
                 if (ftbData != null) {
                     casterSettings = ftbData.settings;
@@ -48,12 +49,10 @@ public abstract class EntityRelationsHelpfulGateMixin {
                 }
             }
 
-            // If no party or allows helpful to non-members, allow the action
             if (casterSettings == null || casterSettings.allowHelpfulNonMembers) {
                 return;
             }
 
-            // Check if target is in same party
             boolean isSameParty = false;
 
             if (target instanceof PlayerEntity tp) {
@@ -74,7 +73,6 @@ public abstract class EntityRelationsHelpfulGateMixin {
         if (intent == SpellTarget.Intent.HARMFUL) {
             if (target == caster) return;
 
-            // Check if target is in same party
             boolean isSameParty = false;
 
             if (target instanceof PlayerEntity tp) {

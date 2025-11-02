@@ -7,6 +7,7 @@ import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
+import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.option.KeyBinding;
 import net.minecraft.client.util.InputUtil;
@@ -109,15 +110,11 @@ public final class RPGSystemsClient implements ClientModInitializer {
                     if (ehr.getEntity() instanceof PlayerEntity target && mc.player != null && !target.getUuid().equals(mc.player.getUuid())) {
                         if (mc.getNetworkHandler() != null) {
                             if (hasParty) {
-                                // Send invite using appropriate system
-                                FTBTeamsCommandHelper.sendInviteCommand(target.getName().getString());
+                                CompatCommandHelper.sendInviteCommand(target.getName().getString());
                                 acted = true;
                             } else {
-                                // Send join request - works for both systems now!
-                                // For FTB Teams: we'll send a custom join request packet
-                                // For native: uses the native command
-                                if (FTBTeamsIntegration.isEnabled()) {
-                                    // Get the target's FTB Teams party and send join request packet
+
+                                if (FabricLoader.getInstance().isModLoaded("ftbteams") && FTBTeamsIntegration.isEnabled()) {
                                     sendFTBTeamsJoinRequest(target);
                                     acted = true;
                                 } else {

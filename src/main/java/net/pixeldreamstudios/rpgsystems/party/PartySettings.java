@@ -16,7 +16,12 @@ public final class PartySettings {
         PartySettings s = new PartySettings();
         if (nbt != null) {
             s.allowHelpfulNonMembers = nbt.getBoolean("AllowHelpfulNonMembers");
-            s.ignorePartyCollision   = !nbt.contains("IgnorePartyCollision") || nbt.getBoolean("IgnorePartyCollision"); // default ON
+
+            if (nbt.contains("IgnorePartyCollision")) {
+                s.ignorePartyCollision = nbt.getBoolean("IgnorePartyCollision");
+            } else {
+                s.ignorePartyCollision = true;
+            }
         }
         return s;
     }

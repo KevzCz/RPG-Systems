@@ -1,6 +1,6 @@
 package net.pixeldreamstudios.rpgsystems.network;
 
-import dev.ftb.mods.ftbteams.api.TeamManager;
+
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.event.player.AttackEntityCallback;
 import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
@@ -12,6 +12,7 @@ import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.text.Text;
 import net.minecraft.util.ActionResult;
 import net.minecraft.util.Identifier;
+import net.pixeldreamstudios.rpgsystems.config.RPGSystemsConfig;
 import net.pixeldreamstudios.rpgsystems.network.party.*;
 import net.pixeldreamstudios.rpgsystems.network.party.PartyChatPayloads.ChatNotice;
 import net.pixeldreamstudios.rpgsystems.network.party.PartyHudPayloads.*;
@@ -27,6 +28,7 @@ import static net.pixeldreamstudios.rpgsystems.network.party.PartyChatPayloads.C
 import static net.pixeldreamstudios.rpgsystems.network.party.PartyChatPayloads.ChatSend;
 import static net.pixeldreamstudios.rpgsystems.network.party.PartyInvitePayloads.*;
 import static net.pixeldreamstudios.rpgsystems.network.party.PartyJoinRequestPayloads.*;
+import static net.pixeldreamstudios.rpgsystems.party.FTBTeamsIntegration.getPartyDataForPlayer;
 
 public final class PartyNet {
     private PartyNet() {}
@@ -57,7 +59,7 @@ public final class PartyNet {
         PayloadTypeRegistry.playC2S().register(ChatSend.ID, ChatSend.CODEC);
         PayloadTypeRegistry.playS2C().register(ChatMessage.ID, ChatMessage.CODEC);
         PayloadTypeRegistry.playC2S().register(SetAllowHelpfulNonMembers.ID, PartySettingsPayloads.SetAllowHelpfulNonMembers.CODEC);
-        PayloadTypeRegistry.playC2S().register(PartySettingsPayloads.SetIgnorePartyCollision.ID,     PartySettingsPayloads.SetIgnorePartyCollision.CODEC);
+        PayloadTypeRegistry.playC2S().register(PartySettingsPayloads.SetIgnorePartyCollision.ID, PartySettingsPayloads.SetIgnorePartyCollision.CODEC);
         PayloadTypeRegistry.playS2C().register(Sync.ID, PartySettingsPayloads.Sync.CODEC);
         PayloadTypeRegistry.playC2S().register(EligibleInviteesRequest.ID, PartyInvitePayloads.EligibleInviteesRequest.CODEC);
         PayloadTypeRegistry.playS2C().register(EligibleInviteesResponse.ID, PartyInvitePayloads.EligibleInviteesResponse.CODEC);
@@ -66,43 +68,30 @@ public final class PartyNet {
         PayloadTypeRegistry.playS2C().register(PartyChatPayloads.ChatPinSet.ID, PartyChatPayloads.ChatPinSet.CODEC);
         PayloadTypeRegistry.playS2C().register(PartyChatPayloads.ChatPinClear.ID, PartyChatPayloads.ChatPinClear.CODEC);
         PayloadTypeRegistry.playC2S().register(FTBTeamsJoinRequest.ID, FTBTeamsJoinRequest.CODEC);
-        ServerPlayNetworking.registerGlobalReceiver(FTBTeamsJoinRequest.ID, (payload, ctx) -> {
-            ServerPlayerEntity requester = ctx.player();
-            ServerPlayerEntity target = requester.getServer().getPlayerManager().getPlayer(payload.targetPlayerUuid());
 
-            if (target == null) return;
+        if (FabricLoader.getInstance().isModLoaded("ftbteams")) {
+            registerFTBTeamsReceivers();
+        }
 
-            FTBTeamsIntegration.FTBPartyData ftbData = FTBTeamsIntegration.getPartyDataForPlayer(target);
-            if (ftbData == null) return;
-
-            FTBTeamsJoinRequests.addRequest(ftbData.partyId, requester.getUuid());
-
-            ServerPlayerEntity leader = requester.getServer().getPlayerManager().getPlayer(ftbData.leaderUuid);
-            if (leader != null) {
-                PartyNet.sendJoinReqAdded(leader, ftbData.partyId, requester.getUuid(), requester.getName().getString());
-            }
-
-            requester.sendMessage(Text.literal("Sent join request to " + ftbData.partyName));
-        });
         ServerPlayNetworking.registerGlobalReceiver(
                 PartyInvitePayloads.EligibleInviteesRequest.ID, (payload, ctx) -> {
                     ServerPlayerEntity who = ctx.player();
                     MinecraftServer server = who.getServer();
-
-                    if (FTBTeamsIntegration.isEnabled()) {
-                        List<UUID> uuids = new ArrayList<>();
-                        List<String> names = new ArrayList<>();
-                        for (ServerPlayerEntity sp : server.getPlayerManager().getPlayerList()) {
-                            if (sp.getUuid().equals(who.getUuid())) continue;
-                            if (FTBTeamsIntegration.getPartyDataForPlayer(sp) != null) continue;
-                            uuids.add(sp.getUuid());
-                            names.add(sp.getGameProfile().getName());
+                    if (FabricLoader.getInstance().isModLoaded("ftbteams")) {
+                        if (FTBTeamsIntegration.isEnabled()) {
+                            List<UUID> uuids = new ArrayList<>();
+                            List<String> names = new ArrayList<>();
+                            for (ServerPlayerEntity sp : server.getPlayerManager().getPlayerList()) {
+                                if (sp.getUuid().equals(who.getUuid())) continue;
+                                if (getPartyDataForPlayer(sp) != null) continue;
+                                uuids.add(sp.getUuid());
+                                names.add(sp.getGameProfile().getName());
+                            }
+                            ServerPlayNetworking.send(who,
+                                    new PartyInvitePayloads.EligibleInviteesResponse(uuids, names));
+                            return;
                         }
-                        ServerPlayNetworking.send(who,
-                                new PartyInvitePayloads.EligibleInviteesResponse(uuids, names));
-                        return;
                     }
-
                     PartyPersistentState state = PartyPersistentState.get(server);
                     List<UUID> uuids = new ArrayList<>();
                     List<String> names = new ArrayList<>();
@@ -120,41 +109,41 @@ public final class PartyNet {
                 PartySettingsPayloads.SetIgnorePartyCollision.ID, (payload, ctx) -> {
                     var player = ctx.player();
                     var server = player.getServer();
+                    if (FabricLoader.getInstance().isModLoaded("ftbteams")) {
+                        if (FTBTeamsIntegration.isEnabled()) {
+                            FTBTeamsIntegration.FTBPartyData ftbData = getPartyDataForPlayer(player);
+                            if (ftbData == null) return;
 
-                    if (FTBTeamsIntegration.isEnabled()) {
-                        FTBTeamsIntegration.FTBPartyData ftbData = FTBTeamsIntegration.getPartyDataForPlayer(player);
-                        if (ftbData == null) return;
+                            if (!ftbData.leaderUuid.equals(player.getUuid())) {
+                                long now = System.currentTimeMillis();
+                                ServerPlayerEntity leader = server.getPlayerManager().getPlayer(ftbData.leaderUuid);
+                                String leaderName = leader != null ? leader.getName().getString() : ftbData.leaderUuid.toString().substring(0, 8);
+                                ServerPlayNetworking.send(player,
+                                        new ChatNotice(ftbData.partyId, "Only " + leaderName + " can change party settings.", now));
+                                return;
+                            }
+                            ftbData.settings.ignorePartyCollision = payload.ignore();
+                            FTBTeamsIntegration.updatePartySettings(server, ftbData.partyId, ftbData.settings);
 
-                        if (!ftbData.leaderUuid.equals(player.getUuid())) {
                             long now = System.currentTimeMillis();
-                            ServerPlayerEntity leader = server.getPlayerManager().getPlayer(ftbData.leaderUuid);
-                            String leaderName = leader != null ? leader.getName().getString() : ftbData.leaderUuid.toString().substring(0, 8);
-                            ServerPlayNetworking.send(player,
-                                    new ChatNotice(ftbData.partyId, "Only " + leaderName + " can change party settings.", now));
+
+                            for (UUID memberId : ftbData.members) {
+                                ServerPlayerEntity member = server.getPlayerManager().getPlayer(memberId);
+                                if (member != null) {
+                                    ServerPlayNetworking.send(member,
+                                            new PartySettingsPayloads.Sync(
+                                                    ftbData.settings.allowHelpfulNonMembers,
+                                                    ftbData.settings.ignorePartyCollision
+                                            ));
+                                    ServerPlayNetworking.send(member,
+                                            new ChatNotice(ftbData.partyId,
+                                                    "Ignore party collision: " + (ftbData.settings.ignorePartyCollision ? "ON" : "OFF"),
+                                                    now));
+                                }
+                            }
                             return;
                         }
-                        ftbData.settings.ignorePartyCollision = payload.ignore();
-                        FTBTeamsIntegration.updatePartySettings(server, ftbData.partyId, ftbData.settings);
-
-                        long now = System.currentTimeMillis();
-
-                        for (UUID memberId : ftbData.members) {
-                            ServerPlayerEntity member = server.getPlayerManager().getPlayer(memberId);
-                            if (member != null) {
-                                ServerPlayNetworking.send(member,
-                                        new PartySettingsPayloads.Sync(
-                                                ftbData.settings.allowHelpfulNonMembers,
-                                                ftbData.settings.ignorePartyCollision
-                                        ));
-                                ServerPlayNetworking.send(member,
-                                        new ChatNotice(ftbData.partyId,
-                                                "Ignore party collision: " + (ftbData.settings.ignorePartyCollision ? "ON" : "OFF"),
-                                                now));
-                            }
-                        }
-                        return;
                     }
-
                     var state  = PartyPersistentState.get(server);
                     var p      = state.getPartyByMember(player.getUuid());
                     if (p == null) return;
@@ -196,42 +185,42 @@ public final class PartyNet {
                 PartySettingsPayloads.SetAllowHelpfulNonMembers.ID, (payload, ctx) -> {
                     var player = ctx.player();
                     var server = player.getServer();
+                    if (FabricLoader.getInstance().isModLoaded("ftbteams")) {
+                        if (FTBTeamsIntegration.isEnabled()) {
+                            FTBTeamsIntegration.FTBPartyData ftbData = getPartyDataForPlayer(player);
+                            if (ftbData == null) return;
 
-                    if (FTBTeamsIntegration.isEnabled()) {
-                        FTBTeamsIntegration.FTBPartyData ftbData = FTBTeamsIntegration.getPartyDataForPlayer(player);
-                        if (ftbData == null) return;
+                            if (!ftbData.leaderUuid.equals(player.getUuid())) {
+                                long now = System.currentTimeMillis();
+                                ServerPlayerEntity leader = server.getPlayerManager().getPlayer(ftbData.leaderUuid);
+                                String leaderName = leader != null ? leader.getName().getString() : ftbData.leaderUuid.toString().substring(0, 8);
+                                ServerPlayNetworking.send(player,
+                                        new ChatNotice(ftbData.partyId, "Only " + leaderName + " can change party settings.", now));
+                                return;
+                            }
 
-                        if (!ftbData.leaderUuid.equals(player.getUuid())) {
+                            ftbData.settings.allowHelpfulNonMembers = payload.allow();
+                            FTBTeamsIntegration.updatePartySettings(server, ftbData.partyId, ftbData.settings);
+
                             long now = System.currentTimeMillis();
-                            ServerPlayerEntity leader = server.getPlayerManager().getPlayer(ftbData.leaderUuid);
-                            String leaderName = leader != null ? leader.getName().getString() : ftbData.leaderUuid.toString().substring(0, 8);
-                            ServerPlayNetworking.send(player,
-                                    new ChatNotice(ftbData.partyId, "Only " + leaderName + " can change party settings.", now));
+
+                            for (UUID memberId : ftbData.members) {
+                                ServerPlayerEntity member = server.getPlayerManager().getPlayer(memberId);
+                                if (member != null) {
+                                    ServerPlayNetworking.send(member,
+                                            new PartySettingsPayloads.Sync(
+                                                    ftbData.settings.allowHelpfulNonMembers,
+                                                    ftbData.settings.ignorePartyCollision
+                                            ));
+                                    ServerPlayNetworking.send(member,
+                                            new ChatNotice(ftbData.partyId,
+                                                    "Heal/Buff non-members: " + (ftbData.settings.allowHelpfulNonMembers ? "ON" : "OFF"),
+                                                    now));
+                                }
+                            }
                             return;
                         }
-
-                        ftbData.settings.allowHelpfulNonMembers = payload.allow();
-                        FTBTeamsIntegration.updatePartySettings(server, ftbData.partyId, ftbData.settings);
-
-                        long now = System.currentTimeMillis();
-
-                        for (UUID memberId : ftbData.members) {
-                            ServerPlayerEntity member = server.getPlayerManager().getPlayer(memberId);
-                            if (member != null) {
-                                ServerPlayNetworking.send(member,
-                                        new PartySettingsPayloads.Sync(
-                                                ftbData.settings.allowHelpfulNonMembers,
-                                                ftbData.settings.ignorePartyCollision
-                                        ));
-                                ServerPlayNetworking.send(member,
-                                        new ChatNotice(ftbData.partyId,
-                                                "Heal/Buff non-members: " + (ftbData.settings.allowHelpfulNonMembers ? "ON" : "OFF"),
-                                                now));
-                            }
-                        }
-                        return;
                     }
-
                     var state  = net.pixeldreamstudios.rpgsystems.party.PartyPersistentState.get(server);
                     var p      = state.getPartyByMember(player.getUuid());
                     if (p == null) return;
@@ -282,31 +271,26 @@ public final class PartyNet {
 
         ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> {
             ServerPlayerEntity player = handler.player;
+                    if (FabricLoader.getInstance().isModLoaded("ftbteams")) {
+                        if (FTBTeamsIntegration.isEnabled()) {
+                            FTBTeamsIntegration.FTBPartyData ftbData = getPartyDataForPlayer(player);
 
-            if (FTBTeamsIntegration.isEnabled()) {
+                            if (ftbData != null) {
+                                sendFTBTeamsRosterTo(server, player, ftbData);
 
-
-                FTBTeamsIntegration.FTBPartyData ftbData = FTBTeamsIntegration.getPartyDataForPlayer(player);
-
-                if (ftbData != null) {
-
-                    sendFTBTeamsRosterTo(server, player, ftbData);
-
-                    for (UUID memberId : ftbData.members) {
-                        if (!memberId.equals(player.getUuid())) {
-                            ServerPlayerEntity member = server.getPlayerManager().getPlayer(memberId);
-                            if (member != null) {
-
-                                ServerPlayNetworking.send(member,
-                                        new PartyHudPayloads.PartyMemberOnline(player.getUuid(), true));
+                                for (UUID memberId : ftbData.members) {
+                                    if (!memberId.equals(player.getUuid())) {
+                                        ServerPlayerEntity member = server.getPlayerManager().getPlayer(memberId);
+                                        if (member != null) {
+                                            ServerPlayNetworking.send(member,
+                                                    new PartyHudPayloads.PartyMemberOnline(player.getUuid(), true));
+                                        }
+                                    }
+                                }
                             }
+                            return;
                         }
                     }
-                }
-                return;
-            }
-
-
             PartyPersistentState state = PartyPersistentState.get(server);
             state.rememberName(handler.player.getUuid(), handler.player.getName().getString());
             Party p = state.getPartyByMember(handler.player.getUuid());
@@ -322,28 +306,27 @@ public final class PartyNet {
                     }
                 }
             }
-
         });
 
         ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> {
             ServerPlayerEntity self = handler.player;
-
-            if (FTBTeamsIntegration.isEnabled()) {
-                FTBTeamsIntegration.FTBPartyData ftbData = FTBTeamsIntegration.getPartyDataForPlayer(self);
-                if (ftbData != null) {
-                    for (UUID memberId : ftbData.members) {
-                        if (!memberId.equals(self.getUuid())) {
-                            ServerPlayerEntity member = server.getPlayerManager().getPlayer(memberId);
-                            if (member != null) {
-                                ServerPlayNetworking.send(member,
-                                        new PartyHudPayloads.PartyMemberOnline(self.getUuid(), false));
+                    if (FabricLoader.getInstance().isModLoaded("ftbteams")) {
+                        if (FTBTeamsIntegration.isEnabled()) {
+                            FTBTeamsIntegration.FTBPartyData ftbData = getPartyDataForPlayer(self);
+                            if (ftbData != null) {
+                                for (UUID memberId : ftbData.members) {
+                                    if (!memberId.equals(self.getUuid())) {
+                                        ServerPlayerEntity member = server.getPlayerManager().getPlayer(memberId);
+                                        if (member != null) {
+                                            ServerPlayNetworking.send(member,
+                                                    new PartyHudPayloads.PartyMemberOnline(self.getUuid(), false));
+                                        }
+                                    }
+                                }
                             }
+                            return;
                         }
                     }
-                }
-                return;
-            }
-
             PartyPersistentState state = PartyPersistentState.get(server);
             Party p = state.getPartyByMember(self.getUuid());
             if (p == null) return;
@@ -355,7 +338,6 @@ public final class PartyNet {
                         if (sp != null) {
                             ServerPlayNetworking.send(sp,
                                     new PartyHudPayloads.PartyMemberOnline(self.getUuid(), false));
-
                         }
                     }
                 }
@@ -396,52 +378,12 @@ public final class PartyNet {
 
         ServerPlayNetworking.registerGlobalReceiver(InviteRespond.ID, (payload, context) -> {
             ServerPlayerEntity player = context.player();
-
-            if (FTBTeamsIntegration.isEnabled()) {
-                try {
-                    TeamManager manager = dev.ftb.mods.ftbteams.api.FTBTeamsAPI.api().getManager();
-                    java.util.Optional<dev.ftb.mods.ftbteams.api.Team> teamOpt = manager.getTeamByID(payload.partyId());
-
-                    if (teamOpt.isPresent()) {
-                        dev.ftb.mods.ftbteams.api.Team team = teamOpt.get();
-
-                        String shortTeamId = team.getId().toString().substring(0, 8);
-                        String displayName = team.getProperty(dev.ftb.mods.ftbteams.api.property.TeamProperties.DISPLAY_NAME);
-
-                        String encodedName = urlEncodeName(displayName);
-                        String teamIdentifier = encodedName + "#" + shortTeamId;
-
-                        if (payload.accept()) {
-                            player.getServer().getCommandManager().executeWithPrefix(
-                                    player.getCommandSource(),
-                                    "ftbteams party join " + teamIdentifier
-                            );
-                        } else {
-                            player.getServer().getCommandManager().executeWithPrefix(
-                                    player.getCommandSource(),
-                                    "ftbteams party decline " + teamIdentifier
-                            );
-                        }
-                    } else {
-                        if (payload.accept()) {
-                            player.getServer().getCommandManager().executeWithPrefix(
-                                    player.getCommandSource(),
-                                    "ftbteams party join " + payload.partyId()
-                            );
-                        } else {
-                            player.getServer().getCommandManager().executeWithPrefix(
-                                    player.getCommandSource(),
-                                    "ftbteams party decline " + payload.partyId()
-                            );
+                    if (FabricLoader.getInstance().isModLoaded("ftbteams")) {
+                        if (FTBTeamsIntegration.isEnabled()) {
+                            FTBTeamsJoinRequests.handleFTBTeamsInviteResponse(player, payload);
+                            return;
                         }
                     }
-
-                    ServerPlayNetworking.send(player, new InviteRemoved(payload.partyId()));
-                } catch (Exception e) {
-                    net.pixeldreamstudios.rpgsystems.RPGSystems.LOGGER.error("[FTB Teams] Error handling invite response", e);
-                }
-                return;
-            }
             PartyPersistentState state = PartyPersistentState.get(player.getServer());
             Party party = state.getParty(payload.partyId());
             String partyName = party == null || party.name.isEmpty() ? String.valueOf(payload.partyId()) : party.name;
@@ -500,7 +442,6 @@ public final class PartyNet {
                             }
                         }
                     }
-
                 } else {
                     player.sendMessage(Text.literal("Accept failed"));
                     ServerPlayNetworking.send(player, new InviteRemoved(payload.partyId()));
@@ -519,26 +460,26 @@ public final class PartyNet {
 
         ServerPlayNetworking.registerGlobalReceiver(PartyJoinRequestPayloads.JoinReqRespond.ID, (payload, context) -> {
             ServerPlayerEntity leader = context.player();
+                    if (FabricLoader.getInstance().isModLoaded("ftbteams")) {
+                        if (FTBTeamsIntegration.isEnabled()) {
+                            if (!payload.accept()) {
+                                FTBTeamsJoinRequests.removeRequest(payload.partyId(), payload.requesterUuid());
+                                ServerPlayNetworking.send(leader, new JoinReqRemoved(payload.partyId(), payload.requesterUuid()));
 
-            if (FTBTeamsIntegration.isEnabled()) {
-                if (!payload.accept()) {
-                    FTBTeamsJoinRequests.removeRequest(payload.partyId(), payload.requesterUuid());
-                    ServerPlayNetworking.send(leader, new JoinReqRemoved(payload.partyId(), payload.requesterUuid()));
-
-                    ServerPlayerEntity requester = leader.getServer().getPlayerManager().getPlayer(payload.requesterUuid());
-                    if (requester != null) {
-                        FTBTeamsIntegration.FTBPartyData ftbData = FTBTeamsIntegration.getPartyDataForPlayer(leader);
-                        String partyName = ftbData != null ? ftbData.partyName : "the party";
-                        ServerPlayNetworking.send(requester,
-                                new PartyJoinRequestPayloads.JoinDeclined(leader.getName().getString(), partyName));
+                                ServerPlayerEntity requester = leader.getServer().getPlayerManager().getPlayer(payload.requesterUuid());
+                                if (requester != null) {
+                                    FTBTeamsIntegration.FTBPartyData ftbData = getPartyDataForPlayer(leader);
+                                    String partyName = ftbData != null ? ftbData.partyName : "the party";
+                                    ServerPlayNetworking.send(requester,
+                                            new PartyJoinRequestPayloads.JoinDeclined(leader.getName().getString(), partyName));
+                                }
+                            } else {
+                                FTBTeamsJoinRequests.acceptRequest(leader.getServer(), payload.partyId(), payload.requesterUuid());
+                                ServerPlayNetworking.send(leader, new JoinReqRemoved(payload.partyId(), payload.requesterUuid()));
+                            }
+                            return;
+                        }
                     }
-                } else {
-                    FTBTeamsJoinRequests.acceptRequest(leader.getServer(), payload.partyId(), payload.requesterUuid());
-                    ServerPlayNetworking.send(leader, new JoinReqRemoved(payload.partyId(), payload.requesterUuid()));
-                }
-                return;
-            }
-
             PartyPersistentState state = PartyPersistentState.get(leader.getServer());
             Party p = state.getParty(payload.partyId());
             if (p == null || !p.leader.equals(leader.getUuid())) return;
@@ -587,7 +528,6 @@ public final class PartyNet {
                     ServerPlayNetworking.send(req, new PartyJoinRequestPayloads.JoinDeclined(leaderName, partyName));
                 }
             }
-
         });
 
         ServerPlayNetworking.registerGlobalReceiver(ChatSend.ID, (payload, context) -> {
@@ -598,23 +538,22 @@ public final class PartyNet {
             long now = System.currentTimeMillis();
             String raw = payload.message() == null ? "" : payload.message().trim();
             Set<UUID> partyMembers = new HashSet<>();
+                        if (FabricLoader.getInstance().isModLoaded("ftbteams") && FTBTeamsIntegration.isEnabled()) {
+                            FTBTeamsIntegration.FTBPartyData ftbData = getPartyDataForPlayer(sender);
+                            if (ftbData == null) return;
+                            if (!ftbData.partyId.equals(payload.partyId())) return;
 
-            if (FTBTeamsIntegration.isEnabled()) {
-                FTBTeamsIntegration.FTBPartyData ftbData = FTBTeamsIntegration.getPartyDataForPlayer(sender);
-                if (ftbData == null) return;
-                if (!ftbData.partyId.equals(payload.partyId())) return;
+                            partyId = ftbData.partyId;
+                            partyMembers.addAll(ftbData.members);
+                        } else {
+                            PartyPersistentState state = PartyPersistentState.get(sender.getServer());
+                            Party p = state.getPartyByMember(sender.getUuid());
+                            if (p == null) return;
+                            if (!p.id.equals(payload.partyId())) return;
 
-                partyId = ftbData.partyId;
-                partyMembers.addAll(ftbData.members);
-            } else {
-                PartyPersistentState state = PartyPersistentState.get(sender.getServer());
-                Party p = state.getPartyByMember(sender.getUuid());
-                if (p == null) return;
-                if (!p.id.equals(payload.partyId())) return;
-
-                partyId = p.id;
-                partyMembers.addAll(p.members);
-            }
+                            partyId = p.id;
+                            partyMembers.addAll(p.members);
+                        }
 
             if (raw.startsWith("/p")) {
                 String[] parts = raw.split("\\s+", 3);
@@ -638,8 +577,8 @@ public final class PartyNet {
                     }
                     case "info" -> {
                         String info;
-                        if (FTBTeamsIntegration.isEnabled()) {
-                            FTBTeamsIntegration.FTBPartyData ftbData = FTBTeamsIntegration.getPartyDataForPlayer(sender);
+                        if (FabricLoader.getInstance().isModLoaded("ftbteams") && FTBTeamsIntegration.isEnabled()) {
+                            FTBTeamsIntegration.FTBPartyData ftbData = getPartyDataForPlayer(sender);
                             if (ftbData == null) return;
 
                             ServerPlayerEntity leader = sender.getServer().getPlayerManager().getPlayer(ftbData.leaderUuid);
@@ -674,11 +613,12 @@ public final class PartyNet {
                         broadcastNoticeToMembers(sender.getServer(), partyId, partyMembers, txt, now);
                     }
                     case "promote" -> {
-                        if (FTBTeamsIntegration.isEnabled()) {
-                            sendNoticeTo(sender, partyId, "Leadership transfer not supported with FTB Teams. Use FTB Teams commands.", now);
-                            return;
+                        if (FabricLoader.getInstance().isModLoaded("ftbteams")) {
+                            if (FTBTeamsIntegration.isEnabled()) {
+                                sendNoticeTo(sender, partyId, "Leadership transfer not supported with FTB Teams. Use FTB Teams commands.", now);
+                                return;
+                            }
                         }
-
                         PartyPersistentState state = PartyPersistentState.get(sender.getServer());
                         Party p = state.getPartyByMember(sender.getUuid());
                         if (p == null) return;
@@ -721,8 +661,8 @@ public final class PartyNet {
                     }
                     case "pin" -> {
                         UUID leaderUuid;
-                        if (FTBTeamsIntegration.isEnabled()) {
-                            FTBTeamsIntegration.FTBPartyData ftbData = FTBTeamsIntegration.getPartyDataForPlayer(sender);
+                        if (FabricLoader.getInstance().isModLoaded("ftbteams") && FTBTeamsIntegration.isEnabled()) {
+                            FTBTeamsIntegration.FTBPartyData ftbData = getPartyDataForPlayer(sender);
                             if (ftbData == null) return;
                             leaderUuid = ftbData.leaderUuid;
                         } else {
@@ -750,8 +690,8 @@ public final class PartyNet {
                     }
                     case "unpin" -> {
                         UUID leaderUuid;
-                        if (FTBTeamsIntegration.isEnabled()) {
-                            FTBTeamsIntegration.FTBPartyData ftbData = FTBTeamsIntegration.getPartyDataForPlayer(sender);
+                        if (FabricLoader.getInstance().isModLoaded("ftbteams") && FTBTeamsIntegration.isEnabled()) {
+                            FTBTeamsIntegration.FTBPartyData ftbData = getPartyDataForPlayer(sender);
                             if (ftbData == null) return;
                             leaderUuid = ftbData.leaderUuid;
                         } else {
@@ -777,31 +717,29 @@ public final class PartyNet {
                 }
                 return;
             }
-
-             if (FTBTeamsIntegration.isEnabled()) {
-                FTBTeamsChatBridge.sendToFTBTeams(sender, payload.message());
-             }
-
+                    if (FabricLoader.getInstance().isModLoaded("ftbteams")) {
+                        if (FTBTeamsIntegration.isEnabled()) {
+                            FTBTeamsChatBridge.sendToFTBTeams(sender, payload.message());
+                        }
+                    }
             ChatMessage msg = new ChatMessage(partyId, sender.getUuid(), name, payload.message(), now);
 
-            if (net.pixeldreamstudios.rpgsystems.config.RPGSystemsConfig.get().party.logChatToConsole) {
+            if (RPGSystemsConfig.get().party.logChatToConsole) {
                 String partyName;
-                if (FTBTeamsIntegration.isEnabled()) {
-                    FTBTeamsIntegration.FTBPartyData ftbData = FTBTeamsIntegration.getPartyDataForPlayer(sender);
+                if (FabricLoader.getInstance().isModLoaded("ftbteams") && FTBTeamsIntegration.isEnabled()) {
+                    FTBTeamsIntegration.FTBPartyData ftbData = getPartyDataForPlayer(sender);
                     partyName = ftbData != null ? ftbData.partyName : partyId.toString();
                 } else {
                     PartyPersistentState state = PartyPersistentState.get(sender.getServer());
                     Party p = state.getPartyByMember(sender.getUuid());
                     partyName = (p != null && p.name != null && !p.name.isBlank()) ? p.name : partyId.toString();
                 }
-
             }
 
             net.pixeldreamstudios.rpgsystems.api.PartyChatEvent.fire(
                     new net.pixeldreamstudios.rpgsystems.api.PartyChatEvent.Message(partyId, sender, payload.message())
             );
-
-            if (!FTBTeamsIntegration.isEnabled()) {
+            if (!FabricLoader.getInstance().isModLoaded("ftbteams") || !FTBTeamsIntegration.isEnabled()) {
                 for (UUID u : partyMembers) {
                     ServerPlayerEntity sp = sender.getServer().getPlayerManager().getPlayer(u);
                     if (sp != null) {
@@ -810,15 +748,40 @@ public final class PartyNet {
                 }
             }
         });
-
     }
 
-    private static void pushAllPartyVitals(MinecraftServer server) {
-        if (FTBTeamsIntegration.isEnabled()) {
-            pushAllFTBTeamsVitals(server);
-            return;
-        }
+    private static void registerFTBTeamsReceivers() {
+        ServerPlayNetworking.registerGlobalReceiver(FTBTeamsJoinRequest.ID, (payload, ctx) -> {
+            ServerPlayerEntity requester = ctx.player();
+            ServerPlayerEntity target = requester.getServer().getPlayerManager().getPlayer(payload.targetPlayerUuid());
 
+            if (target == null) return;
+
+            FTBTeamsIntegration.FTBPartyData ftbData = getPartyDataForPlayer(target);
+            if (ftbData == null) return;
+
+            FTBTeamsJoinRequests.addRequest(ftbData.partyId, requester.getUuid());
+
+            ServerPlayerEntity leader = requester.getServer().getPlayerManager().getPlayer(ftbData.leaderUuid);
+            if (leader != null) {
+                PartyNet.sendJoinReqAdded(leader, ftbData.partyId, requester.getUuid(), requester.getName().getString());
+            }
+
+            requester.sendMessage(Text.literal("Sent join request to " + ftbData.partyName));
+        });
+    }
+
+
+    private static void pushAllPartyVitals(MinecraftServer server) {
+        if (FabricLoader.getInstance().isModLoaded("ftbteams")) {
+            if (FTBTeamsIntegration.isEnabled()) {
+                try {
+                    FTBTeamsVitalsHandler.pushAllVitals(server);
+                } catch (Throwable ignored) {
+                }
+                return;
+            }
+        }
         PartyPersistentState state = PartyPersistentState.get(server);
         for (ServerPlayerEntity viewer : server.getPlayerManager().getPlayerList()) {
             Party p = state.getPartyByMember(viewer.getUuid());
@@ -838,38 +801,9 @@ public final class PartyNet {
             }
         }
     }
-
-    private static void pushAllFTBTeamsVitals(MinecraftServer server) {
-
-        int playerCount = 0;
-        int partyCount = 0;
-
-        for (ServerPlayerEntity viewer : server.getPlayerManager().getPlayerList()) {
-            FTBTeamsIntegration.FTBPartyData ftbData = FTBTeamsIntegration.getPartyDataForPlayer(viewer);
-            if (ftbData == null) continue;
-
-            playerCount++;
-            if (partyCount == 0 || !ftbData.partyId.equals(lastLoggedPartyId)) {
-                partyCount++;
-                lastLoggedPartyId = ftbData.partyId;
-            }
-
-            for (UUID memberId : ftbData.members) {
-                ServerPlayerEntity subject = server.getPlayerManager().getPlayer(memberId);
-                if (subject == null) {
-                    ServerPlayNetworking.send(viewer,
-                            new PartyStatusEffectsPayloads.MemberEffects(memberId, List.of()));
-                    continue;
-                }
-
-                pushVitalsForMember(viewer, subject, memberId);
-            }
-        }
-
-    }
     private static UUID lastLoggedPartyId = null;
 
-    private static void pushVitalsForMember(ServerPlayerEntity viewer, ServerPlayerEntity subject, UUID memberId) {
+    public static void pushVitalsForMember(ServerPlayerEntity viewer, ServerPlayerEntity subject, UUID memberId) {
         float hp = subject.getHealth();
         float max = subject.getMaxHealth();
         int hunger = subject.getHungerManager().getFoodLevel();
@@ -1027,25 +961,12 @@ public final class PartyNet {
     }
 
     public static void sendFTBTeamsRosterTo(MinecraftServer server, ServerPlayerEntity recipient, FTBTeamsIntegration.FTBPartyData ftbData) {
-
         ServerPlayNetworking.send(recipient, new PartyRosterClear(ftbData.partyId, ftbData.partyName, ftbData.leaderUuid));
 
         for (UUID memberId : ftbData.members) {
             ServerPlayerEntity member = server.getPlayerManager().getPlayer(memberId);
 
-            String name;
-            if (member != null) {
-                name = member.getName().getString();
-            } else {
-                try {
-                    TeamManager ftbManager = dev.ftb.mods.ftbteams.api.FTBTeamsAPI.api().getManager();
-                    name = ftbManager.getPlayerTeamForPlayerID(memberId)
-                            .map(team -> ((dev.ftb.mods.ftbteams.data.PlayerTeam) team).getPlayerName())
-                            .orElse(memberId.toString());
-                } catch (Exception e) {
-                    name = memberId.toString();
-                }
-            }
+            String name = FTBTeamsEventListener.getFTBTeamMemberName(server, memberId, member);
 
             ServerPlayNetworking.send(recipient, new PartyRosterAdd(ftbData.partyId, memberId, name));
 
@@ -1124,24 +1045,6 @@ public final class PartyNet {
             return total;
         } catch (Throwable t) {
             return -1;
-        }
-    }
-    private static String urlEncodeName(String name) {
-        if (name == null) return "";
-
-        try {
-            String encoded = java.net.URLEncoder.encode(name, java.nio.charset.StandardCharsets.UTF_8);
-
-            encoded = encoded.replace("%27", "_s_")
-                    .replace("%20", "_")
-                    .replace("+", "_")
-                    .replace("%", "_");
-
-            return encoded;
-        } catch (Exception e) {
-            return name.replace("'", "_s_")
-                    .replace(" ", "_")
-                    .replace("%", "_");
         }
     }
 

@@ -1,4 +1,3 @@
-// net.pixeldreamstudios.rpgsystems.mixin.NoFriendlyTargetMixin.java
 package net.pixeldreamstudios.rpgsystems.mixin;
 
 import net.minecraft.entity.LivingEntity;

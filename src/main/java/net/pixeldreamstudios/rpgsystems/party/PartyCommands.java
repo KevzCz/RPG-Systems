@@ -6,6 +6,7 @@ import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.suggestion.Suggestions;
 import com.mojang.brigadier.suggestion.SuggestionsBuilder;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
+import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.command.argument.EntityArgumentType;
 import net.minecraft.command.argument.UuidArgumentType;
 import net.minecraft.server.MinecraftServer;
@@ -30,10 +31,13 @@ public final class PartyCommands {
 
     public static void register(CommandDispatcher<ServerCommandSource> d) {
         d.register(literal("party")
-                .requires(src -> src.hasPermissionLevel(0))
+                .requires(src -> {
+                    if (!src.hasPermissionLevel(0)) return false;
+                    if (!FabricLoader.getInstance().isModLoaded("ftbteams")) return true;
+                    return !FTBTeamsIntegration.isEnabled();
+                })
                 .then(literal("create")
-                        .executes(ctx -> create(ctx, "")))
-                .then(literal("create")
+                        .executes(ctx -> create(ctx, null))
                         .then(argument("name", StringArgumentType.greedyString())
                                 .executes(ctx -> create(ctx, StringArgumentType.getString(ctx, "name")))))
                 .then(literal("rename")
@@ -202,6 +206,7 @@ public final class PartyCommands {
         return 1;
     }
 
+
     private static int rename(CommandContext<ServerCommandSource> ctx, String newName) {
         ServerPlayerEntity self = ctx.getSource().getPlayer();
         if (self == null) return 0;
@@ -330,11 +335,6 @@ public final class PartyCommands {
         }
         Party p = state.getPartyByMember(self.getUuid());
         if (p != null) {
-            ServerPlayerEntity leader = self.getServer().getPlayerManager().getPlayer(p.leader);
-            if (leader != null) {
-                String partyName = displayName(p);
-                ServerPlayNetworking.send(leader, new PartyInvitePayloads.InviteAccepted(self.getName().getString(), partyName));
-            }
             ServerPlayNetworking.send(self, new PartyInvitePayloads.InviteJoinConfirmed(displayName(p)));
             self.sendMessage(Text.literal("Joined " + displayName(p)));
 

@@ -9,8 +9,7 @@ import net.pixeldreamstudios.rpgsystems.compat.KevsLibraryCritCompat;
 import net.pixeldreamstudios.rpgsystems.compat.showbuild.ShowBuildCompatNetServer;
 import net.pixeldreamstudios.rpgsystems.config.RPGSystemsConfig;
 import net.pixeldreamstudios.rpgsystems.network.*;
-import net.pixeldreamstudios.rpgsystems.party.FTBTeamsEventListener;
-import net.pixeldreamstudios.rpgsystems.party.FTBTeamsIntegration;
+import net.pixeldreamstudios.rpgsystems.party.FTBTeamsLoader;
 import net.pixeldreamstudios.rpgsystems.party.PartyCommands;
 import net.pixeldreamstudios.rpgsystems.pet.PetCommands;
 import net.pixeldreamstudios.rpgsystems.title.TitleCommands;
@@ -27,8 +26,13 @@ public class RPGSystems implements ModInitializer {
 	public void onInitialize() {
 		RPGSystemsConfig.load();
 		SystemNet.registerServer();
-		FTBTeamsIntegration.init();
-		FTBTeamsEventListener.register();
+
+		if (FabricLoader.getInstance().isModLoaded("ftbteams")) {
+			FTBTeamsLoader.tryInitialize();
+		} else {
+			LOGGER.info("FTB Teams not found, using native party system");
+		}
+
 		if (RPGSystemsConfig.get().systems.party) {
 			PartyNet.initCommon();
 		}
@@ -48,7 +52,7 @@ public class RPGSystems implements ModInitializer {
 		}
 
 		CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) -> {
-			if (RPGSystemsConfig.get().systems.party && !FTBTeamsIntegration.isEnabled()) {
+			if (RPGSystemsConfig.get().systems.party) {
 				PartyCommands.register(dispatcher);
 			}
 			if (RPGSystemsConfig.get().systems.pet) {
