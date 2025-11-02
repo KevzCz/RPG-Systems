@@ -2,7 +2,6 @@ package net.pixeldreamstudios.rpgsystems.mixin.ftbteams;
 
 import dev.ftb.mods.ftbteams.data.AbstractTeam;
 import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.text.Text;
 import net.pixeldreamstudios.rpgsystems.party.FTBTeamsChatBridge;
 import net.pixeldreamstudios.rpgsystems.party.FTBTeamsIntegration;
 import org.spongepowered.asm.mixin.Mixin;
@@ -16,11 +15,11 @@ import java.util.UUID;
 public abstract class AbstractTeamMixin {
 
     @Inject(
-            method = "sendMessage(Ljava/util/UUID;Lnet/minecraft/text/Text;)V",
+            method = "sendMessage(Ljava/util/UUID;Ljava/lang/String;)V",
             at = @At("TAIL"),
             remap = false
     )
-    private void rpgsystems$onSendMessage(UUID from, Text text, CallbackInfo ci) {
+    private void rpgsystems$onSendMessage(UUID senderId, String message, CallbackInfo ci) {
         if (!FTBTeamsIntegration.isEnabled()) {
             return;
         }
@@ -30,13 +29,11 @@ public abstract class AbstractTeamMixin {
             return;
         }
 
-        String message = text.getString();
-
         for (ServerPlayerEntity player : team.getOnlineMembers()) {
             FTBTeamsChatBridge.forwardToRPGSystems(
                     player.getServer(),
                     team,
-                    from,
+                    senderId,
                     message
             );
             break;

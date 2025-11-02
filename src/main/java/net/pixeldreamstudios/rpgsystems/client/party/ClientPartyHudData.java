@@ -50,11 +50,8 @@ public final class ClientPartyHudData {
         selectedMemberUuid = uuid;
     }
 
-    /** Client-side mirror of party settings. */
     public static final class PartySettingsClient {
-        /** Whether non-members are allowed to receive helpful effects from party members. */
         public boolean allowHelpfulNonMembers = false;
-        /** Whether collisions between party members are ignored. Default ON. */
         public boolean ignorePartyCollision   = true;
     }
 
@@ -178,6 +175,10 @@ public final class ClientPartyHudData {
 
     public static boolean isSameParty(UUID a, UUID b) {
         if (partyId == null || a == null || b == null) return false;
-        return MEMBERS.containsKey(a) && MEMBERS.containsKey(b);
+
+        boolean aInParty = isInMyParty(a);
+        boolean bInParty = isInMyParty(b);
+
+        return aInParty && bInParty;
     }
 }

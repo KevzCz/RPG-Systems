@@ -3,6 +3,8 @@ package net.pixeldreamstudios.rpgsystems.mixin;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.server.network.ServerPlayerEntity;
+import net.pixeldreamstudios.rpgsystems.party.FTBTeamsIntegration;
 import net.spell_engine.internals.target.EntityRelations;
 import net.spell_engine.internals.target.SpellTarget;
 import org.spongepowered.asm.mixin.Mixin;
@@ -27,6 +29,27 @@ public abstract class EntityRelationsHelpfulGateMixin {
 
         if (intent == SpellTarget.Intent.HELPFUL) {
             if (target == caster) return;
+
+            if (FTBTeamsIntegration.isEnabled() && caster instanceof ServerPlayerEntity serverPlayer) {
+                FTBTeamsIntegration.FTBPartyData ftbData = FTBTeamsIntegration.getPartyDataForPlayer(serverPlayer);
+                if (ftbData == null) return;
+                if (ftbData.settings.allowHelpfulNonMembers) return;
+
+                if (target instanceof PlayerEntity tp) {
+                    boolean same = net.pixeldreamstudios.rpgsystems.party.PartyAllies
+                            .sameParty(server, caster.getUuid(), tp.getUuid());
+                    if (!same) { cir.setReturnValue(false); return; }
+                    return;
+                }
+
+                var ownerUuid = net.pixeldreamstudios.rpgsystems.party.PartyAllies.owningPlayerUuid(target);
+                if (ownerUuid != null) {
+                    boolean same = net.pixeldreamstudios.rpgsystems.party.PartyAllies
+                            .sameParty(server, caster.getUuid(), ownerUuid);
+                    if (!same) { cir.setReturnValue(false); return; }
+                }
+                return;
+            }
 
             var state = net.pixeldreamstudios.rpgsystems.party.PartyPersistentState.get(server);
             var p = state.getPartyByMember(caster.getUuid());

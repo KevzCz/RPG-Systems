@@ -18,6 +18,18 @@ public abstract class EntityCollisionServerMixin {
         var server = pa.getServer();
         if (server == null) return false;
 
+        if (net.pixeldreamstudios.rpgsystems.party.FTBTeamsIntegration.isEnabled()) {
+            var ftbDataA = net.pixeldreamstudios.rpgsystems.party.FTBTeamsIntegration.getPartyDataForPlayer(pa);
+            if (ftbDataA == null) return false;
+
+            var ftbDataB = net.pixeldreamstudios.rpgsystems.party.FTBTeamsIntegration.getPartyDataForPlayer(pb);
+            if (ftbDataB == null) return false;
+
+            if (!ftbDataA.partyId.equals(ftbDataB.partyId)) return false;
+
+            return ftbDataA.settings.ignorePartyCollision;
+        }
+
         PartyPersistentState state = PartyPersistentState.get(server);
         Party paParty = state.getPartyByMember(pa.getUuid());
         if (paParty == null) return false;

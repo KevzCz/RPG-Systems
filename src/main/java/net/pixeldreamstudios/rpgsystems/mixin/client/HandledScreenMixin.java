@@ -115,18 +115,16 @@ public abstract class HandledScreenMixin<T extends ScreenHandler> extends Screen
                     mouseY >= party$btnY && mouseY <= party$btnY + s;
 
             Identifier tex;
-            if (usingFTBTeams) {
+            if (hasParty) {
                 tex = hovered ? PARTY_BTN_HOVER : PARTY_BTN_NORMAL;
             } else {
-                tex = hasParty
-                        ? (hovered ? PARTY_BTN_HOVER : PARTY_BTN_NORMAL)
-                        : (hovered ? PARTY_CREATE_BTN_HOVER : PARTY_CREATE_BTN_NORMAL);
+                tex = hovered ? PARTY_CREATE_BTN_HOVER : PARTY_CREATE_BTN_NORMAL;
             }
 
             context.drawTexture(tex, party$btnX, party$btnY, 0, 0, s, s, s, s);
 
             if (hovered) {
-                Text tip = (usingFTBTeams || hasParty)
+                Text tip = hasParty
                         ? Text.translatable("screen.rpgsystems.party")
                         : Text.translatable("screen.rpgsystems.party.create");
                 context.drawTooltip(this.textRenderer, tip, mouseX, mouseY);
@@ -155,12 +153,17 @@ public abstract class HandledScreenMixin<T extends ScreenHandler> extends Screen
                 boolean hasParty = ClientPartyHudData.partyId != null;
                 boolean usingFTBTeams = FTBTeamsIntegration.isEnabled();
 
-                if (hasParty || usingFTBTeams) {
+                if (hasParty) {
                     MinecraftClient.getInstance().setScreen(new PartyScreen());
                 } else {
                     MinecraftClient mc = MinecraftClient.getInstance();
                     if (mc.getNetworkHandler() != null) {
-                        mc.getNetworkHandler().sendChatCommand("party create");
+                        if (usingFTBTeams) {
+                            mc.getNetworkHandler().sendChatCommand("ftbteams party create");
+                        } else {
+
+                            mc.getNetworkHandler().sendChatCommand("party create");
+                        }
                     }
                 }
                 cir.setReturnValue(true);

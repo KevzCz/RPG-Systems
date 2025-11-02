@@ -20,6 +20,13 @@ public final class PartyAllies {
     public static boolean sameParty(MinecraftServer server, UUID a, UUID b) {
         if (a == null || b == null) return false;
         if (server == null) return false;
+
+        if (net.pixeldreamstudios.rpgsystems.party.FTBTeamsIntegration.isEnabled()) {
+            var pa = net.pixeldreamstudios.rpgsystems.party.FTBTeamsIntegration.getPartyDataForPlayerId(server, a);
+            var pb = net.pixeldreamstudios.rpgsystems.party.FTBTeamsIntegration.getPartyDataForPlayerId(server, b);
+            return pa != null && pb != null && pa.partyId.equals(pb.partyId);
+        }
+
         var state = PartyPersistentState.get(server);
         var pa = state.getPartyByMember(a);
         var pb = state.getPartyByMember(b);
