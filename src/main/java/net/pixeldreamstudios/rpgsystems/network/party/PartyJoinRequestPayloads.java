@@ -63,4 +63,13 @@ public final class PartyJoinRequestPayloads {
         );
         @Override public Id<? extends CustomPayload> getId() { return ID; }
     }
+    public record FTBTeamsJoinRequest(UUID targetPlayerUuid) implements CustomPayload {
+        public static final Id<FTBTeamsJoinRequest> ID =
+                new Id<>(Identifier.of("rpg-systems","ftbteams_join_request"));
+        public static final PacketCodec<RegistryByteBuf, FTBTeamsJoinRequest> CODEC = PacketCodec.tuple(
+                Uuids.PACKET_CODEC, FTBTeamsJoinRequest::targetPlayerUuid,
+                FTBTeamsJoinRequest::new
+        );
+        @Override public Id<? extends CustomPayload> getId() { return ID; }
+    }
 }

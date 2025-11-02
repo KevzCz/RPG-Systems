@@ -6,6 +6,7 @@ import net.fabricmc.api.Environment;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
+import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.option.KeyBinding;
 import net.minecraft.client.util.InputUtil;
@@ -31,6 +32,8 @@ import net.pixeldreamstudios.rpgsystems.network.EnemyNet;
 import net.pixeldreamstudios.rpgsystems.network.SystemNet;
 import net.pixeldreamstudios.rpgsystems.network.TitleNet;
 import net.pixeldreamstudios.rpgsystems.network.TitlePowerNet;
+import net.pixeldreamstudios.rpgsystems.network.party.PartyJoinRequestPayloads;
+import net.pixeldreamstudios.rpgsystems.party.FTBTeamsIntegration;
 import org.lwjgl.glfw.GLFW;
 
 @Environment(EnvType.CLIENT)
@@ -106,11 +109,21 @@ public final class RPGSystemsClient implements ClientModInitializer {
                     if (ehr.getEntity() instanceof PlayerEntity target && mc.player != null && !target.getUuid().equals(mc.player.getUuid())) {
                         if (mc.getNetworkHandler() != null) {
                             if (hasParty) {
-                                mc.getNetworkHandler().sendChatCommand("party invite " + target.getName().getString());
+                                // Send invite using appropriate system
+                                FTBTeamsCommandHelper.sendInviteCommand(target.getName().getString());
                                 acted = true;
                             } else {
-                                mc.getNetworkHandler().sendChatCommand("party request player " + target.getName().getString());
-                                acted = true;
+                                // Send join request - works for both systems now!
+                                // For FTB Teams: we'll send a custom join request packet
+                                // For native: uses the native command
+                                if (FTBTeamsIntegration.isEnabled()) {
+                                    // Get the target's FTB Teams party and send join request packet
+                                    sendFTBTeamsJoinRequest(target);
+                                    acted = true;
+                                } else {
+                                    mc.getNetworkHandler().sendChatCommand("party request player " + target.getName().getString());
+                                    acted = true;
+                                }
                             }
                         }
                     }
@@ -161,5 +174,14 @@ public final class RPGSystemsClient implements ClientModInitializer {
                 TitleTextureResolver.clear();
             }
         });
+
+    }
+    private static void sendFTBTeamsJoinRequest(PlayerEntity target) {
+        MinecraftClient mc = MinecraftClient.getInstance();
+        if (mc.getNetworkHandler() != null) {
+            ClientPlayNetworking.send(
+                    new PartyJoinRequestPayloads.FTBTeamsJoinRequest(target.getUuid())
+            );
+        }
     }
 }

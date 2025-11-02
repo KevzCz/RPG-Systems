@@ -18,10 +18,7 @@ import net.pixeldreamstudios.rpgsystems.network.party.PartyHudPayloads.*;
 import net.pixeldreamstudios.rpgsystems.network.party.PartySettingsPayloads.SetAllowHelpfulNonMembers;
 import net.pixeldreamstudios.rpgsystems.network.party.PartySettingsPayloads.Sync;
 import net.pixeldreamstudios.rpgsystems.network.party.PartyStatusEffectsPayloads.MemberEffects;
-import net.pixeldreamstudios.rpgsystems.party.FTBTeamsChatBridge;
-import net.pixeldreamstudios.rpgsystems.party.FTBTeamsIntegration;
-import net.pixeldreamstudios.rpgsystems.party.Party;
-import net.pixeldreamstudios.rpgsystems.party.PartyPersistentState;
+import net.pixeldreamstudios.rpgsystems.party.*;
 import net.puffish.skillsmod.SkillsMod;
 
 import java.util.*;
@@ -68,7 +65,25 @@ public final class PartyNet {
         PayloadTypeRegistry.playS2C().register(ChatNotice.ID, PartyChatPayloads.ChatNotice.CODEC);
         PayloadTypeRegistry.playS2C().register(PartyChatPayloads.ChatPinSet.ID, PartyChatPayloads.ChatPinSet.CODEC);
         PayloadTypeRegistry.playS2C().register(PartyChatPayloads.ChatPinClear.ID, PartyChatPayloads.ChatPinClear.CODEC);
+        PayloadTypeRegistry.playC2S().register(FTBTeamsJoinRequest.ID, FTBTeamsJoinRequest.CODEC);
+        ServerPlayNetworking.registerGlobalReceiver(FTBTeamsJoinRequest.ID, (payload, ctx) -> {
+            ServerPlayerEntity requester = ctx.player();
+            ServerPlayerEntity target = requester.getServer().getPlayerManager().getPlayer(payload.targetPlayerUuid());
 
+            if (target == null) return;
+
+            FTBTeamsIntegration.FTBPartyData ftbData = FTBTeamsIntegration.getPartyDataForPlayer(target);
+            if (ftbData == null) return;
+
+            FTBTeamsJoinRequests.addRequest(ftbData.partyId, requester.getUuid());
+
+            ServerPlayerEntity leader = requester.getServer().getPlayerManager().getPlayer(ftbData.leaderUuid);
+            if (leader != null) {
+                PartyNet.sendJoinReqAdded(leader, ftbData.partyId, requester.getUuid(), requester.getName().getString());
+            }
+
+            requester.sendMessage(Text.literal("Sent join request to " + ftbData.partyName));
+        });
         ServerPlayNetworking.registerGlobalReceiver(
                 PartyInvitePayloads.EligibleInviteesRequest.ID, (payload, ctx) -> {
                     ServerPlayerEntity who = ctx.player();
@@ -265,48 +280,29 @@ public final class PartyNet {
         ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> {
             ServerPlayerEntity player = handler.player;
 
-            RPGSystems.LOGGER.info("[Party Integration] ===== PLAYER JOIN EVENT =====");
-            RPGSystems.LOGGER.info("[Party Integration] Player: {} ({})", player.getName().getString(), player.getUuid());
-            RPGSystems.LOGGER.info("[Party Integration] FTB Teams Enabled: {}", FTBTeamsIntegration.isEnabled());
-
             if (FTBTeamsIntegration.isEnabled()) {
-                RPGSystems.LOGGER.info("[Party Integration] Player {} joined - checking FTB Teams party",
-                        player.getName().getString());
+
 
                 FTBTeamsIntegration.FTBPartyData ftbData = FTBTeamsIntegration.getPartyDataForPlayer(player);
 
                 if (ftbData != null) {
-                    RPGSystems.LOGGER.info("[Party Integration] *** FTB Teams party found! Sending roster to client ***");
-                    RPGSystems.LOGGER.info("[Party Integration] Party: {} with {} members",
-                            ftbData.partyName, ftbData.members.size());
 
                     sendFTBTeamsRosterTo(server, player, ftbData);
-
-                    RPGSystems.LOGGER.info("[Party Integration] *** Roster sent! Client should now have party data ***");
 
                     for (UUID memberId : ftbData.members) {
                         if (!memberId.equals(player.getUuid())) {
                             ServerPlayerEntity member = server.getPlayerManager().getPlayer(memberId);
                             if (member != null) {
-                                RPGSystems.LOGGER.debug("[Party Integration] Notifying member {} that {} is online",
-                                        member.getName().getString(), player.getName().getString());
+
                                 ServerPlayNetworking.send(member,
                                         new PartyHudPayloads.PartyMemberOnline(player.getUuid(), true));
                             }
                         }
                     }
-                } else {
-                    RPGSystems.LOGGER.warn("[Party Integration] *** NO FTB Teams party found for player {} ***",
-                            player.getName().getString());
-                    RPGSystems.LOGGER.warn("[Party Integration] Player will see 'Create Party' button");
                 }
-
-                RPGSystems.LOGGER.info("[Party Integration] ===== JOIN EVENT COMPLETE =====");
                 return;
             }
 
-            RPGSystems.LOGGER.debug("[Party Integration] Using native party system for player {}",
-                    player.getName().getString());
 
             PartyPersistentState state = PartyPersistentState.get(server);
             state.rememberName(handler.player.getUuid(), handler.player.getName().getString());
@@ -488,8 +484,28 @@ public final class PartyNet {
             }
         });
 
-        ServerPlayNetworking.registerGlobalReceiver(JoinReqRespond.ID, (payload, context) -> {
+        ServerPlayNetworking.registerGlobalReceiver(PartyJoinRequestPayloads.JoinReqRespond.ID, (payload, context) -> {
             ServerPlayerEntity leader = context.player();
+
+            if (FTBTeamsIntegration.isEnabled()) {
+                if (!payload.accept()) {
+                    FTBTeamsJoinRequests.removeRequest(payload.partyId(), payload.requesterUuid());
+                    ServerPlayNetworking.send(leader, new JoinReqRemoved(payload.partyId(), payload.requesterUuid()));
+
+                    ServerPlayerEntity requester = leader.getServer().getPlayerManager().getPlayer(payload.requesterUuid());
+                    if (requester != null) {
+                        FTBTeamsIntegration.FTBPartyData ftbData = FTBTeamsIntegration.getPartyDataForPlayer(leader);
+                        String partyName = ftbData != null ? ftbData.partyName : "the party";
+                        ServerPlayNetworking.send(requester,
+                                new PartyJoinRequestPayloads.JoinDeclined(leader.getName().getString(), partyName));
+                    }
+                } else {
+                    FTBTeamsJoinRequests.acceptRequest(leader.getServer(), payload.partyId(), payload.requesterUuid());
+                    ServerPlayNetworking.send(leader, new JoinReqRemoved(payload.partyId(), payload.requesterUuid()));
+                }
+                return;
+            }
+
             PartyPersistentState state = PartyPersistentState.get(leader.getServer());
             Party p = state.getParty(payload.partyId());
             if (p == null || !p.leader.equals(leader.getUuid())) return;
@@ -745,7 +761,7 @@ public final class PartyNet {
                     Party p = state.getPartyByMember(sender.getUuid());
                     partyName = (p != null && p.name != null && !p.name.isBlank()) ? p.name : partyId.toString();
                 }
-                net.pixeldreamstudios.rpgsystems.RPGSystems.LOGGER.info("{}: {} > {}", name, partyName, payload.message());
+
             }
 
             net.pixeldreamstudios.rpgsystems.api.PartyChatEvent.fire(
@@ -791,7 +807,6 @@ public final class PartyNet {
     }
 
     private static void pushAllFTBTeamsVitals(MinecraftServer server) {
-        RPGSystems.LOGGER.debug("[Party Integration] Pushing vitals for all FTB Teams parties");
 
         int playerCount = 0;
         int partyCount = 0;
@@ -818,10 +833,6 @@ public final class PartyNet {
             }
         }
 
-        if (playerCount > 0) {
-            RPGSystems.LOGGER.debug("[Party Integration] Pushed vitals for {} players across {} FTB Teams parties",
-                    playerCount, partyCount);
-        }
     }
     private static UUID lastLoggedPartyId = null;
 
@@ -1003,7 +1014,6 @@ public final class PartyNet {
                 }
             }
 
-            RPGSystems.LOGGER.debug("[Party Integration] Adding member to roster: {} ({})", name, memberId);
             ServerPlayNetworking.send(recipient, new PartyRosterAdd(ftbData.partyId, memberId, name));
 
             boolean isOnline = (member != null);
@@ -1032,8 +1042,6 @@ public final class PartyNet {
                         ));
             }
         }
-
-        RPGSystems.LOGGER.info("[Party Integration] Successfully sent FTB Teams roster to {}", recipient.getName().getString());
     }
 
     public static void sendRosterWipeTo(ServerPlayerEntity player) {

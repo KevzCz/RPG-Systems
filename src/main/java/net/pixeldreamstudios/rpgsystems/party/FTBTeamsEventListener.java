@@ -62,6 +62,7 @@ public final class FTBTeamsEventListener {
                             leftPlayerName + " left the party.",
                             System.currentTimeMillis());
                 }
+                FTBTeamsJoinRequests.clearRequestsForPlayer(leftPlayer.getUuid());
             }
 
             onPartyChanged(event.getTeam());
