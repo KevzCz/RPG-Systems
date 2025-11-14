@@ -5,6 +5,7 @@ import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.effect.StatusEffects;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.entity.damage.DamageSource;
+import net.pixeldreamstudios.rpgsystems.compat.CriticalStrikeCompat;
 import net.pixeldreamstudios.rpgsystems.util.DamageCritLinks;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
@@ -27,7 +28,16 @@ public abstract class PlayerEntityCritLinkMixin {
     )
     private void rpgsystems$computeCritFlag(Entity target, CallbackInfo ci) {
         PlayerEntity self = (PlayerEntity)(Object)this;
-        rpgsystems$pendingVanillaCrit = rpgsystems$isVanillaCrit(self, target);
+
+        boolean allowVanillaJumpCrits = CriticalStrikeCompat.shouldAllowVanillaJumpCrits();
+
+        if (allowVanillaJumpCrits) {
+
+            rpgsystems$pendingVanillaCrit = rpgsystems$isVanillaCrit(self, target);
+        } else {
+
+            rpgsystems$pendingVanillaCrit = false;
+        }
     }
 
     @ModifyArg(
@@ -52,11 +62,15 @@ public abstract class PlayerEntityCritLinkMixin {
         rpgsystems$pendingVanillaCrit = false;
     }
 
+
+    @Unique
     private static boolean rpgsystems$isVanillaCrit(PlayerEntity player, Entity target) {
         if (!(target instanceof LivingEntity)) return false;
         if (player.isSprinting()) return false;
+
         boolean strong = player.getAttackCooldownProgress(0.5F) > 0.9F;
         if (!strong) return false;
+
         return player.fallDistance > 0.0F
                 && !player.isOnGround()
                 && !player.isClimbing()

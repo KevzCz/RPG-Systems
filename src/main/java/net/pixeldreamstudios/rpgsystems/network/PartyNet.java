@@ -834,7 +834,11 @@ public final class PartyNet {
                         rpgNow, rpgMax
                 ));
 
-        int lvl = computeTotalSkillsLevel(subject);
+        int lvl = net.pixeldreamstudios.rpgsystems.compat.LevelZCompat.getLevel(subject);
+        if (lvl < 0) {
+            lvl = computeTotalSkillsLevel(subject);
+        }
+
         if (lvl >= 0) {
             ServerPlayNetworking.send(viewer, new PartyHudPayloads.PartyMemberLevel(memberId, lvl));
         }
@@ -927,6 +931,7 @@ public final class PartyNet {
     private static void sendRosterTo(MinecraftServer server, ServerPlayerEntity recipient, String partyName, Party party) {
         PartyPersistentState state = PartyPersistentState.get(server);
         ServerPlayNetworking.send(recipient, new PartyRosterClear(party.id, partyName, party.leader));
+
         for (UUID memberId : party.members) {
             String name = getName(server, state, memberId);
             ServerPlayNetworking.send(recipient, new PartyRosterAdd(party.id, memberId, name));
@@ -941,10 +946,15 @@ public final class PartyNet {
                     ));
 
             if (subject != null) {
-                int lvl = computeTotalSkillsLevel(subject);
+                int lvl = net.pixeldreamstudios.rpgsystems.compat.LevelZCompat.getLevel(subject);
+                if (lvl < 0) {
+                    lvl = computeTotalSkillsLevel(subject);
+                }
+
                 if (lvl >= 0) {
                     ServerPlayNetworking.send(recipient, new PartyHudPayloads.PartyMemberLevel(memberId, lvl));
                 }
+
                 java.util.List<String> effIds =
                         net.pixeldreamstudios.rpgsystems.network.party.PartyStatusEffectsSync.snapshotEffectIds(subject);
                 ServerPlayNetworking.send(recipient,
@@ -965,7 +975,6 @@ public final class PartyNet {
 
         for (UUID memberId : ftbData.members) {
             ServerPlayerEntity member = server.getPlayerManager().getPlayer(memberId);
-
             String name = FTBTeamsEventListener.getFTBTeamMemberName(server, memberId, member);
 
             ServerPlayNetworking.send(recipient, new PartyRosterAdd(ftbData.partyId, memberId, name));
@@ -979,10 +988,15 @@ public final class PartyNet {
                     ));
 
             if (member != null) {
-                int lvl = computeTotalSkillsLevel(member);
+                int lvl = net.pixeldreamstudios.rpgsystems.compat.LevelZCompat.getLevel(member);
+                if (lvl < 0) {
+                    lvl = computeTotalSkillsLevel(member);
+                }
+
                 if (lvl >= 0) {
                     ServerPlayNetworking.send(recipient, new PartyHudPayloads.PartyMemberLevel(memberId, lvl));
                 }
+
                 java.util.List<String> effIds =
                         net.pixeldreamstudios.rpgsystems.network.party.PartyStatusEffectsSync.snapshotEffectIds(member);
                 ServerPlayNetworking.send(recipient,

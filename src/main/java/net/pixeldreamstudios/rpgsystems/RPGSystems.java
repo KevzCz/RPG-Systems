@@ -40,7 +40,9 @@ public class RPGSystems implements ModInitializer {
 		if (FabricLoader.getInstance().isModLoaded("showmeyourbuild")) {
 			ShowBuildCompatNetServer.initServer();
 		}
-
+		if (FabricLoader.getInstance().isModLoaded("critical_strike")) {
+			net.pixeldreamstudios.rpgsystems.compat.CriticalStrikeCompat.init();
+		}
 		EnemyNet.initCommon();
 
 		if (RPGSystemsConfig.get().systems.title) {

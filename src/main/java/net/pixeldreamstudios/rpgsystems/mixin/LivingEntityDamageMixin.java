@@ -1,3 +1,4 @@
+
 package net.pixeldreamstudios.rpgsystems.mixin;
 
 import net.minecraft.entity.Entity;
@@ -11,6 +12,7 @@ import net.minecraft.registry.entry.RegistryEntry;
 import net.minecraft.util.Identifier;
 import net.minecraft.world.World;
 import net.pixeldreamstudios.rpgsystems.accessor.LivingEntityRawDamageAccess;
+import net.pixeldreamstudios.rpgsystems.compat.CriticalStrikeCompat;
 import net.pixeldreamstudios.rpgsystems.network.EnemyNet;
 import net.pixeldreamstudios.rpgsystems.party.PartyAllies;
 import net.pixeldreamstudios.rpgsystems.util.DamageColorUtil;
@@ -33,6 +35,10 @@ public abstract class LivingEntityDamageMixin {
         LivingEntity self = (LivingEntity)(Object)this;
         rpgsystems$preHp  = self.getHealth();
         rpgsystems$preAbs = self.getAbsorptionAmount();
+
+        if (CriticalStrikeCompat.isLoaded() && CriticalStrikeCompat.isCriticalStrikeDamage(source)) {
+            DamageCritLinks.link(source, DamageCritLinks.Kind.MELEE, null);
+        }
     }
 
     @Inject(method = "damage", at = @At("TAIL"))
@@ -98,6 +104,5 @@ public abstract class LivingEntityDamageMixin {
         }
 
         EnemyNet.broadcastDamageNumber(self, displayDamage, crit, isPet, rgb, srcUuid, dmgId);
-
     }
 }
