@@ -27,7 +27,7 @@ public final class TitlesDataReloader extends JsonDataLoader implements Identifi
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
 
     public TitlesDataReloader() {
-        super(GSON, "title");
+        super(GSON, "rpgsystems-title");
     }
 
     @Override

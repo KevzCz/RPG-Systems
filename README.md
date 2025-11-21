@@ -2,7 +2,7 @@
 
 ## How to make a title
 
-```data/namespace/title/*.json```
+```data/namespace/rpgsystems-title/*.json```
 
 Titles will have:
 ```
@@ -13,7 +13,7 @@ Titles will have:
   "enabled": false
   // Default is false, hides from the list if true (Optional)
   "hidden": true
-  // Optional bonuses section
+  // Optional bonuses section - only active when title is equipped
   "bonuses": [
     {
     // Optional
@@ -29,10 +29,33 @@ Titles will have:
       "spell": [
         "paladins:heal"
       ],
-    // Optional. Operation: Additive or Multiplied
+    // Optional. Operation: added or multiplied
       "damage_bonus": [
         { "id": "minecraft:ender_dragon", "amount": 0.15, "operation": "multiplied" },
         { "tag": "#minecraft:undead", "amount": 0.15, "operation": "multiplied" }
+      ]
+    }
+  ],
+  // Optional permanent bonuses section - always active once title is unlocked
+  "perma_bonuses": [
+    {
+    // Optional
+      "attribute": [
+        { "id": "minecraft:generic.max_health", "amount": 4.0, "operation": "add_value" },
+        { "id": "minecraft:generic.armor", "amount": 0.10, "operation": "multiply_total" }
+      ],
+    // Optional
+      "power": [
+        "rpg-systems:illuminate"
+      ],
+    // Optional
+      "spell": [
+        "paladins:heal"
+      ],
+    // Optional. Operation: added or multiplied
+      "damage_bonus": [
+        { "id": "minecraft:zombie", "amount": 5.0, "operation": "added" },
+        { "tag": "#minecraft:undead", "amount": 0.20, "operation": "multiplied" }
       ]
     }
   ],
