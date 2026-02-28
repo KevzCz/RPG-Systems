@@ -7,12 +7,14 @@ import com.mojang.brigadier.suggestion.Suggestions;
 import com.mojang.brigadier.suggestion.SuggestionsBuilder;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.fabricmc.loader.api.FabricLoader;
+import net.minecraft.command.CommandSource;
 import net.minecraft.command.argument.EntityArgumentType;
 import net.minecraft.command.argument.UuidArgumentType;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.command.ServerCommandSource;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.text.Text;
+import net.pixeldreamstudios.rpgsystems.RPGSystems;
 import net.pixeldreamstudios.rpgsystems.network.PartyNet;
 import net.pixeldreamstudios.rpgsystems.network.party.PartyHudPayloads;
 import net.pixeldreamstudios.rpgsystems.network.party.PartyInvitePayloads;
@@ -29,13 +31,54 @@ import static net.minecraft.server.command.CommandManager.literal;
 public final class PartyCommands {
     private PartyCommands() {}
 
+    private static String getActiveExternalSystem() {
+        if (FabricLoader.getInstance().isModLoaded("ftbteams") && FTBTeamsIntegration.isEnabled()) {
+            return "FTB Teams";
+        }
+        if (FabricLoader.getInstance().isModLoaded("partyaddon") && PartyAddonIntegration.isEnabled()) {
+            return "Party Addon";
+        }
+        return null;
+    }
+
+    private static int showExternalSystemMessage(CommandContext<ServerCommandSource> ctx) {
+        String system = getActiveExternalSystem();
+        if (system != null) {
+            ServerPlayerEntity player = ctx.getSource().getPlayer();
+            if (player != null) {
+                player.sendMessage(Text.literal("Party management is handled by " + system + ". Use their commands/GUI instead.").styled(s -> s.withColor(0xFFAA00)));
+            }
+            return 0;
+        }
+        return 1;
+    }
+
     public static void register(CommandDispatcher<ServerCommandSource> d) {
+        String externalSystem = getActiveExternalSystem();
+        
+        if (externalSystem != null) {
+            RPGSystems.LOGGER.info("[PartyCommands] Native party commands disabled - using {}", externalSystem);
+            d.register(literal("party")
+                    .requires(src -> src.hasPermissionLevel(0))
+                    .executes(PartyCommands::showExternalSystemMessage)
+                    .then(literal("create").executes(PartyCommands::showExternalSystemMessage))
+                    .then(literal("invite").executes(PartyCommands::showExternalSystemMessage))
+                    .then(literal("leave").executes(PartyCommands::showExternalSystemMessage))
+                    .then(literal("disband").executes(PartyCommands::showExternalSystemMessage))
+                    .then(literal("kick").executes(PartyCommands::showExternalSystemMessage))
+                    .then(literal("rename").executes(PartyCommands::showExternalSystemMessage))
+                    .then(literal("promote").executes(PartyCommands::showExternalSystemMessage))
+                    .then(literal("accept").executes(PartyCommands::showExternalSystemMessage))
+                    .then(literal("decline").executes(PartyCommands::showExternalSystemMessage))
+                    .then(literal("request").executes(PartyCommands::showExternalSystemMessage))
+                    .then(literal("requests").executes(PartyCommands::showExternalSystemMessage))
+            );
+            return;
+        }
+
+        RPGSystems.LOGGER.info("[PartyCommands] Registering native party commands");
         d.register(literal("party")
-                .requires(src -> {
-                    if (!src.hasPermissionLevel(0)) return false;
-                    if (!FabricLoader.getInstance().isModLoaded("ftbteams")) return true;
-                    return !FTBTeamsIntegration.isEnabled();
-                })
+                .requires(src -> src.hasPermissionLevel(0))
                 .then(literal("create")
                         .executes(ctx -> create(ctx, null))
                         .then(argument("name", StringArgumentType.greedyString())
@@ -573,31 +616,31 @@ public final class PartyCommands {
         var p      = state.getPartyByMember(leader.getUuid());
 
         if (p == null) {
-            leader.sendMessage(net.minecraft.text.Text.literal("You are not in a party."));
+            leader.sendMessage(Text.literal("You are not in a party."));
             return 0;
         }
         if (!p.leader.equals(leader.getUuid())) {
-            leader.sendMessage(net.minecraft.text.Text.literal("Only the party leader can kick members."));
+            leader.sendMessage(Text.literal("Only the party leader can kick members."));
             return 0;
         }
         if (target.getUuid().equals(leader.getUuid())) {
-            leader.sendMessage(net.minecraft.text.Text.literal("You cannot kick yourself (use /party leave)."));
+            leader.sendMessage(Text.literal("You cannot kick yourself (use /party leave)."));
             return 0;
         }
 
         if (!state.kick(leader.getUuid(), target.getUuid())) {
-            leader.sendMessage(net.minecraft.text.Text.literal(target.getName().getString() + " is not in your party."));
+            leader.sendMessage(Text.literal(target.getName().getString() + " is not in your party."));
             return 0;
         }
 
-        net.pixeldreamstudios.rpgsystems.network.PartyNet.sendRosterWipeTo(target);
-        target.sendMessage(net.minecraft.text.Text.literal("You were kicked from " + displayName(p) + "."));
+        PartyNet.sendRosterWipeTo(target);
+        target.sendMessage(Text.literal("You were kicked from " + displayName(p) + "."));
 
         for (UUID u : p.members) {
             var sp = server.getPlayerManager().getPlayer(u);
-            if (sp != null) sp.sendMessage(net.minecraft.text.Text.literal(target.getName().getString() + " was kicked from the party."));
+            if (sp != null) sp.sendMessage(Text.literal(target.getName().getString() + " was kicked from the party."));
         }
-        net.pixeldreamstudios.rpgsystems.network.PartyNet.broadcastRoster(server, p);
+        PartyNet.broadcastRoster(server, p);
 
         return 1;
     }
@@ -637,7 +680,7 @@ public final class PartyCommands {
             labels.add(name + " #" + shortId(p.id));
         }
 
-        return net.minecraft.command.CommandSource.suggestMatching(labels, b);
+        return CommandSource.suggestMatching(labels, b);
     }
 
     private static UUID resolvePartyFromInput(MinecraftServer server, PartyPersistentState state, String input) {

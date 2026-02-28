@@ -63,6 +63,7 @@ dependencies {
 	modCompileOnly "curse.maven:architectury-api-419699:5786326"
 	modCompileOnly("dev.ftb.mods:ftb-library-fabric:${project.ftb_library_version}") { transitive false }
 	modCompileOnly("dev.ftb.mods:ftb-teams-fabric:${project.ftb_teams_version}") { transitive false }
+	modCompileOnly "curse.maven:partyaddon-862603:6992821"
 }
 
 processResources {

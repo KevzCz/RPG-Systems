@@ -28,6 +28,8 @@ public final class PartyPersistentState extends PersistentState {
     private final Map<String, Long> inviteTimes = new HashMap<>();
 
     private final Map<UUID, PartySettings> ftbPartySettings = new HashMap<>();
+    private final Map<UUID, PartySettings> partyAddonSettings = new HashMap<>();
+    private final Map<UUID, PartyDataProvider.PartySource> playerSourcePreferences = new HashMap<>();
 
     public static PartyPersistentState get(MinecraftServer server) {
         PersistentStateManager mgr = server.getWorld(World.OVERWORLD).getPersistentStateManager();
@@ -85,6 +87,25 @@ public final class PartyPersistentState extends PersistentState {
             UUID partyId = row.getUuid("PartyId");
             PartySettings settings = PartySettings.fromNbt(row.getCompound("Settings"));
             s.ftbPartySettings.put(partyId, settings);
+        }
+
+        NbtList partyAddonSettingsList = nbt.getList("PartyAddonSettings", NbtElement.COMPOUND_TYPE);
+        for (int i = 0; i < partyAddonSettingsList.size(); i++) {
+            NbtCompound row = partyAddonSettingsList.getCompound(i);
+            UUID partyId = row.getUuid("PartyId");
+            PartySettings settings = PartySettings.fromNbt(row.getCompound("Settings"));
+            s.partyAddonSettings.put(partyId, settings);
+        }
+
+        NbtList sourcePrefs = nbt.getList("PlayerSourcePreferences", NbtElement.COMPOUND_TYPE);
+        for (int i = 0; i < sourcePrefs.size(); i++) {
+            NbtCompound row = sourcePrefs.getCompound(i);
+            UUID playerId = row.getUuid("PlayerId");
+            String sourceName = row.getString("Source");
+            try {
+                PartyDataProvider.PartySource source = PartyDataProvider.PartySource.valueOf(sourceName);
+                s.playerSourcePreferences.put(playerId, source);
+            } catch (IllegalArgumentException ignored) {}
         }
 
         return s;
@@ -160,6 +181,24 @@ public final class PartyPersistentState extends PersistentState {
             ftbSettings.add(row);
         }
         nbt.put("FTBPartySettings", ftbSettings);
+
+        NbtList partyAddonSettingsList = new NbtList();
+        for (Map.Entry<UUID, PartySettings> e : partyAddonSettings.entrySet()) {
+            NbtCompound row = new NbtCompound();
+            row.putUuid("PartyId", e.getKey());
+            row.put("Settings", e.getValue().toNbt());
+            partyAddonSettingsList.add(row);
+        }
+        nbt.put("PartyAddonSettings", partyAddonSettingsList);
+
+        NbtList sourcePrefs = new NbtList();
+        for (Map.Entry<UUID, PartyDataProvider.PartySource> e : playerSourcePreferences.entrySet()) {
+            NbtCompound row = new NbtCompound();
+            row.putUuid("PlayerId", e.getKey());
+            row.putString("Source", e.getValue().name());
+            sourcePrefs.add(row);
+        }
+        nbt.put("PlayerSourcePreferences", sourcePrefs);
 
         return nbt;
     }
@@ -416,6 +455,50 @@ public final class PartyPersistentState extends PersistentState {
     }
     public boolean hasFTBPartySettings(UUID ftbPartyId) {
         return ftbPartySettings.containsKey(ftbPartyId);
+    }
+
+    public PartySettings getPartyAddonPartySettings(UUID partyId) {
+        return partyAddonSettings.computeIfAbsent(partyId, id -> {
+            PartySettings s = new PartySettings();
+            s.allowHelpfulNonMembers = false;
+            s.ignorePartyCollision = true;
+            markDirty();
+            return s;
+        });
+    }
+
+    public void updatePartyAddonPartySettings(UUID partyId, PartySettings settings) {
+        partyAddonSettings.put(partyId, settings);
+        markDirty();
+    }
+
+    public void removePartyAddonPartySettings(UUID partyId) {
+        if (partyAddonSettings.remove(partyId) != null) {
+            markDirty();
+        }
+    }
+
+    public boolean hasPartyAddonPartySettings(UUID partyId) {
+        return partyAddonSettings.containsKey(partyId);
+    }
+
+    public PartyDataProvider.PartySource getPlayerSourcePreference(UUID playerId) {
+        return playerSourcePreferences.get(playerId);
+    }
+
+    public void setPlayerSourcePreference(UUID playerId, PartyDataProvider.PartySource source) {
+        if (source == null) {
+            playerSourcePreferences.remove(playerId);
+        } else {
+            playerSourcePreferences.put(playerId, source);
+        }
+        markDirty();
+    }
+
+    public void clearPlayerSourcePreference(UUID playerId) {
+        if (playerSourcePreferences.remove(playerId) != null) {
+            markDirty();
+        }
     }
 
 

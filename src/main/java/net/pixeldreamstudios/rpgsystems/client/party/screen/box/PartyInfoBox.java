@@ -17,6 +17,7 @@ import net.pixeldreamstudios.rpgsystems.client.party.ClientPartyHudData;
 import net.pixeldreamstudios.rpgsystems.client.party.CompatCommandHelper;
 import net.pixeldreamstudios.rpgsystems.network.party.PartySettingsPayloads;
 import net.pixeldreamstudios.rpgsystems.party.FTBTeamsIntegration;
+import net.pixeldreamstudios.rpgsystems.party.PartyDataProvider;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -67,6 +68,7 @@ public final class PartyInfoBox implements PartyBox {
     private static float gearAnimAngle = 0f;
     private int settingsPanelGearX = -1, settingsPanelGearY = -1;
     private static final int SETTINGS_GEAR_SIZE = 12;
+    private int sourceToggleX = -1, sourceToggleY = -1, sourceToggleW = 0, sourceToggleH = 0;
 
     @Override
     public void render(DrawContext ctx, TextRenderer tr, int canvasX, int canvasY, int canvasW, int canvasH) {
@@ -99,6 +101,39 @@ public final class PartyInfoBox implements PartyBox {
         int partyY     = topLineY;
 
         drawScaledText(ctx, tr, partyName, partyX, partyY - 5, 0xFFFFFFFF, s);
+
+        int sourceIndicatorY = partyY - 5 + scaledFontH + 1;
+        if (ClientPartyHudData.hasMultipleSources()) {
+            PartyDataProvider.PartySource currentSource = ClientPartyHudData.getCurrentSource();
+            String sourceLabel = switch (currentSource) {
+                case FTB_TEAMS -> "FTB Teams";
+                case PARTY_ADDON -> "PartyAddon";
+                case NATIVE -> "Native";
+            };
+            String displayLabel = "\u25C0 " + sourceLabel + " \u25B6";
+            float sourceScale = s * 0.75f;
+            int sourceLabelW = Math.round(tr.getWidth(displayLabel) * sourceScale);
+            int sourceLabelX = x + (w - sourceLabelW) / 2;
+            boolean hoverSource = isMouseOver(sourceLabelX - 4, sourceIndicatorY - 2, sourceLabelW + 8, scaledFontH + 4);
+            
+            int pillX = sourceLabelX - 4;
+            int pillY = sourceIndicatorY - 2;
+            int pillW = sourceLabelW + 8;
+            int pillH = scaledFontH + 4;
+            int bgColor = hoverSource ? 0x80404040 : 0x60202020;
+            ctx.fill(pillX, pillY, pillX + pillW, pillY + pillH, bgColor);
+            
+            int sourceColor = hoverSource ? 0xFFFFFF00 : 0xFFCCCCCC;
+            drawScaledText(ctx, tr, displayLabel, sourceLabelX, sourceIndicatorY, sourceColor, sourceScale);
+
+            sourceToggleX = pillX;
+            sourceToggleY = pillY;
+            sourceToggleW = pillW;
+            sourceToggleH = pillH;
+        } else {
+            sourceToggleX = sourceToggleY = -1;
+            sourceToggleW = sourceToggleH = 0;
+        }
 
         int divW = w - 16;
         int divX = x + (w - divW) / 2;
@@ -161,8 +196,9 @@ public final class PartyInfoBox implements PartyBox {
             int rowGap = 2;
             int listH = rows * SETTINGS_ROW_H + (rows - 1) * rowGap;
             int titleH = 12;
+            int sourceBadgeH = ClientPartyHudData.hasMultipleSources() ? 14 : 0;
             int boxW = 158;
-            int boxH = innerPad + titleH + 4 + listH + innerPad;
+            int boxH = innerPad + titleH + sourceBadgeH + 4 + listH + innerPad;
 
             int bx = Math.min(canvasX + canvasW - TL_BOX_MARGIN - boxW, Math.max(x, gearX + gearW + 4));
             int by = Math.max(canvasY + TL_BOX_MARGIN, Math.min(y, canvasY + canvasH - TL_BOX_MARGIN - boxH));
@@ -174,7 +210,24 @@ public final class PartyInfoBox implements PartyBox {
             ctx.fill(bx, by, bx + boxW, by + boxH, SETTINGS_BG);
             drawBorder(ctx, bx, by, boxW, boxH, SETTINGS_BORDER);
             int titleTextX = bx + innerPad;
-            drawScaledText(ctx, tr, "Settings", titleTextX, by + innerPad, 0xFFFFFFFF, SETTINGS_TEXT_SCALE);
+            drawScaledText(ctx, tr, net.minecraft.text.Text.translatable("party.rpgsystems.settings").getString(), titleTextX, by + innerPad, 0xFFFFFFFF, SETTINGS_TEXT_SCALE);
+            int sourceBadgeOffset = 0;
+            if (ClientPartyHudData.hasMultipleSources()) {
+                PartyDataProvider.PartySource currentSource = ClientPartyHudData.getCurrentSource();
+                String sourceKey = switch (currentSource) {
+                    case FTB_TEAMS -> "party.rpgsystems.source.ftb_teams";
+                    case PARTY_ADDON -> "party.rpgsystems.source.party_addon";
+                    case NATIVE -> "party.rpgsystems.source.native";
+                };
+                String sourceText = net.minecraft.text.Text.translatable(sourceKey).getString();
+                float badgeScale = SETTINGS_TEXT_SCALE * 0.85f;
+                int badgeW = Math.round(tr.getWidth(sourceText) * badgeScale) + 8;
+                int badgeX = bx + innerPad;
+                int badgeY = by + innerPad + 11;
+                ctx.fill(badgeX, badgeY, badgeX + badgeW, badgeY + 11, 0x60404040);
+                drawScaledText(ctx, tr, sourceText, badgeX + 4, badgeY + 2, 0xFFAADDFF, badgeScale);
+                sourceBadgeOffset = 14;
+            }
 
             settingsPanelGearX = bx + boxW - innerPad - SETTINGS_GEAR_SIZE;
             settingsPanelGearY = by + innerPad;
@@ -188,7 +241,7 @@ public final class PartyInfoBox implements PartyBox {
             ctx.drawTexture(SETTINGS_BUTTON, -GEAR_W / 2, -GEAR_H / 2, 0, 0, GEAR_W, GEAR_H, 16, 16);
             m.pop();
 
-            int listTop = by + innerPad + titleH + 4;
+            int listTop = by + innerPad + titleH + sourceBadgeOffset + 4;
             int cx0 = bx + innerPad;
             int tx0 = cx0 + 12 + 6;
             int yRow = listTop;
@@ -214,6 +267,13 @@ public final class PartyInfoBox implements PartyBox {
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button,
                                 int canvasX, int canvasY, int canvasW, int canvasH, TextRenderer tr) {
+
+        if (sourceToggleW > 0 && sourceToggleH > 0 &&
+                mouseX >= sourceToggleX && mouseX < sourceToggleX + sourceToggleW &&
+                mouseY >= sourceToggleY && mouseY < sourceToggleY + sourceToggleH) {
+            ClientPartyHudData.switchToNextSource();
+            return true;
+        }
 
         if (showSettings) {
             boolean clickedInside = (mouseX >= overlayX && mouseX < overlayX + overlayW && mouseY >= overlayY && mouseY < overlayY + overlayH);

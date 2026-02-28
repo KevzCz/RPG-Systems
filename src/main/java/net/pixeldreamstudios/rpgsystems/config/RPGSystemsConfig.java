@@ -22,6 +22,7 @@ public final class RPGSystemsConfig {
     public static final class Party {
         public boolean logChatToConsole = true;
         public boolean useFTBTeams = false;
+        public boolean usePartyAddon = false;
     }
 
     private static final Gson GSON = new GsonBuilder()

@@ -6,6 +6,8 @@ import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.minecraft.client.MinecraftClient;
 import net.pixeldreamstudios.rpgsystems.network.party.PartyHudPayloads;
 import net.pixeldreamstudios.rpgsystems.network.party.PartySettingsPayloads;
+import net.pixeldreamstudios.rpgsystems.network.party.PartySourcePayloads;
+import net.pixeldreamstudios.rpgsystems.party.PartyDataProvider;
 
 import java.util.*;
 
@@ -58,6 +60,23 @@ public final class ClientPartyHudData {
     private static final PartySettingsClient SETTINGS = new PartySettingsClient();
     public static boolean allowHelpfulNonMembers() { return SETTINGS.allowHelpfulNonMembers; }
     public static boolean ignorePartyCollision()   { return SETTINGS.ignorePartyCollision; }
+    private static final List<PartyDataProvider.PartySource> availableSources = new ArrayList<>();
+    private static PartyDataProvider.PartySource currentSource = PartyDataProvider.PartySource.NATIVE;
+
+    public static List<PartyDataProvider.PartySource> getAvailableSources() { return Collections.unmodifiableList(availableSources); }
+    public static PartyDataProvider.PartySource getCurrentSource() { return currentSource; }
+    public static boolean hasMultipleSources() { return availableSources.size() > 1; }
+
+    public static void switchToNextSource() {
+        if (availableSources.isEmpty() || availableSources.size() == 1) return;
+        
+        int currentIndex = availableSources.indexOf(currentSource);
+        if (currentIndex < 0) currentIndex = -1;
+        int nextIndex = (currentIndex + 1) % availableSources.size();
+        PartyDataProvider.PartySource nextSource = availableSources.get(nextIndex);
+        
+        ClientPlayNetworking.send(new PartySourcePayloads.SwitchSource(nextSource.name()));
+    }
 
     public static Member getSelectedOrDefault() {
         if (selectedMemberUuid != null) {
@@ -79,7 +98,6 @@ public final class ClientPartyHudData {
             partyName = payload.partyName();
             leaderUuid = payload.leaderUuid();
             MEMBERS.clear();
-
         });
 
         ClientPlayNetworking.registerGlobalReceiver(
@@ -93,13 +111,8 @@ public final class ClientPartyHudData {
         );
 
         ClientPlayNetworking.registerGlobalReceiver(PartyHudPayloads.PartyRosterAdd.ID, (payload, ctx) -> {
-
-            if (!Objects.equals(partyId, payload.partyId())) {
-                return;
-            }
-
+            if (!Objects.equals(partyId, payload.partyId())) return;
             MEMBERS.put(payload.memberUuid(), new Member(payload.memberUuid(), payload.memberName()));
-
         });
 
         ClientPlayNetworking.registerGlobalReceiver(PartyHudPayloads.PartyMemberVitals.ID, (payload, ctx) -> {
@@ -139,8 +152,23 @@ public final class ClientPartyHudData {
 
         ClientPlayNetworking.registerGlobalReceiver(PartyHudPayloads.PartyRosterReset.ID, (payload, ctx) -> {
             clearAll();
-
         });
+
+        ClientPlayNetworking.registerGlobalReceiver(
+                PartySourcePayloads.AvailableSources.ID,
+                (payload, ctx) -> ctx.client().execute(() -> {
+                    availableSources.clear();
+                    availableSources.addAll(payload.getSourcesAsEnum());
+                    currentSource = payload.getActiveAsEnum();
+                })
+        );
+
+        ClientPlayNetworking.registerGlobalReceiver(
+                PartySourcePayloads.SourceSwitched.ID,
+                (payload, ctx) -> ctx.client().execute(() -> {
+                    currentSource = payload.getSourceAsEnum();
+                })
+        );
     }
 
     public static void clearAll() {
@@ -151,6 +179,8 @@ public final class ClientPartyHudData {
         SETTINGS.allowHelpfulNonMembers = false;
         SETTINGS.ignorePartyCollision   = true;
         MEMBERS.clear();
+        availableSources.clear();
+        currentSource = PartyDataProvider.PartySource.NATIVE;
     }
 
     public static List<Member> membersSortedExcludingSelf() {

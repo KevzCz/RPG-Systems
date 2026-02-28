@@ -21,11 +21,22 @@ public final class PartyAllies {
     public static boolean sameParty(MinecraftServer server, UUID a, UUID b) {
         if (a == null || b == null) return false;
         if (server == null) return false;
+        if (a.equals(b)) return true;
 
         if (FabricLoader.getInstance().isModLoaded("ftbteams") && FTBTeamsIntegration.isEnabled()) {
-            var pa = net.pixeldreamstudios.rpgsystems.party.FTBTeamsIntegration.getPartyDataForPlayerId(server, a);
-            var pb = net.pixeldreamstudios.rpgsystems.party.FTBTeamsIntegration.getPartyDataForPlayerId(server, b);
-            return pa != null && pb != null && pa.partyId.equals(pb.partyId);
+            var pa = FTBTeamsIntegration.getPartyDataForPlayerId(server, a);
+            var pb = FTBTeamsIntegration.getPartyDataForPlayerId(server, b);
+            if (pa != null && pb != null && pa.partyId.equals(pb.partyId)) {
+                return true;
+            }
+        }
+
+        if (FabricLoader.getInstance().isModLoaded("partyaddon") && PartyAddonIntegration.isEnabled()) {
+            var pa = PartyAddonIntegration.getPartyDataForPlayerId(server, a);
+            var pb = PartyAddonIntegration.getPartyDataForPlayerId(server, b);
+            if (pa != null && pb != null && pa.partyId.equals(pb.partyId)) {
+                return true;
+            }
         }
 
         var state = PartyPersistentState.get(server);

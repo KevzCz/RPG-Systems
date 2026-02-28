@@ -24,9 +24,11 @@ public final class RPGSystemsModMenu implements ModMenuApi {
         private CheckboxWidget titleEnabled;
         private CheckboxWidget partyLogToConsole;
         private CheckboxWidget useFTBTeams;
+        private CheckboxWidget usePartyAddon;
+        private int restartWarningY = -1;
 
         protected ReadOnlyConfigScreen(Screen parent) {
-            super(Text.literal("RPG Systems Config (read-only)"));
+            super(Text.literal("RPG Systems Config"));
             this.parent = parent;
         }
 
@@ -59,15 +61,29 @@ public final class RPGSystemsModMenu implements ModMenuApi {
             y += 24;
 
             this.useFTBTeams = CheckboxWidget.builder(Text.literal("Use FTB Teams Integration"), this.textRenderer)
-                    .pos(centerX - w/2, y).checked(cfg.party.useFTBTeams).build();
-            this.useFTBTeams.active = false;
-            y += 28;
+                    .pos(centerX - w/2, y).checked(cfg.party.useFTBTeams)
+                    .callback((checkbox, checked) -> {
+                        RPGSystemsConfig.get().party.useFTBTeams = checked;
+                        RPGSystemsConfig.save();
+                    }).build();
+            y += 24;
+
+            this.usePartyAddon = CheckboxWidget.builder(Text.literal("Use Party Addon Integration"), this.textRenderer)
+                    .pos(centerX - w/2, y).checked(cfg.party.usePartyAddon)
+                    .callback((checkbox, checked) -> {
+                        RPGSystemsConfig.get().party.usePartyAddon = checked;
+                        RPGSystemsConfig.save();
+                    }).build();
+            y += 12;
+            this.restartWarningY = y;
+            y += 20;
 
             this.addDrawableChild(this.partyEnabled);
             this.addDrawableChild(this.petEnabled);
             this.addDrawableChild(this.titleEnabled);
             this.addDrawableChild(this.partyLogToConsole);
             this.addDrawableChild(this.useFTBTeams);
+            this.addDrawableChild(this.usePartyAddon);
 
             this.addDrawableChild(ButtonWidget.builder(Text.literal("Client Options…"),
                             b -> this.client.setScreen(new ClientConfigsScreen(this)))
@@ -82,7 +98,10 @@ public final class RPGSystemsModMenu implements ModMenuApi {
         public void render(DrawContext ctx, int mouseX, int mouseY, float delta) {
             super.render(ctx, mouseX, mouseY, delta);
             ctx.drawCenteredTextWithShadow(this.textRenderer, this.title, this.width / 2, 20, 0xFFFFFF);
-            ctx.drawCenteredTextWithShadow(this.textRenderer, Text.literal("Edit file: config/rpgsystems/rpgsystems.json"), this.width / 2, 36, 0xAAAAAA);
+            ctx.drawCenteredTextWithShadow(this.textRenderer, Text.literal("Some options require editing: config/rpgsystems/rpgsystems.json"), this.width / 2, 36, 0xAAAAAA);
+            if (this.restartWarningY > 0) {
+                ctx.drawCenteredTextWithShadow(this.textRenderer, Text.literal("↑ Requires client restart to take effect"), this.width / 2, this.restartWarningY, 0xFFAA00);
+            }
         }
 
         @Override

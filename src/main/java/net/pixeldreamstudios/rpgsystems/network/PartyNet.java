@@ -12,6 +12,7 @@ import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.text.Text;
 import net.minecraft.util.ActionResult;
 import net.minecraft.util.Identifier;
+import net.pixeldreamstudios.rpgsystems.RPGSystems;
 import net.pixeldreamstudios.rpgsystems.config.RPGSystemsConfig;
 import net.pixeldreamstudios.rpgsystems.network.party.*;
 import net.pixeldreamstudios.rpgsystems.network.party.PartyChatPayloads.ChatNotice;
@@ -34,6 +35,20 @@ public final class PartyNet {
     private PartyNet() {}
     private static int tickCounter = 0;
     public static boolean PERSIST_PARTIES_ON_DISCONNECT = true;
+    
+    private static final Map<UUID, PartyStateSnapshot> lastKnownPartyState = new HashMap<>();
+    
+    private record PartyStateSnapshot(UUID partyId, PartyDataProvider.PartySource source, int memberCount) {}
+
+    public static boolean isExternalPartyModEnabled() {
+        if (FabricLoader.getInstance().isModLoaded("ftbteams") && FTBTeamsIntegration.isEnabled()) {
+            return true;
+        }
+        if (FabricLoader.getInstance().isModLoaded("partyaddon") && PartyAddonIntegration.isEnabled()) {
+            return true;
+        }
+        return false;
+    }
 
     public static void initCommon() {
         PayloadTypeRegistry.playS2C().register(InviteAdded.ID, InviteAdded.CODEC);
@@ -68,6 +83,9 @@ public final class PartyNet {
         PayloadTypeRegistry.playS2C().register(PartyChatPayloads.ChatPinSet.ID, PartyChatPayloads.ChatPinSet.CODEC);
         PayloadTypeRegistry.playS2C().register(PartyChatPayloads.ChatPinClear.ID, PartyChatPayloads.ChatPinClear.CODEC);
         PayloadTypeRegistry.playC2S().register(FTBTeamsJoinRequest.ID, FTBTeamsJoinRequest.CODEC);
+        PayloadTypeRegistry.playC2S().register(PartySourcePayloads.SwitchSource.ID, PartySourcePayloads.SwitchSource.CODEC);
+        PayloadTypeRegistry.playS2C().register(PartySourcePayloads.AvailableSources.ID, PartySourcePayloads.AvailableSources.CODEC);
+        PayloadTypeRegistry.playS2C().register(PartySourcePayloads.SourceSwitched.ID, PartySourcePayloads.SourceSwitched.CODEC);
 
         if (FabricLoader.getInstance().isModLoaded("ftbteams")) {
             registerFTBTeamsReceivers();
@@ -84,6 +102,21 @@ public final class PartyNet {
                             for (ServerPlayerEntity sp : server.getPlayerManager().getPlayerList()) {
                                 if (sp.getUuid().equals(who.getUuid())) continue;
                                 if (getPartyDataForPlayer(sp) != null) continue;
+                                uuids.add(sp.getUuid());
+                                names.add(sp.getGameProfile().getName());
+                            }
+                            ServerPlayNetworking.send(who,
+                                    new PartyInvitePayloads.EligibleInviteesResponse(uuids, names));
+                            return;
+                        }
+                    }
+                    if (FabricLoader.getInstance().isModLoaded("partyaddon")) {
+                        if (PartyAddonIntegration.isEnabled()) {
+                            List<UUID> uuids = new ArrayList<>();
+                            List<String> names = new ArrayList<>();
+                            for (ServerPlayerEntity sp : server.getPlayerManager().getPlayerList()) {
+                                if (sp.getUuid().equals(who.getUuid())) continue;
+                                if (PartyAddonIntegration.getPartyDataForPlayer(sp) != null) continue;
                                 uuids.add(sp.getUuid());
                                 names.add(sp.getGameProfile().getName());
                             }
@@ -138,6 +171,41 @@ public final class PartyNet {
                                     ServerPlayNetworking.send(member,
                                             new ChatNotice(ftbData.partyId,
                                                     "Ignore party collision: " + (ftbData.settings.ignorePartyCollision ? "ON" : "OFF"),
+                                                    now));
+                                }
+                            }
+                            return;
+                        }
+                    }
+                    if (FabricLoader.getInstance().isModLoaded("partyaddon")) {
+                        if (PartyAddonIntegration.isEnabled()) {
+                            PartyAddonIntegration.PartyAddonData partyData = PartyAddonIntegration.getPartyDataForPlayer(player);
+                            if (partyData == null) return;
+
+                            if (!partyData.leaderUuid.equals(player.getUuid())) {
+                                long now = System.currentTimeMillis();
+                                ServerPlayerEntity leader = server.getPlayerManager().getPlayer(partyData.leaderUuid);
+                                String leaderName = leader != null ? leader.getName().getString() : partyData.leaderUuid.toString().substring(0, 8);
+                                ServerPlayNetworking.send(player,
+                                        new ChatNotice(partyData.partyId, "Only " + leaderName + " can change party settings.", now));
+                                return;
+                            }
+                            partyData.settings.ignorePartyCollision = payload.ignore();
+                            PartyAddonIntegration.updatePartySettings(server, partyData.partyId, partyData.settings);
+
+                            long now = System.currentTimeMillis();
+
+                            for (UUID memberId : partyData.members) {
+                                ServerPlayerEntity member = server.getPlayerManager().getPlayer(memberId);
+                                if (member != null) {
+                                    ServerPlayNetworking.send(member,
+                                            new PartySettingsPayloads.Sync(
+                                                    partyData.settings.allowHelpfulNonMembers,
+                                                    partyData.settings.ignorePartyCollision
+                                            ));
+                                    ServerPlayNetworking.send(member,
+                                            new ChatNotice(partyData.partyId,
+                                                    "Ignore party collision: " + (partyData.settings.ignorePartyCollision ? "ON" : "OFF"),
                                                     now));
                                 }
                             }
@@ -221,6 +289,42 @@ public final class PartyNet {
                             return;
                         }
                     }
+                    if (FabricLoader.getInstance().isModLoaded("partyaddon")) {
+                        if (PartyAddonIntegration.isEnabled()) {
+                            PartyAddonIntegration.PartyAddonData partyData = PartyAddonIntegration.getPartyDataForPlayer(player);
+                            if (partyData == null) return;
+
+                            if (!partyData.leaderUuid.equals(player.getUuid())) {
+                                long now = System.currentTimeMillis();
+                                ServerPlayerEntity leader = server.getPlayerManager().getPlayer(partyData.leaderUuid);
+                                String leaderName = leader != null ? leader.getName().getString() : partyData.leaderUuid.toString().substring(0, 8);
+                                ServerPlayNetworking.send(player,
+                                        new ChatNotice(partyData.partyId, "Only " + leaderName + " can change party settings.", now));
+                                return;
+                            }
+
+                            partyData.settings.allowHelpfulNonMembers = payload.allow();
+                            PartyAddonIntegration.updatePartySettings(server, partyData.partyId, partyData.settings);
+
+                            long now = System.currentTimeMillis();
+
+                            for (UUID memberId : partyData.members) {
+                                ServerPlayerEntity member = server.getPlayerManager().getPlayer(memberId);
+                                if (member != null) {
+                                    ServerPlayNetworking.send(member,
+                                            new PartySettingsPayloads.Sync(
+                                                    partyData.settings.allowHelpfulNonMembers,
+                                                    partyData.settings.ignorePartyCollision
+                                            ));
+                                    ServerPlayNetworking.send(member,
+                                            new ChatNotice(partyData.partyId,
+                                                    "Heal/Buff non-members: " + (partyData.settings.allowHelpfulNonMembers ? "ON" : "OFF"),
+                                                    now));
+                                }
+                            }
+                            return;
+                        }
+                    }
                     var state  = net.pixeldreamstudios.rpgsystems.party.PartyPersistentState.get(server);
                     var p      = state.getPartyByMember(player.getUuid());
                     if (p == null) return;
@@ -256,6 +360,40 @@ public final class PartyNet {
                 }
         );
 
+        ServerPlayNetworking.registerGlobalReceiver(
+                PartySourcePayloads.SwitchSource.ID, (payload, ctx) -> {
+                    ServerPlayerEntity player = ctx.player();
+                    MinecraftServer server = player.getServer();
+                    PartyDataProvider.PartySource requestedSource = payload.toPartySource();
+
+                    List<PartyDataProvider.PartySource> available = PartyDataProvider.getAvailableSourcesForPlayer(player);
+                    
+                    if (!available.contains(requestedSource)) {
+                        RPGSystems.LOGGER.warn("[PartyNet] Requested source {} is not available for {}", requestedSource, player.getName().getString());
+                        ServerPlayNetworking.send(player,
+                                PartySourcePayloads.AvailableSources.create(
+                                        available,
+                                        PartyDataProvider.getEffectiveSourceForPlayer(player)));
+                        return;
+                    }
+
+                    PartyPersistentState state = PartyPersistentState.get(server);
+                    state.setPlayerSourcePreference(player.getUuid(), requestedSource);
+
+                    PartyDataProvider.PartyInfo partyInfo = PartyDataProvider.getPartyFromSource(player, requestedSource);
+
+                    ServerPlayNetworking.send(player, PartySourcePayloads.SourceSwitched.create(requestedSource));
+
+                    ServerPlayNetworking.send(player, new PartyHudPayloads.PartyRosterReset());
+
+                    if (partyInfo != null) {
+                        sendPartyInfoRosterTo(server, player, partyInfo);
+                        ServerPlayNetworking.send(player, new PartySettingsPayloads.Sync(
+                                partyInfo.settings.allowHelpfulNonMembers,
+                                partyInfo.settings.ignorePartyCollision));
+                    }
+                });
+
         AttackEntityCallback.EVENT.register((player, world, hand, target, hit) -> {
             if (world.isClient) return ActionResult.PASS;
             var server = world.getServer();
@@ -271,37 +409,24 @@ public final class PartyNet {
 
         ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> {
             ServerPlayerEntity player = handler.player;
-                    if (FabricLoader.getInstance().isModLoaded("ftbteams")) {
-                        if (FTBTeamsIntegration.isEnabled()) {
-                            FTBTeamsIntegration.FTBPartyData ftbData = getPartyDataForPlayer(player);
-
-                            if (ftbData != null) {
-                                sendFTBTeamsRosterTo(server, player, ftbData);
-
-                                for (UUID memberId : ftbData.members) {
-                                    if (!memberId.equals(player.getUuid())) {
-                                        ServerPlayerEntity member = server.getPlayerManager().getPlayer(memberId);
-                                        if (member != null) {
-                                            ServerPlayNetworking.send(member,
-                                                    new PartyHudPayloads.PartyMemberOnline(player.getUuid(), true));
-                                        }
-                                    }
-                                }
-                            }
-                            return;
-                        }
-                    }
             PartyPersistentState state = PartyPersistentState.get(server);
-            state.rememberName(handler.player.getUuid(), handler.player.getName().getString());
-            Party p = state.getPartyByMember(handler.player.getUuid());
-            if (p != null) {
-                sendRosterTo(server, handler.player, p);
-                for (UUID u : p.members) {
-                    if (!u.equals(handler.player.getUuid())) {
-                        ServerPlayerEntity sp = server.getPlayerManager().getPlayer(u);
-                        if (sp != null) {
-                            ServerPlayNetworking.send(sp,
-                                    new PartyHudPayloads.PartyMemberOnline(handler.player.getUuid(), true));
+            state.rememberName(player.getUuid(), player.getName().getString());
+
+            List<PartyDataProvider.PartySource> availableSources = PartyDataProvider.getAvailableSourcesForPlayer(player);
+            PartyDataProvider.PartySource effectiveSource = PartyDataProvider.getEffectiveSourceForPlayer(player);
+            ServerPlayNetworking.send(player, PartySourcePayloads.AvailableSources.create(availableSources, effectiveSource));
+
+            PartyDataProvider.PartyInfo partyInfo = PartyDataProvider.getPartyForPlayer(player);
+
+            if (partyInfo != null) {
+                sendPartyInfoRosterTo(server, player, partyInfo);
+
+                for (UUID memberId : partyInfo.members) {
+                    if (!memberId.equals(player.getUuid())) {
+                        ServerPlayerEntity member = server.getPlayerManager().getPlayer(memberId);
+                        if (member != null) {
+                            ServerPlayNetworking.send(member,
+                                    new PartyHudPayloads.PartyMemberOnline(player.getUuid(), true));
                         }
                     }
                 }
@@ -310,39 +435,29 @@ public final class PartyNet {
 
         ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> {
             ServerPlayerEntity self = handler.player;
-                    if (FabricLoader.getInstance().isModLoaded("ftbteams")) {
-                        if (FTBTeamsIntegration.isEnabled()) {
-                            FTBTeamsIntegration.FTBPartyData ftbData = getPartyDataForPlayer(self);
-                            if (ftbData != null) {
-                                for (UUID memberId : ftbData.members) {
-                                    if (!memberId.equals(self.getUuid())) {
-                                        ServerPlayerEntity member = server.getPlayerManager().getPlayer(memberId);
-                                        if (member != null) {
-                                            ServerPlayNetworking.send(member,
-                                                    new PartyHudPayloads.PartyMemberOnline(self.getUuid(), false));
-                                        }
-                                    }
-                                }
-                            }
-                            return;
-                        }
-                    }
             PartyPersistentState state = PartyPersistentState.get(server);
-            Party p = state.getPartyByMember(self.getUuid());
-            if (p == null) return;
             state.rememberName(self.getUuid(), self.getName().getString());
-            if (PERSIST_PARTIES_ON_DISCONNECT) {
-                for (UUID u : p.members) {
-                    if (!u.equals(self.getUuid())) {
-                        ServerPlayerEntity sp = server.getPlayerManager().getPlayer(u);
-                        if (sp != null) {
-                            ServerPlayNetworking.send(sp,
+
+            PartyDataProvider.PartyInfo partyInfo = PartyDataProvider.getPartyForPlayer(self);
+
+            if (partyInfo != null) {
+                for (UUID memberId : partyInfo.members) {
+                    if (!memberId.equals(self.getUuid())) {
+                        ServerPlayerEntity member = server.getPlayerManager().getPlayer(memberId);
+                        if (member != null) {
+                            ServerPlayNetworking.send(member,
                                     new PartyHudPayloads.PartyMemberOnline(self.getUuid(), false));
                         }
                     }
                 }
-                return;
+
+                if (partyInfo.isFromExternalMod() || PERSIST_PARTIES_ON_DISCONNECT) {
+                    return;
+                }
             }
+
+            Party p = state.getPartyByMember(self.getUuid());
+            if (p == null) return;
 
             boolean isLeader = p.leader.equals(self.getUuid());
             Set<UUID> members = new HashSet<>(p.members);
@@ -373,7 +488,9 @@ public final class PartyNet {
         });
 
         ServerTickEvents.END_SERVER_TICK.register(server -> {
-            if ((++tickCounter % 10) == 0) pushAllPartyVitals(server);
+            tickCounter++;
+            if ((tickCounter % 10) == 0) pushAllPartyVitals(server);
+            if ((tickCounter % 20) == 0) syncPartyStateChanges(server);
         });
 
         ServerPlayNetworking.registerGlobalReceiver(InviteRespond.ID, (payload, context) -> {
@@ -533,27 +650,17 @@ public final class PartyNet {
         ServerPlayNetworking.registerGlobalReceiver(ChatSend.ID, (payload, context) -> {
             ServerPlayerEntity sender = context.player();
 
-            UUID partyId = null;
             String name = sender.getName().getString();
             long now = System.currentTimeMillis();
             String raw = payload.message() == null ? "" : payload.message().trim();
-            Set<UUID> partyMembers = new HashSet<>();
-                        if (FabricLoader.getInstance().isModLoaded("ftbteams") && FTBTeamsIntegration.isEnabled()) {
-                            FTBTeamsIntegration.FTBPartyData ftbData = getPartyDataForPlayer(sender);
-                            if (ftbData == null) return;
-                            if (!ftbData.partyId.equals(payload.partyId())) return;
 
-                            partyId = ftbData.partyId;
-                            partyMembers.addAll(ftbData.members);
-                        } else {
-                            PartyPersistentState state = PartyPersistentState.get(sender.getServer());
-                            Party p = state.getPartyByMember(sender.getUuid());
-                            if (p == null) return;
-                            if (!p.id.equals(payload.partyId())) return;
 
-                            partyId = p.id;
-                            partyMembers.addAll(p.members);
-                        }
+            PartyDataProvider.PartyInfo partyInfo = PartyDataProvider.getPartyForPlayer(sender);
+            if (partyInfo == null) return;
+            if (!partyInfo.id.equals(payload.partyId())) return;
+
+            UUID partyId = partyInfo.id;
+            Set<UUID> partyMembers = partyInfo.members;
 
             if (raw.startsWith("/p")) {
                 String[] parts = raw.split("\\s+", 3);
@@ -576,34 +683,22 @@ public final class PartyNet {
                         sendNoticeTo(sender, partyId, help, now);
                     }
                     case "info" -> {
-                        String info;
-                        if (FabricLoader.getInstance().isModLoaded("ftbteams") && FTBTeamsIntegration.isEnabled()) {
-                            FTBTeamsIntegration.FTBPartyData ftbData = getPartyDataForPlayer(sender);
-                            if (ftbData == null) return;
-
-                            ServerPlayerEntity leader = sender.getServer().getPlayerManager().getPlayer(ftbData.leaderUuid);
-                            String leaderName = leader != null ? leader.getName().getString() : shortId(ftbData.leaderUuid);
-                            int online = 0;
-                            for (UUID u : ftbData.members) {
-                                if (sender.getServer().getPlayerManager().getPlayer(u) != null) online++;
-                            }
-                            info = "Party: " + ftbData.partyName + " | Leader: " + leaderName + " | Members: " + ftbData.members.size() + " (" + online + " online)";
-                        } else {
-                            PartyPersistentState state = PartyPersistentState.get(sender.getServer());
-                            Party p = state.getPartyByMember(sender.getUuid());
-                            if (p == null) return;
-
-                            String leaderName = state.nameOf(p.leader);
-                            if (leaderName == null) {
-                                ServerPlayerEntity l = sender.getServer().getPlayerManager().getPlayer(p.leader);
-                                leaderName = (l != null) ? l.getName().getString() : shortId(p.leader);
-                            }
-                            int online = 0;
-                            for (UUID u : p.members) {
-                                if (sender.getServer().getPlayerManager().getPlayer(u) != null) online++;
-                            }
-                            info = "Party: " + displayName(p) + " | Leader: " + leaderName + " | Members: " + p.members.size() + " (" + online + " online)";
+                        PartyPersistentState state = PartyPersistentState.get(sender.getServer());
+                        String leaderName = state.nameOf(partyInfo.leader);
+                        if (leaderName == null) {
+                            ServerPlayerEntity l = sender.getServer().getPlayerManager().getPlayer(partyInfo.leader);
+                            leaderName = (l != null) ? l.getName().getString() : shortId(partyInfo.leader);
                         }
+                        int online = 0;
+                        for (UUID u : partyInfo.members) {
+                            if (sender.getServer().getPlayerManager().getPlayer(u) != null) online++;
+                        }
+                        String sourceLabel = switch (partyInfo.source) {
+                            case FTB_TEAMS -> " [FTB Teams]";
+                            case PARTY_ADDON -> " [Party Addon]";
+                            case NATIVE -> "";
+                        };
+                        String info = "Party: " + partyInfo.name + sourceLabel + " | Leader: " + leaderName + " | Members: " + partyInfo.members.size() + " (" + online + " online)";
                         sendNoticeTo(sender, partyId, info, now);
                     }
                     case "sharepos" -> {
@@ -613,11 +708,10 @@ public final class PartyNet {
                         broadcastNoticeToMembers(sender.getServer(), partyId, partyMembers, txt, now);
                     }
                     case "promote" -> {
-                        if (FabricLoader.getInstance().isModLoaded("ftbteams")) {
-                            if (FTBTeamsIntegration.isEnabled()) {
-                                sendNoticeTo(sender, partyId, "Leadership transfer not supported with FTB Teams. Use FTB Teams commands.", now);
-                                return;
-                            }
+                        if (partyInfo.isFromExternalMod()) {
+                            String modName = partyInfo.source == PartyDataProvider.PartySource.FTB_TEAMS ? "FTB Teams" : "Party Addon";
+                            sendNoticeTo(sender, partyId, "Leadership transfer not supported with " + modName + ". Use that mod's commands.", now);
+                            return;
                         }
                         PartyPersistentState state = PartyPersistentState.get(sender.getServer());
                         Party p = state.getPartyByMember(sender.getUuid());
@@ -773,17 +867,40 @@ public final class PartyNet {
 
 
     private static void pushAllPartyVitals(MinecraftServer server) {
-        if (FabricLoader.getInstance().isModLoaded("ftbteams")) {
-            if (FTBTeamsIntegration.isEnabled()) {
-                try {
-                    FTBTeamsVitalsHandler.pushAllVitals(server);
-                } catch (Throwable ignored) {
-                }
-                return;
+        if (FabricLoader.getInstance().isModLoaded("ftbteams") && FTBTeamsIntegration.isEnabled()) {
+            try {
+                FTBTeamsVitalsHandler.pushAllVitals(server);
+            } catch (Throwable ignored) {
             }
         }
+        
+        if (FabricLoader.getInstance().isModLoaded("partyaddon") && PartyAddonIntegration.isEnabled()) {
+            for (ServerPlayerEntity viewer : server.getPlayerManager().getPlayerList()) {
+                PartyDataProvider.PartySource effectiveSource = PartyDataProvider.getEffectiveSourceForPlayer(viewer);
+                if (effectiveSource != PartyDataProvider.PartySource.PARTY_ADDON) continue;
+                
+                PartyAddonIntegration.PartyAddonData partyData = PartyAddonIntegration.getPartyDataForPlayer(viewer);
+                if (partyData == null) continue;
+                
+                for (UUID memberId : partyData.members) {
+                    ServerPlayerEntity subject = server.getPlayerManager().getPlayer(memberId);
+                    if (subject == null) {
+                        ServerPlayNetworking.send(viewer,
+                                new net.pixeldreamstudios.rpgsystems.network.party.PartyStatusEffectsPayloads.MemberEffects(
+                                        memberId, java.util.List.of()
+                                ));
+                        continue;
+                    }
+                    pushVitalsForMember(viewer, subject, memberId);
+                }
+            }
+        }
+        
         PartyPersistentState state = PartyPersistentState.get(server);
         for (ServerPlayerEntity viewer : server.getPlayerManager().getPlayerList()) {
+            PartyDataProvider.PartySource effectiveSource = PartyDataProvider.getEffectiveSourceForPlayer(viewer);
+            if (effectiveSource != PartyDataProvider.PartySource.NATIVE) continue;
+            
             Party p = state.getPartyByMember(viewer.getUuid());
             if (p == null) continue;
 
@@ -850,6 +967,50 @@ public final class PartyNet {
                         PartyStatusEffectsPayloads.MemberEffects(
                         memberId, effIds
                 ));
+    }
+
+    private static void syncPartyStateChanges(MinecraftServer server) {
+        for (ServerPlayerEntity player : server.getPlayerManager().getPlayerList()) {
+            UUID playerId = player.getUuid();
+            
+            PartyDataProvider.PartyInfo currentParty = PartyDataProvider.getPartyForPlayer(player);
+            PartyDataProvider.PartySource currentSource = PartyDataProvider.getEffectiveSourceForPlayer(player);
+            
+            PartyStateSnapshot currentSnapshot = currentParty != null 
+                    ? new PartyStateSnapshot(currentParty.id, currentSource, currentParty.members.size())
+                    : new PartyStateSnapshot(null, currentSource, 0);
+            
+            PartyStateSnapshot lastSnapshot = lastKnownPartyState.get(playerId);
+            
+            boolean changed = false;
+            if (lastSnapshot == null) {
+                if (currentParty != null) {
+                    changed = true;
+                }
+            } else if (!Objects.equals(lastSnapshot.partyId(), currentSnapshot.partyId()) ||
+                       lastSnapshot.source() != currentSnapshot.source() ||
+                       lastSnapshot.memberCount() != currentSnapshot.memberCount()) {
+                changed = true;
+            }
+            
+            if (changed) {
+                List<PartyDataProvider.PartySource> availableSources = PartyDataProvider.getAvailableSourcesForPlayer(player);
+                ServerPlayNetworking.send(player, PartySourcePayloads.AvailableSources.create(availableSources, currentSource));
+                
+                ServerPlayNetworking.send(player, new PartyHudPayloads.PartyRosterReset());
+                
+                if (currentParty != null) {
+                    sendPartyInfoRosterTo(server, player, currentParty);
+                }
+                
+                lastKnownPartyState.put(playerId, currentSnapshot);
+            } else if (lastSnapshot == null) {
+                lastKnownPartyState.put(playerId, currentSnapshot);
+            }
+        }
+        
+        lastKnownPartyState.keySet().removeIf(uuid ->
+                server.getPlayerManager().getPlayer(uuid) == null);
     }
 
     public static void broadcastNotice(MinecraftServer server, Party p, String text, long when) {
@@ -1059,6 +1220,99 @@ public final class PartyNet {
             return total;
         } catch (Throwable t) {
             return -1;
+        }
+    }
+
+    public static void sendPartyAddonRosterTo(MinecraftServer server, ServerPlayerEntity recipient, PartyAddonIntegration.PartyAddonData partyData) {
+        ServerPlayNetworking.send(recipient, new PartyRosterClear(partyData.partyId, partyData.partyName, partyData.leaderUuid));
+
+        boolean allowHelpful = partyData.settings != null ? partyData.settings.allowHelpfulNonMembers : false;
+        boolean ignoreCollision = partyData.settings != null ? partyData.settings.ignorePartyCollision : true;
+
+        for (UUID memberId : partyData.members) {
+            ServerPlayerEntity member = server.getPlayerManager().getPlayer(memberId);
+            String name = member != null ? member.getName().getString() : memberId.toString().substring(0, 8);
+
+            ServerPlayNetworking.send(recipient, new PartyRosterAdd(partyData.partyId, memberId, name));
+
+            boolean isOnline = (member != null);
+            ServerPlayNetworking.send(recipient, new PartyHudPayloads.PartyMemberOnline(memberId, isOnline));
+            ServerPlayNetworking.send(recipient,
+                    new PartySettingsPayloads.Sync(allowHelpful, ignoreCollision));
+
+            if (member != null) {
+                int lvl = net.pixeldreamstudios.rpgsystems.compat.LevelZCompat.getLevel(member);
+                if (lvl < 0) {
+                    lvl = computeTotalSkillsLevel(member);
+                }
+
+                if (lvl >= 0) {
+                    ServerPlayNetworking.send(recipient, new PartyHudPayloads.PartyMemberLevel(memberId, lvl));
+                }
+
+                java.util.List<String> effIds =
+                        net.pixeldreamstudios.rpgsystems.network.party.PartyStatusEffectsSync.snapshotEffectIds(member);
+                ServerPlayNetworking.send(recipient,
+                        new net.pixeldreamstudios.rpgsystems.network.party.PartyStatusEffectsPayloads.MemberEffects(
+                                memberId, effIds
+                        ));
+            } else {
+                ServerPlayNetworking.send(recipient,
+                        new net.pixeldreamstudios.rpgsystems.network.party.PartyStatusEffectsPayloads.MemberEffects(
+                                memberId, java.util.List.of()
+                        ));
+            }
+        }
+    }
+
+    public static void sendPartyInfoRosterTo(MinecraftServer server, ServerPlayerEntity recipient, PartyDataProvider.PartyInfo partyInfo) {
+        ServerPlayNetworking.send(recipient, new PartyRosterClear(partyInfo.id, partyInfo.name, partyInfo.leader));
+
+        PartyPersistentState state = PartyPersistentState.get(server);
+        
+        boolean allowHelpful = partyInfo.settings != null ? partyInfo.settings.allowHelpfulNonMembers : false;
+        boolean ignoreCollision = partyInfo.settings != null ? partyInfo.settings.ignorePartyCollision : true;
+        
+        for (UUID memberId : partyInfo.members) {
+            ServerPlayerEntity member = server.getPlayerManager().getPlayer(memberId);
+            String name;
+
+            if (member != null) {
+                name = member.getName().getString();
+            } else {
+                String cached = state.nameOf(memberId);
+                name = cached != null ? cached : memberId.toString().substring(0, 8);
+            }
+
+            ServerPlayNetworking.send(recipient, new PartyRosterAdd(partyInfo.id, memberId, name));
+
+            boolean isOnline = (member != null);
+            ServerPlayNetworking.send(recipient, new PartyHudPayloads.PartyMemberOnline(memberId, isOnline));
+            ServerPlayNetworking.send(recipient,
+                    new PartySettingsPayloads.Sync(allowHelpful, ignoreCollision));
+
+            if (member != null) {
+                int lvl = net.pixeldreamstudios.rpgsystems.compat.LevelZCompat.getLevel(member);
+                if (lvl < 0) {
+                    lvl = computeTotalSkillsLevel(member);
+                }
+
+                if (lvl >= 0) {
+                    ServerPlayNetworking.send(recipient, new PartyHudPayloads.PartyMemberLevel(memberId, lvl));
+                }
+
+                java.util.List<String> effIds =
+                        net.pixeldreamstudios.rpgsystems.network.party.PartyStatusEffectsSync.snapshotEffectIds(member);
+                ServerPlayNetworking.send(recipient,
+                        new net.pixeldreamstudios.rpgsystems.network.party.PartyStatusEffectsPayloads.MemberEffects(
+                                memberId, effIds
+                        ));
+            } else {
+                ServerPlayNetworking.send(recipient,
+                        new net.pixeldreamstudios.rpgsystems.network.party.PartyStatusEffectsPayloads.MemberEffects(
+                                memberId, java.util.List.of()
+                        ));
+            }
         }
     }
 

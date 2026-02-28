@@ -8,40 +8,119 @@ import java.util.*;
 
 public final class PartyDataProvider {
 
-    @Nullable
-    public static PartyInfo getPartyForPlayer(ServerPlayerEntity player) {
+    public enum PartySource {
+        NATIVE,
+        FTB_TEAMS,
+        PARTY_ADDON
+    }
 
+    public static List<PartySource> getAvailableSourcesForPlayer(ServerPlayerEntity player) {
+        List<PartySource> available = new ArrayList<>();
+        boolean hasExternalMod = false;
+        
         if (FTBTeamsIntegration.isEnabled()) {
+            hasExternalMod = true;
             FTBTeamsIntegration.FTBPartyData ftbData = FTBTeamsIntegration.getPartyDataForPlayer(player);
             if (ftbData != null) {
-                return new PartyInfo(
+                available.add(PartySource.FTB_TEAMS);
+            }
+        }
+        
+        if (PartyAddonIntegration.isEnabled()) {
+            hasExternalMod = true;
+            PartyAddonIntegration.PartyAddonData partyData = PartyAddonIntegration.getPartyDataForPlayer(player);
+            if (partyData != null) {
+                available.add(PartySource.PARTY_ADDON);
+            }
+        }
+        
+        if (!hasExternalMod) {
+            PartyPersistentState state = PartyPersistentState.get(player.getServer());
+            Party party = state.getPartyByMember(player.getUuid());
+            if (party != null) {
+                available.add(PartySource.NATIVE);
+            }
+        }
+        
+        return available;
+    }
+
+    public static PartySource getEffectiveSourceForPlayer(ServerPlayerEntity player) {
+        PartyPersistentState state = PartyPersistentState.get(player.getServer());
+        PartySource preference = state.getPlayerSourcePreference(player.getUuid());
+        List<PartySource> available = getAvailableSourcesForPlayer(player);
+        
+        if (available.isEmpty()) {
+            return PartySource.NATIVE;
+        }
+        
+        if (preference != null && available.contains(preference)) {
+            return preference;
+        }
+        
+        return available.get(0);
+    }
+
+    @Nullable
+    public static PartyInfo getPartyFromSource(ServerPlayerEntity player, PartySource source) {
+        if (source == null) return null;
+        
+        return switch (source) {
+            case FTB_TEAMS -> {
+                if (!FTBTeamsIntegration.isEnabled()) yield null;
+                FTBTeamsIntegration.FTBPartyData ftbData = FTBTeamsIntegration.getPartyDataForPlayer(player);
+                if (ftbData == null) yield null;
+                yield new PartyInfo(
                         ftbData.partyId,
                         ftbData.partyName,
                         ftbData.leaderUuid,
                         ftbData.members,
                         ftbData.settings,
-                        true
+                        PartySource.FTB_TEAMS
                 );
             }
-            return null;
-        }
+            case PARTY_ADDON -> {
+                if (!PartyAddonIntegration.isEnabled()) yield null;
+                PartyAddonIntegration.PartyAddonData partyData = PartyAddonIntegration.getPartyDataForPlayer(player);
+                if (partyData == null) yield null;
+                yield new PartyInfo(
+                        partyData.partyId,
+                        partyData.partyName,
+                        partyData.leaderUuid,
+                        partyData.members,
+                        partyData.settings,
+                        PartySource.PARTY_ADDON
+                );
+            }
+            case NATIVE -> {
+                PartyPersistentState state = PartyPersistentState.get(player.getServer());
+                Party party = state.getPartyByMember(player.getUuid());
+                if (party == null) yield null;
+                yield new PartyInfo(
+                        party.id,
+                        party.name,
+                        party.leader,
+                        party.members,
+                        party.settings,
+                        PartySource.NATIVE
+                );
+            }
+        };
+    }
 
-        PartyPersistentState state = PartyPersistentState.get(player.getServer());
-        Party party = state.getPartyByMember(player.getUuid());
-        if (party == null) return null;
-
-        return new PartyInfo(
-                party.id,
-                party.name,
-                party.leader,
-                party.members,
-                party.settings,
-                false
-        );
+    @Nullable
+    public static PartyInfo getPartyForPlayer(ServerPlayerEntity player) {
+        PartySource effectiveSource = getEffectiveSourceForPlayer(player);
+        return getPartyFromSource(player, effectiveSource);
     }
 
     @Nullable
     public static PartyInfo getPartyForPlayerId(MinecraftServer server, UUID playerId) {
+        ServerPlayerEntity player = server.getPlayerManager().getPlayer(playerId);
+        if (player != null) {
+            return getPartyForPlayer(player);
+        }
+
         if (FTBTeamsIntegration.isEnabled()) {
             FTBTeamsIntegration.FTBPartyData ftbData = FTBTeamsIntegration.getPartyDataForPlayerId(server, playerId);
             if (ftbData != null) {
@@ -51,10 +130,23 @@ public final class PartyDataProvider {
                         ftbData.leaderUuid,
                         ftbData.members,
                         ftbData.settings,
-                        true
+                        PartySource.FTB_TEAMS
                 );
             }
-            return null;
+        }
+
+        if (PartyAddonIntegration.isEnabled()) {
+            PartyAddonIntegration.PartyAddonData partyData = PartyAddonIntegration.getPartyDataForPlayerId(server, playerId);
+            if (partyData != null) {
+                return new PartyInfo(
+                        partyData.partyId,
+                        partyData.partyName,
+                        partyData.leaderUuid,
+                        partyData.members,
+                        partyData.settings,
+                        PartySource.PARTY_ADDON
+                );
+            }
         }
 
         PartyPersistentState state = PartyPersistentState.get(server);
@@ -67,13 +159,21 @@ public final class PartyDataProvider {
                 party.leader,
                 party.members,
                 party.settings,
-                false
+                PartySource.NATIVE
         );
     }
 
     public static boolean isInSameParty(ServerPlayerEntity player1, ServerPlayerEntity player2) {
         if (FTBTeamsIntegration.isEnabled()) {
-            return FTBTeamsIntegration.isInSameParty(player1, player2);
+            if (FTBTeamsIntegration.isInSameParty(player1, player2)) {
+                return true;
+            }
+        }
+
+        if (PartyAddonIntegration.isEnabled()) {
+            if (PartyAddonIntegration.isInSameParty(player1, player2)) {
+                return true;
+            }
         }
 
         PartyPersistentState state = PartyPersistentState.get(player1.getServer());
@@ -82,20 +182,24 @@ public final class PartyDataProvider {
 
     @Nullable
     public static UUID getPartyIdForPlayer(ServerPlayerEntity player) {
-        if (FTBTeamsIntegration.isEnabled()) {
-            return FTBTeamsIntegration.getPartyIdForPlayer(player);
-        }
-
-        PartyPersistentState state = PartyPersistentState.get(player.getServer());
-        Party party = state.getPartyByMember(player.getUuid());
-        return party != null ? party.id : null;
+        PartyInfo info = getPartyForPlayer(player);
+        return info != null ? info.id : null;
     }
 
     @Nullable
     public static UUID getPartyIdForPlayerId(MinecraftServer server, UUID playerId) {
         if (FTBTeamsIntegration.isEnabled()) {
             FTBTeamsIntegration.FTBPartyData ftbData = FTBTeamsIntegration.getPartyDataForPlayerId(server, playerId);
-            return ftbData != null ? ftbData.partyId : null;
+            if (ftbData != null) {
+                return ftbData.partyId;
+            }
+        }
+
+        if (PartyAddonIntegration.isEnabled()) {
+            PartyAddonIntegration.PartyAddonData partyData = PartyAddonIntegration.getPartyDataForPlayerId(server, playerId);
+            if (partyData != null) {
+                return partyData.partyId;
+            }
         }
 
         PartyPersistentState state = PartyPersistentState.get(server);
@@ -105,7 +209,17 @@ public final class PartyDataProvider {
 
     public static List<UUID> getPartyMembers(MinecraftServer server, UUID partyId) {
         if (FTBTeamsIntegration.isEnabled()) {
-            return FTBTeamsIntegration.getPartyMembers(server, partyId);
+            List<UUID> members = FTBTeamsIntegration.getPartyMembers(server, partyId);
+            if (!members.isEmpty()) {
+                return members;
+            }
+        }
+
+        if (PartyAddonIntegration.isEnabled()) {
+            List<UUID> members = PartyAddonIntegration.getPartyMembers(server, partyId);
+            if (!members.isEmpty()) {
+                return members;
+            }
         }
 
         PartyPersistentState state = PartyPersistentState.get(server);
@@ -117,8 +231,7 @@ public final class PartyDataProvider {
 
     @Nullable
     public static Party getPartyById(MinecraftServer server, UUID partyId) {
-        if (FTBTeamsIntegration.isEnabled()) {
-            return null;
+        if (FTBTeamsIntegration.isEnabled() || PartyAddonIntegration.isEnabled()) {
         }
 
         PartyPersistentState state = PartyPersistentState.get(server);
@@ -130,7 +243,16 @@ public final class PartyDataProvider {
 
         if (FTBTeamsIntegration.isEnabled()) {
             UUID playerPartyId = FTBTeamsIntegration.getPartyIdForPlayer(player);
-            return partyId.equals(playerPartyId);
+            if (playerPartyId != null && partyId.equals(playerPartyId)) {
+                return true;
+            }
+        }
+
+        if (PartyAddonIntegration.isEnabled()) {
+            UUID playerPartyId = PartyAddonIntegration.getPartyIdForPlayer(player);
+            if (playerPartyId != null && partyId.equals(playerPartyId)) {
+                return true;
+            }
         }
 
         PartyPersistentState state = PartyPersistentState.get(player.getServer());
@@ -138,10 +260,6 @@ public final class PartyDataProvider {
         return party != null && party.id.equals(partyId);
     }
     public static Collection<Party> getAllParties(MinecraftServer server) {
-        if (FTBTeamsIntegration.isEnabled()) {
-            return Collections.emptyList();
-        }
-
         PartyPersistentState state = PartyPersistentState.get(server);
         return state.allParties();
     }
@@ -151,15 +269,29 @@ public final class PartyDataProvider {
         public final UUID leader;
         public final Set<UUID> members;
         public final PartySettings settings;
-        public final boolean fromFTBTeams;
+        public final PartySource source;
 
+        @Deprecated
         public PartyInfo(UUID id, String name, UUID leader, Set<UUID> members, PartySettings settings, boolean fromFTBTeams) {
+            this(id, name, leader, members, settings, fromFTBTeams ? PartySource.FTB_TEAMS : PartySource.NATIVE);
+        }
+
+        public PartyInfo(UUID id, String name, UUID leader, Set<UUID> members, PartySettings settings, PartySource source) {
             this.id = id;
-            this.name = name;
+            this.name = name != null ? name : "";
             this.leader = leader;
             this.members = new HashSet<>(members);
-            this.settings = settings;
-            this.fromFTBTeams = fromFTBTeams;
+            this.settings = settings != null ? settings : new PartySettings();
+            this.source = source != null ? source : PartySource.NATIVE;
+        }
+
+        @Deprecated
+        public boolean isFromFTBTeams() {
+            return source == PartySource.FTB_TEAMS;
+        }
+
+        public boolean isFromExternalMod() {
+            return source == PartySource.FTB_TEAMS || source == PartySource.PARTY_ADDON;
         }
 
         public boolean isMember(UUID playerId) {

@@ -12,10 +12,13 @@ import net.minecraft.screen.ScreenHandler;
 import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
 import net.pixeldreamstudios.rpgsystems.client.party.ClientPartyHudData;
+import net.pixeldreamstudios.rpgsystems.client.party.CompatCommandHelper;
+import net.pixeldreamstudios.rpgsystems.client.party.screen.PartyCreateSelectionScreen;
 import net.pixeldreamstudios.rpgsystems.client.party.screen.PartyScreen;
 import net.pixeldreamstudios.rpgsystems.client.title.screen.TitleScreen;
 import net.pixeldreamstudios.rpgsystems.network.SystemNet;
 import net.pixeldreamstudios.rpgsystems.party.FTBTeamsIntegration;
+import net.pixeldreamstudios.rpgsystems.party.PartyAddonIntegration;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
@@ -151,17 +154,24 @@ public abstract class HandledScreenMixin<T extends ScreenHandler> extends Screen
             if (mouseX >= party$btnX && mouseX <= party$btnX + s &&
                     mouseY >= party$btnY && mouseY <= party$btnY + s) {
                 boolean hasParty = ClientPartyHudData.partyId != null;
-                boolean usingFTBTeams = FabricLoader.getInstance().isModLoaded("ftbteams") && FTBTeamsIntegration.isEnabled();
+                boolean ftbTeamsEnabled = FabricLoader.getInstance().isModLoaded("ftbteams") && FTBTeamsIntegration.isEnabled();
+                boolean partyAddonEnabled = FabricLoader.getInstance().isModLoaded("partyaddon") && PartyAddonIntegration.isEnabled();
 
                 if (hasParty) {
                     MinecraftClient.getInstance().setScreen(new PartyScreen());
                 } else {
                     MinecraftClient mc = MinecraftClient.getInstance();
-                    if (mc.getNetworkHandler() != null) {
-                        if (usingFTBTeams) {
+                    
+                    if (ftbTeamsEnabled && partyAddonEnabled) {
+                        mc.setScreen(new PartyCreateSelectionScreen((Screen)(Object)this));
+                    } else if (partyAddonEnabled) {
+                        CompatCommandHelper.openPartyScreen();
+                    } else if (ftbTeamsEnabled) {
+                        if (mc.getNetworkHandler() != null) {
                             mc.getNetworkHandler().sendChatCommand("ftbteams party create");
-                        } else {
-
+                        }
+                    } else {
+                        if (mc.getNetworkHandler() != null) {
                             mc.getNetworkHandler().sendChatCommand("party create");
                         }
                     }

@@ -34,5 +34,10 @@
   "title.rpgsystems.condition.find_structure": "Discover structure %s",
   "title.rpgsystems.condition.deal_damage_total": "Deal %1$s total damage to %2$s",
   "title.rpgsystems.condition.deal_damage_max": "Deal at least %1$s damage in a single hit to %2$s",
-  "title.rpgsystems.condition.check_attribute": "Reach attribute %1$s ≥ %2$s"
+  "title.rpgsystems.condition.check_attribute": "Reach attribute %1$s ≥ %2$s",
+
+  "party.rpgsystems.settings": "Settings",
+  "party.rpgsystems.source.ftb_teams": "FTB Teams",
+  "party.rpgsystems.source.party_addon": "PartyAddon",
+  "party.rpgsystems.source.native": "Native"
 }
