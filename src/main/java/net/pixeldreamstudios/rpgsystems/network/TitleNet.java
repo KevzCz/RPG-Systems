@@ -257,10 +257,10 @@ public final class TitleNet {
         TitlesPersistentState state = TitlesPersistentState.get(server);
         TitlesPersistentState.PlayerTitles pt = state.getOrCreate(player.getUuid());
 
-        var entries = new ArrayList<>(TitleRegistry.all().entrySet()); // snapshot
+        Map<Identifier, Title> titles = TitleRegistry.all();
 
         List<TitlePayloads.SyncProgress.TitleProgress> out = new ArrayList<>();
-        for (var e : entries) {
+        for (Map.Entry<Identifier, Title> e : titles.entrySet()) {
             Identifier id = e.getKey();
             Title t = e.getValue();
             if (t.conditions.isEmpty()) continue;

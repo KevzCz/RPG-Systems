@@ -44,7 +44,7 @@ dependencies {
 	mappings "net.fabricmc:yarn:${project.yarn_mappings}:v2"
 	modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
 
-	modImplementation("maven.modrinth:spell-engine:1.8.2+1.21.1-fabric")
+	modImplementation("maven.modrinth:spell-engine:1.9.2+1.21.1-fabric")
 	modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
 	modImplementation("com.terraformersmc:modmenu:11.0.3")
 	modCompileOnly("io.wispforest:accessories-fabric:${project.accessories_version}+1.21.1")

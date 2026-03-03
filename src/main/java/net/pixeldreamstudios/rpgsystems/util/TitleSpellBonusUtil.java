@@ -3,11 +3,12 @@ package net.pixeldreamstudios.rpgsystems.util;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.util.Identifier;
 import net.minecraft.world.World;
-import net.spell_engine.api.spell.Spell;
 import net.spell_engine.api.spell.container.SpellContainer;
 import net.spell_engine.api.spell.registry.SpellRegistry;
 import net.spell_engine.internals.container.SpellContainerSource;
 import net.pixeldreamstudios.rpgsystems.title.Title;
+import net.pixeldreamstudios.rpgsystems.title.TitlesPersistentState;
+import net.pixeldreamstudios.rpgsystems.title.PermaGroupKey;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -27,7 +28,6 @@ public final class TitleSpellBonusUtil {
         for (Identifier id : spellIds) {
             var ref = SpellRegistry.from(world).getEntry(id).orElse(null);
             if (ref != null) {
-                Spell s = ref.value();
                 install.add(id.toString());
             }
         }
@@ -38,7 +38,7 @@ public final class TitleSpellBonusUtil {
         serverSide.keySet().removeIf(k -> k.startsWith(base + "/"));
 
         if (!install.isEmpty()) {
-            SpellContainer container = new SpellContainer(SpellContainer.ContentType.ANY, true, "", 0, install);
+            SpellContainer container = new SpellContainer(SpellContainer.ContentType.ANY, "", "", 0, install);
             serverSide.put(base + "/any", container);
         }
 
@@ -58,8 +58,7 @@ public final class TitleSpellBonusUtil {
         Map<String, SpellContainer> serverSide = ((SpellContainerSource.Owner) player).serverSideSpellContainers();
         String permaKey = "title/perma/any";
 
-        net.pixeldreamstudios.rpgsystems.title.TitlesPersistentState state =
-                net.pixeldreamstudios.rpgsystems.title.TitlesPersistentState.get(player.getServer());
+        TitlesPersistentState state = TitlesPersistentState.get(player.getServer());
         var pt = state.getOrCreate(player.getUuid());
         java.util.Set<String> disabled = pt.permaDisabledGroups;
 
@@ -71,7 +70,7 @@ public final class TitleSpellBonusUtil {
                     if (b.spellId != null && b.spellId.isPresent()) {
                         Identifier id = b.spellId.get();
 
-                        String key = net.pixeldreamstudios.rpgsystems.title.PermaGroupKey.spell(id);
+                        String key = PermaGroupKey.spell(id);
                         if (disabled.contains(key)) continue;
 
                         var ref = SpellRegistry.from(world).getEntry(id).orElse(null);
@@ -85,7 +84,7 @@ public final class TitleSpellBonusUtil {
 
         serverSide.remove(permaKey);
         if (!install.isEmpty()) {
-            SpellContainer container = new SpellContainer(SpellContainer.ContentType.ANY, true, "", 0, new ArrayList<>(install));
+            SpellContainer container = new SpellContainer(SpellContainer.ContentType.ANY, "", "", 0, new ArrayList<>(install));
             serverSide.put(permaKey, container);
         }
 

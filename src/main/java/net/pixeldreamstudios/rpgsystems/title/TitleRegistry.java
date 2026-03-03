@@ -21,15 +21,15 @@ public final class TitleRegistry {
         TITLES.put(title.id, title);
         return title;
     }
-    public static void replaceAll(Map<Identifier, Title> newTitles) {
+    public static synchronized void replaceAll(Map<Identifier, Title> newTitles) {
         TITLES.clear();
         TITLES.putAll(newTitles);
     }
     public static Title get(Identifier id) {
         return TITLES.get(id);
     }
-    public static Map<Identifier, Title> all() {
-        return java.util.Collections.unmodifiableMap(TITLES);
+    public static synchronized Map<Identifier, Title> all() {
+        return new LinkedHashMap<>(TITLES);
     }
     public static void bootstrapFallback() {
         if (!TITLES.isEmpty()) return;
