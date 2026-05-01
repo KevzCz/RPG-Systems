@@ -13,13 +13,28 @@ import net.minecraft.text.Text;
 import net.minecraft.util.ActionResult;
 import net.minecraft.util.Identifier;
 import net.pixeldreamstudios.rpgsystems.RPGSystems;
+import net.pixeldreamstudios.rpgsystems.api.PartyChatEvent;
+import net.pixeldreamstudios.rpgsystems.compat.LevelZCompat;
+import net.pixeldreamstudios.rpgsystems.compat.RpgManaCompat;
+import net.pixeldreamstudios.rpgsystems.compat.TrbAttributesCompat;
 import net.pixeldreamstudios.rpgsystems.config.RPGSystemsConfig;
-import net.pixeldreamstudios.rpgsystems.network.party.*;
+import net.pixeldreamstudios.rpgsystems.network.party.PartyChatPayloads;
 import net.pixeldreamstudios.rpgsystems.network.party.PartyChatPayloads.ChatNotice;
-import net.pixeldreamstudios.rpgsystems.network.party.PartyHudPayloads.*;
+import net.pixeldreamstudios.rpgsystems.network.party.PartyHudPayloads;
+import net.pixeldreamstudios.rpgsystems.network.party.PartyHudPayloads.PartyMemberOnline;
+import net.pixeldreamstudios.rpgsystems.network.party.PartyHudPayloads.PartyMemberVitals;
+import net.pixeldreamstudios.rpgsystems.network.party.PartyHudPayloads.PartyRosterAdd;
+import net.pixeldreamstudios.rpgsystems.network.party.PartyHudPayloads.PartyRosterClear;
+import net.pixeldreamstudios.rpgsystems.network.party.PartyHudPayloads.PartyRosterReset;
+import net.pixeldreamstudios.rpgsystems.network.party.PartyInvitePayloads;
+import net.pixeldreamstudios.rpgsystems.network.party.PartyJoinRequestPayloads;
+import net.pixeldreamstudios.rpgsystems.network.party.PartySettingsPayloads;
 import net.pixeldreamstudios.rpgsystems.network.party.PartySettingsPayloads.SetAllowHelpfulNonMembers;
 import net.pixeldreamstudios.rpgsystems.network.party.PartySettingsPayloads.Sync;
+import net.pixeldreamstudios.rpgsystems.network.party.PartySourcePayloads;
+import net.pixeldreamstudios.rpgsystems.network.party.PartyStatusEffectsPayloads;
 import net.pixeldreamstudios.rpgsystems.network.party.PartyStatusEffectsPayloads.MemberEffects;
+import net.pixeldreamstudios.rpgsystems.network.party.PartyStatusEffectsSync;
 import net.pixeldreamstudios.rpgsystems.party.*;
 import net.puffish.skillsmod.SkillsMod;
 
@@ -27,8 +42,20 @@ import java.util.*;
 
 import static net.pixeldreamstudios.rpgsystems.network.party.PartyChatPayloads.ChatMessage;
 import static net.pixeldreamstudios.rpgsystems.network.party.PartyChatPayloads.ChatSend;
-import static net.pixeldreamstudios.rpgsystems.network.party.PartyInvitePayloads.*;
-import static net.pixeldreamstudios.rpgsystems.network.party.PartyJoinRequestPayloads.*;
+import static net.pixeldreamstudios.rpgsystems.network.party.PartyInvitePayloads.EligibleInviteesRequest;
+import static net.pixeldreamstudios.rpgsystems.network.party.PartyInvitePayloads.EligibleInviteesResponse;
+import static net.pixeldreamstudios.rpgsystems.network.party.PartyInvitePayloads.InviteAccepted;
+import static net.pixeldreamstudios.rpgsystems.network.party.PartyInvitePayloads.InviteAdded;
+import static net.pixeldreamstudios.rpgsystems.network.party.PartyInvitePayloads.InviteDeclined;
+import static net.pixeldreamstudios.rpgsystems.network.party.PartyInvitePayloads.InviteRemoved;
+import static net.pixeldreamstudios.rpgsystems.network.party.PartyInvitePayloads.InviteRespond;
+import static net.pixeldreamstudios.rpgsystems.network.party.PartyInvitePayloads.InviteSent;
+import static net.pixeldreamstudios.rpgsystems.network.party.PartyJoinRequestPayloads.FTBTeamsJoinRequest;
+import static net.pixeldreamstudios.rpgsystems.network.party.PartyJoinRequestPayloads.JoinAccepted;
+import static net.pixeldreamstudios.rpgsystems.network.party.PartyJoinRequestPayloads.JoinDeclined;
+import static net.pixeldreamstudios.rpgsystems.network.party.PartyJoinRequestPayloads.JoinReqAdded;
+import static net.pixeldreamstudios.rpgsystems.network.party.PartyJoinRequestPayloads.JoinReqRemoved;
+import static net.pixeldreamstudios.rpgsystems.network.party.PartyJoinRequestPayloads.JoinReqRespond;
 import static net.pixeldreamstudios.rpgsystems.party.FTBTeamsIntegration.getPartyDataForPlayer;
 
 public final class PartyNet {
@@ -36,18 +63,19 @@ public final class PartyNet {
     private static int tickCounter = 0;
     public static boolean PERSIST_PARTIES_ON_DISCONNECT = true;
     
+    // Track last known party state per player for change detection
     private static final Map<UUID, PartyStateSnapshot> lastKnownPartyState = new HashMap<>();
     
     private record PartyStateSnapshot(UUID partyId, PartyDataProvider.PartySource source, int memberCount) {}
 
+    /**
+     * Checks if any external party mod integration is enabled (FTBTeams or PartyAddon)
+     */
     public static boolean isExternalPartyModEnabled() {
         if (FabricLoader.getInstance().isModLoaded("ftbteams") && FTBTeamsIntegration.isEnabled()) {
             return true;
         }
-        if (FabricLoader.getInstance().isModLoaded("partyaddon") && PartyAddonIntegration.isEnabled()) {
-            return true;
-        }
-        return false;
+        return FabricLoader.getInstance().isModLoaded("partyaddon") && PartyAddonIntegration.isEnabled();
     }
 
     public static void initCommon() {
@@ -64,7 +92,7 @@ public final class PartyNet {
         PayloadTypeRegistry.playS2C().register(PartyRosterAdd.ID, PartyRosterAdd.CODEC);
         PayloadTypeRegistry.playS2C().register(PartyMemberVitals.ID, PartyMemberVitals.CODEC);
         PayloadTypeRegistry.playS2C().register(PartyRosterReset.ID, PartyRosterReset.CODEC);
-        PayloadTypeRegistry.playS2C().register(PartyMemberLevel.ID, PartyMemberLevel.CODEC);
+        PayloadTypeRegistry.playS2C().register(PartyHudPayloads.PartyMemberLevel.ID, PartyHudPayloads.PartyMemberLevel.CODEC);
         PayloadTypeRegistry.playS2C().register(PartyMemberOnline.ID, PartyMemberOnline.CODEC);
         PayloadTypeRegistry.playS2C().register(JoinReqAdded.ID, JoinReqAdded.CODEC);
         PayloadTypeRegistry.playS2C().register(JoinReqRemoved.ID, JoinReqRemoved.CODEC);
@@ -83,6 +111,8 @@ public final class PartyNet {
         PayloadTypeRegistry.playS2C().register(PartyChatPayloads.ChatPinSet.ID, PartyChatPayloads.ChatPinSet.CODEC);
         PayloadTypeRegistry.playS2C().register(PartyChatPayloads.ChatPinClear.ID, PartyChatPayloads.ChatPinClear.CODEC);
         PayloadTypeRegistry.playC2S().register(FTBTeamsJoinRequest.ID, FTBTeamsJoinRequest.CODEC);
+
+        // Party source switching payloads
         PayloadTypeRegistry.playC2S().register(PartySourcePayloads.SwitchSource.ID, PartySourcePayloads.SwitchSource.CODEC);
         PayloadTypeRegistry.playS2C().register(PartySourcePayloads.AvailableSources.ID, PartySourcePayloads.AvailableSources.CODEC);
         PayloadTypeRegistry.playS2C().register(PartySourcePayloads.SourceSwitched.ID, PartySourcePayloads.SourceSwitched.CODEC);
@@ -325,7 +355,7 @@ public final class PartyNet {
                             return;
                         }
                     }
-                    var state  = net.pixeldreamstudios.rpgsystems.party.PartyPersistentState.get(server);
+                    var state  = PartyPersistentState.get(server);
                     var p      = state.getPartyByMember(player.getUuid());
                     if (p == null) return;
 
@@ -360,16 +390,19 @@ public final class PartyNet {
                 }
         );
 
+        // Handle party source switching
         ServerPlayNetworking.registerGlobalReceiver(
                 PartySourcePayloads.SwitchSource.ID, (payload, ctx) -> {
                     ServerPlayerEntity player = ctx.player();
                     MinecraftServer server = player.getServer();
                     PartyDataProvider.PartySource requestedSource = payload.toPartySource();
 
+                    // Verify the source is available for this player
                     List<PartyDataProvider.PartySource> available = PartyDataProvider.getAvailableSourcesForPlayer(player);
                     
                     if (!available.contains(requestedSource)) {
                         RPGSystems.LOGGER.warn("[PartyNet] Requested source {} is not available for {}", requestedSource, player.getName().getString());
+                        // Source not available - inform client
                         ServerPlayNetworking.send(player,
                                 PartySourcePayloads.AvailableSources.create(
                                         available,
@@ -377,17 +410,24 @@ public final class PartyNet {
                         return;
                     }
 
+                    // Set the preference
                     PartyPersistentState state = PartyPersistentState.get(server);
                     state.setPlayerSourcePreference(player.getUuid(), requestedSource);
 
+                    // Get party info from the new source
                     PartyDataProvider.PartyInfo partyInfo = PartyDataProvider.getPartyFromSource(player, requestedSource);
 
+                    // Send confirmation
                     ServerPlayNetworking.send(player, PartySourcePayloads.SourceSwitched.create(requestedSource));
 
+                    // Clear old roster and send new one
                     ServerPlayNetworking.send(player, new PartyHudPayloads.PartyRosterReset());
 
                     if (partyInfo != null) {
+                        // Send new roster
                         sendPartyInfoRosterTo(server, player, partyInfo);
+
+                        // Sync settings
                         ServerPlayNetworking.send(player, new PartySettingsPayloads.Sync(
                                 partyInfo.settings.allowHelpfulNonMembers,
                                 partyInfo.settings.ignorePartyCollision));
@@ -398,10 +438,10 @@ public final class PartyNet {
             if (world.isClient) return ActionResult.PASS;
             var server = world.getServer();
             if (server == null) return ActionResult.PASS;
-            var a = net.pixeldreamstudios.rpgsystems.party.PartyAllies.owningPlayerUuid(player);
-            var b = net.pixeldreamstudios.rpgsystems.party.PartyAllies.owningPlayerUuid(target);
-            if (a != null && b != null &&
-                    net.pixeldreamstudios.rpgsystems.party.PartyAllies.sameParty(server, a, b)) {
+            var a = PartyAllies.owningPlayerUuid(player);
+            var b = PartyAllies.owningPlayerUuid(target);
+            if (b != null &&
+                    PartyAllies.sameParty(server, a, b)) {
                 return ActionResult.FAIL;
             }
             return ActionResult.PASS;
@@ -412,15 +452,19 @@ public final class PartyNet {
             PartyPersistentState state = PartyPersistentState.get(server);
             state.rememberName(player.getUuid(), player.getName().getString());
 
+            // Send available party sources to client
             List<PartyDataProvider.PartySource> availableSources = PartyDataProvider.getAvailableSourcesForPlayer(player);
             PartyDataProvider.PartySource effectiveSource = PartyDataProvider.getEffectiveSourceForPlayer(player);
             ServerPlayNetworking.send(player, PartySourcePayloads.AvailableSources.create(availableSources, effectiveSource));
 
+            // Get party info from the effective source
             PartyDataProvider.PartyInfo partyInfo = PartyDataProvider.getPartyForPlayer(player);
 
             if (partyInfo != null) {
+                // Send roster using the unified method
                 sendPartyInfoRosterTo(server, player, partyInfo);
 
+                // Notify other party members that this player is online
                 for (UUID memberId : partyInfo.members) {
                     if (!memberId.equals(player.getUuid())) {
                         ServerPlayerEntity member = server.getPlayerManager().getPlayer(memberId);
@@ -438,9 +482,11 @@ public final class PartyNet {
             PartyPersistentState state = PartyPersistentState.get(server);
             state.rememberName(self.getUuid(), self.getName().getString());
 
+            // Get party info from effective source to notify members
             PartyDataProvider.PartyInfo partyInfo = PartyDataProvider.getPartyForPlayer(self);
 
             if (partyInfo != null) {
+                // Notify other members this player is offline
                 for (UUID memberId : partyInfo.members) {
                     if (!memberId.equals(self.getUuid())) {
                         ServerPlayerEntity member = server.getPlayerManager().getPlayer(memberId);
@@ -451,11 +497,13 @@ public final class PartyNet {
                     }
                 }
 
+                // If using external mods or persistence enabled, we're done
                 if (partyInfo.isFromExternalMod() || PERSIST_PARTIES_ON_DISCONNECT) {
                     return;
                 }
             }
 
+            // Handle native party disconnect logic (if using native and persistence disabled)
             Party p = state.getPartyByMember(self.getUuid());
             if (p == null) return;
 
@@ -490,6 +538,7 @@ public final class PartyNet {
         ServerTickEvents.END_SERVER_TICK.register(server -> {
             tickCounter++;
             if ((tickCounter % 10) == 0) pushAllPartyVitals(server);
+            // Check for party state changes every second (20 ticks)
             if ((tickCounter % 20) == 0) syncPartyStateChanges(server);
         });
 
@@ -552,10 +601,10 @@ public final class PartyNet {
                                 updated.id, joinerName + " joined the party.", now
                         );
 
-                        for (java.util.UUID u : updated.members) {
+                        for (UUID u : updated.members) {
                             var sp = player.getServer().getPlayerManager().getPlayer(u);
                             if (sp != null) {
-                                net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking.send(sp, notice);
+                                ServerPlayNetworking.send(sp, notice);
                             }
                         }
                     }
@@ -654,7 +703,7 @@ public final class PartyNet {
             long now = System.currentTimeMillis();
             String raw = payload.message() == null ? "" : payload.message().trim();
 
-
+            // Get party info from the player's effective source (respects preferences)
             PartyDataProvider.PartyInfo partyInfo = PartyDataProvider.getPartyForPlayer(sender);
             if (partyInfo == null) return;
             if (!partyInfo.id.equals(payload.partyId())) return;
@@ -664,7 +713,7 @@ public final class PartyNet {
 
             if (raw.startsWith("/p")) {
                 String[] parts = raw.split("\\s+", 3);
-                String sub = (parts.length >= 2) ? parts[1].toLowerCase(java.util.Locale.ROOT) : "help";
+                String sub = (parts.length >= 2) ? parts[1].toLowerCase(Locale.ROOT) : "help";
 
                 switch (sub) {
                     case "help" -> {
@@ -683,6 +732,7 @@ public final class PartyNet {
                         sendNoticeTo(sender, partyId, help, now);
                     }
                     case "info" -> {
+                        // Use partyInfo we already have from effective source
                         PartyPersistentState state = PartyPersistentState.get(sender.getServer());
                         String leaderName = state.nameOf(partyInfo.leader);
                         if (leaderName == null) {
@@ -708,6 +758,7 @@ public final class PartyNet {
                         broadcastNoticeToMembers(sender.getServer(), partyId, partyMembers, txt, now);
                     }
                     case "promote" -> {
+                        // Leadership transfer only supported with native parties
                         if (partyInfo.isFromExternalMod()) {
                             String modName = partyInfo.source == PartyDataProvider.PartySource.FTB_TEAMS ? "FTB Teams" : "Party Addon";
                             sendNoticeTo(sender, partyId, "Leadership transfer not supported with " + modName + ". Use that mod's commands.", now);
@@ -748,7 +799,7 @@ public final class PartyNet {
 
                         for (UUID u : p.members) {
                             ServerPlayerEntity sp = sender.getServer().getPlayerManager().getPlayer(u);
-                            if (sp != null) sp.sendMessage(net.minecraft.text.Text.literal("[Party] " + txt));
+                            if (sp != null) sp.sendMessage(Text.literal("[Party] " + txt));
                         }
 
                         PartyNet.broadcastRoster(sender.getServer(), p);
@@ -830,8 +881,8 @@ public final class PartyNet {
                 }
             }
 
-            net.pixeldreamstudios.rpgsystems.api.PartyChatEvent.fire(
-                    new net.pixeldreamstudios.rpgsystems.api.PartyChatEvent.Message(partyId, sender, payload.message())
+            PartyChatEvent.fire(
+                    new PartyChatEvent.Message(partyId, sender, payload.message())
             );
             if (!FabricLoader.getInstance().isModLoaded("ftbteams") || !FTBTeamsIntegration.isEnabled()) {
                 for (UUID u : partyMembers) {
@@ -886,8 +937,8 @@ public final class PartyNet {
                     ServerPlayerEntity subject = server.getPlayerManager().getPlayer(memberId);
                     if (subject == null) {
                         ServerPlayNetworking.send(viewer,
-                                new net.pixeldreamstudios.rpgsystems.network.party.PartyStatusEffectsPayloads.MemberEffects(
-                                        memberId, java.util.List.of()
+                                new PartyStatusEffectsPayloads.MemberEffects(
+                                        memberId, List.of()
                                 ));
                         continue;
                     }
@@ -908,8 +959,8 @@ public final class PartyNet {
                 ServerPlayerEntity subject = server.getPlayerManager().getPlayer(memberId);
                 if (subject == null) {
                     ServerPlayNetworking.send(viewer,
-                            new net.pixeldreamstudios.rpgsystems.network.party.PartyStatusEffectsPayloads.MemberEffects(
-                                    memberId, java.util.List.of()
+                            new PartyStatusEffectsPayloads.MemberEffects(
+                                    memberId, List.of()
                             ));
                     continue;
                 }
@@ -918,7 +969,7 @@ public final class PartyNet {
             }
         }
     }
-    private static UUID lastLoggedPartyId = null;
+    private static final UUID lastLoggedPartyId = null;
 
     public static void pushVitalsForMember(ServerPlayerEntity viewer, ServerPlayerEntity subject, UUID memberId) {
         float hp = subject.getHealth();
@@ -931,15 +982,15 @@ public final class PartyNet {
         float rpgNow     = -1f, rpgMax     = -1f;
 
         try {
-            float[] st = net.pixeldreamstudios.rpgsystems.compat.TrbAttributesCompat.readStamina(subject);
+            float[] st = TrbAttributesCompat.readStamina(subject);
             staminaNow = st[0]; staminaMax = st[1];
         } catch (Throwable ignored) { }
         try {
-            float[] ma = net.pixeldreamstudios.rpgsystems.compat.TrbAttributesCompat.readMana(subject);
+            float[] ma = TrbAttributesCompat.readMana(subject);
             manaNow = ma[0]; manaMax = ma[1];
         } catch (Throwable ignored) { }
         try {
-            float[] rm = net.pixeldreamstudios.rpgsystems.compat.RpgManaCompat.readMana(subject);
+            float[] rm = RpgManaCompat.readMana(subject);
             rpgNow = rm[0]; rpgMax = rm[1];
         } catch (Throwable ignored) { }
 
@@ -951,7 +1002,7 @@ public final class PartyNet {
                         rpgNow, rpgMax
                 ));
 
-        int lvl = net.pixeldreamstudios.rpgsystems.compat.LevelZCompat.getLevel(subject);
+        int lvl = LevelZCompat.getLevel(subject);
         if (lvl < 0) {
             lvl = computeTotalSkillsLevel(subject);
         }
@@ -960,19 +1011,25 @@ public final class PartyNet {
             ServerPlayNetworking.send(viewer, new PartyHudPayloads.PartyMemberLevel(memberId, lvl));
         }
 
-        java.util.List<String> effIds =
-                net.pixeldreamstudios.rpgsystems.network.party.PartyStatusEffectsSync.snapshotEffectIds(subject);
+        List<String> effIds =
+                PartyStatusEffectsSync.snapshotEffectIds(subject);
         ServerPlayNetworking.send(viewer,
-                new net.pixeldreamstudios.rpgsystems.network.party.
+                new
                         PartyStatusEffectsPayloads.MemberEffects(
                         memberId, effIds
                 ));
     }
 
+    /**
+     * Checks for party state changes and sends updates to clients.
+     * This handles cases where players join/leave PartyAddon groups (or other external parties)
+     * which don't have events we can hook into.
+     */
     private static void syncPartyStateChanges(MinecraftServer server) {
         for (ServerPlayerEntity player : server.getPlayerManager().getPlayerList()) {
             UUID playerId = player.getUuid();
             
+            // Get current party state
             PartyDataProvider.PartyInfo currentParty = PartyDataProvider.getPartyForPlayer(player);
             PartyDataProvider.PartySource currentSource = PartyDataProvider.getEffectiveSourceForPlayer(player);
             
@@ -982,8 +1039,10 @@ public final class PartyNet {
             
             PartyStateSnapshot lastSnapshot = lastKnownPartyState.get(playerId);
             
+            // Check if state changed
             boolean changed = false;
             if (lastSnapshot == null) {
+                // First time seeing this player, only send if they have a party
                 if (currentParty != null) {
                     changed = true;
                 }
@@ -994,22 +1053,28 @@ public final class PartyNet {
             }
             
             if (changed) {
+                // Update available sources
                 List<PartyDataProvider.PartySource> availableSources = PartyDataProvider.getAvailableSourcesForPlayer(player);
                 ServerPlayNetworking.send(player, PartySourcePayloads.AvailableSources.create(availableSources, currentSource));
                 
+                // Send roster reset first
                 ServerPlayNetworking.send(player, new PartyHudPayloads.PartyRosterReset());
                 
+                // Send new party data if any
                 if (currentParty != null) {
                     sendPartyInfoRosterTo(server, player, currentParty);
                 }
                 
+                // Update last known state
                 lastKnownPartyState.put(playerId, currentSnapshot);
             } else if (lastSnapshot == null) {
+                // Store initial state even if no party
                 lastKnownPartyState.put(playerId, currentSnapshot);
             }
         }
         
-        lastKnownPartyState.keySet().removeIf(uuid ->
+        // Clean up disconnected players
+        lastKnownPartyState.keySet().removeIf(uuid -> 
                 server.getPlayerManager().getPlayer(uuid) == null);
     }
 
@@ -1039,7 +1104,7 @@ public final class PartyNet {
         try { return UUID.fromString(input.trim()); } catch (IllegalArgumentException ignored) { }
 
         String qi = input.trim();
-        String qiLower = qi.toLowerCase(java.util.Locale.ROOT);
+        String qiLower = qi.toLowerCase(Locale.ROOT);
 
         UUID match = null; int matches = 0;
 
@@ -1055,8 +1120,8 @@ public final class PartyNet {
             if (label1.equalsIgnoreCase(qi) || label2.equalsIgnoreCase(qi)) {
                 match = u; matches++; continue;
             }
-            if (label1.toLowerCase(java.util.Locale.ROOT).contains(qiLower) ||
-                    label2.toLowerCase(java.util.Locale.ROOT).contains(qiLower)) {
+            if (label1.toLowerCase(Locale.ROOT).contains(qiLower) ||
+                    label2.toLowerCase(Locale.ROOT).contains(qiLower)) {
                 match = u; matches++;
             }
             if (shortId(u).equalsIgnoreCase(qi)) { match = u; matches++; }
@@ -1069,11 +1134,11 @@ public final class PartyNet {
     }
 
     public static void sendNoticeTo(ServerPlayerEntity to, UUID partyId, String text, long when) {
-        ServerPlayNetworking.send(to, new net.pixeldreamstudios.rpgsystems.network.party.PartyChatPayloads.ChatNotice(partyId, text, when));
+        ServerPlayNetworking.send(to, new PartyChatPayloads.ChatNotice(partyId, text, when));
     }
 
     private static void sendNoticeTo(ServerPlayerEntity to, Party p, String text, long when) {
-        ServerPlayNetworking.send(to, new net.pixeldreamstudios.rpgsystems.network.party.PartyChatPayloads.ChatNotice(p.id, text, when));
+        ServerPlayNetworking.send(to, new PartyChatPayloads.ChatNotice(p.id, text, when));
     }
 
     public static void broadcastRoster(MinecraftServer server, Party party) {
@@ -1107,7 +1172,7 @@ public final class PartyNet {
                     ));
 
             if (subject != null) {
-                int lvl = net.pixeldreamstudios.rpgsystems.compat.LevelZCompat.getLevel(subject);
+                int lvl = LevelZCompat.getLevel(subject);
                 if (lvl < 0) {
                     lvl = computeTotalSkillsLevel(subject);
                 }
@@ -1116,16 +1181,16 @@ public final class PartyNet {
                     ServerPlayNetworking.send(recipient, new PartyHudPayloads.PartyMemberLevel(memberId, lvl));
                 }
 
-                java.util.List<String> effIds =
-                        net.pixeldreamstudios.rpgsystems.network.party.PartyStatusEffectsSync.snapshotEffectIds(subject);
+                List<String> effIds =
+                        PartyStatusEffectsSync.snapshotEffectIds(subject);
                 ServerPlayNetworking.send(recipient,
-                        new net.pixeldreamstudios.rpgsystems.network.party.PartyStatusEffectsPayloads.MemberEffects(
+                        new PartyStatusEffectsPayloads.MemberEffects(
                                 memberId, effIds
                         ));
             } else {
                 ServerPlayNetworking.send(recipient,
-                        new net.pixeldreamstudios.rpgsystems.network.party.PartyStatusEffectsPayloads.MemberEffects(
-                                memberId, java.util.List.of()
+                        new PartyStatusEffectsPayloads.MemberEffects(
+                                memberId, List.of()
                         ));
             }
         }
@@ -1149,7 +1214,7 @@ public final class PartyNet {
                     ));
 
             if (member != null) {
-                int lvl = net.pixeldreamstudios.rpgsystems.compat.LevelZCompat.getLevel(member);
+                int lvl = LevelZCompat.getLevel(member);
                 if (lvl < 0) {
                     lvl = computeTotalSkillsLevel(member);
                 }
@@ -1158,16 +1223,16 @@ public final class PartyNet {
                     ServerPlayNetworking.send(recipient, new PartyHudPayloads.PartyMemberLevel(memberId, lvl));
                 }
 
-                java.util.List<String> effIds =
-                        net.pixeldreamstudios.rpgsystems.network.party.PartyStatusEffectsSync.snapshotEffectIds(member);
+                List<String> effIds =
+                        PartyStatusEffectsSync.snapshotEffectIds(member);
                 ServerPlayNetworking.send(recipient,
-                        new net.pixeldreamstudios.rpgsystems.network.party.PartyStatusEffectsPayloads.MemberEffects(
+                        new PartyStatusEffectsPayloads.MemberEffects(
                                 memberId, effIds
                         ));
             } else {
                 ServerPlayNetworking.send(recipient,
-                        new net.pixeldreamstudios.rpgsystems.network.party.PartyStatusEffectsPayloads.MemberEffects(
-                                memberId, java.util.List.of()
+                        new PartyStatusEffectsPayloads.MemberEffects(
+                                memberId, List.of()
                         ));
             }
         }
@@ -1226,8 +1291,9 @@ public final class PartyNet {
     public static void sendPartyAddonRosterTo(MinecraftServer server, ServerPlayerEntity recipient, PartyAddonIntegration.PartyAddonData partyData) {
         ServerPlayNetworking.send(recipient, new PartyRosterClear(partyData.partyId, partyData.partyName, partyData.leaderUuid));
 
-        boolean allowHelpful = partyData.settings != null ? partyData.settings.allowHelpfulNonMembers : false;
-        boolean ignoreCollision = partyData.settings != null ? partyData.settings.ignorePartyCollision : true;
+        // Get settings with fallback to defaults
+        boolean allowHelpful = partyData.settings != null && partyData.settings.allowHelpfulNonMembers;
+        boolean ignoreCollision = partyData.settings == null || partyData.settings.ignorePartyCollision;
 
         for (UUID memberId : partyData.members) {
             ServerPlayerEntity member = server.getPlayerManager().getPlayer(memberId);
@@ -1241,7 +1307,7 @@ public final class PartyNet {
                     new PartySettingsPayloads.Sync(allowHelpful, ignoreCollision));
 
             if (member != null) {
-                int lvl = net.pixeldreamstudios.rpgsystems.compat.LevelZCompat.getLevel(member);
+                int lvl = LevelZCompat.getLevel(member);
                 if (lvl < 0) {
                     lvl = computeTotalSkillsLevel(member);
                 }
@@ -1250,33 +1316,38 @@ public final class PartyNet {
                     ServerPlayNetworking.send(recipient, new PartyHudPayloads.PartyMemberLevel(memberId, lvl));
                 }
 
-                java.util.List<String> effIds =
-                        net.pixeldreamstudios.rpgsystems.network.party.PartyStatusEffectsSync.snapshotEffectIds(member);
+                List<String> effIds =
+                        PartyStatusEffectsSync.snapshotEffectIds(member);
                 ServerPlayNetworking.send(recipient,
-                        new net.pixeldreamstudios.rpgsystems.network.party.PartyStatusEffectsPayloads.MemberEffects(
+                        new PartyStatusEffectsPayloads.MemberEffects(
                                 memberId, effIds
                         ));
             } else {
                 ServerPlayNetworking.send(recipient,
-                        new net.pixeldreamstudios.rpgsystems.network.party.PartyStatusEffectsPayloads.MemberEffects(
-                                memberId, java.util.List.of()
+                        new PartyStatusEffectsPayloads.MemberEffects(
+                                memberId, List.of()
                         ));
             }
         }
     }
 
+    /**
+     * Generic method to send roster from a PartyInfo (works with any source)
+     */
     public static void sendPartyInfoRosterTo(MinecraftServer server, ServerPlayerEntity recipient, PartyDataProvider.PartyInfo partyInfo) {
         ServerPlayNetworking.send(recipient, new PartyRosterClear(partyInfo.id, partyInfo.name, partyInfo.leader));
 
         PartyPersistentState state = PartyPersistentState.get(server);
         
-        boolean allowHelpful = partyInfo.settings != null ? partyInfo.settings.allowHelpfulNonMembers : false;
-        boolean ignoreCollision = partyInfo.settings != null ? partyInfo.settings.ignorePartyCollision : true;
+        // Get settings with fallback to defaults
+        boolean allowHelpful = partyInfo.settings != null && partyInfo.settings.allowHelpfulNonMembers;
+        boolean ignoreCollision = partyInfo.settings == null || partyInfo.settings.ignorePartyCollision;
         
         for (UUID memberId : partyInfo.members) {
             ServerPlayerEntity member = server.getPlayerManager().getPlayer(memberId);
             String name;
 
+            // Try to get name from online player or cached
             if (member != null) {
                 name = member.getName().getString();
             } else {
@@ -1292,7 +1363,7 @@ public final class PartyNet {
                     new PartySettingsPayloads.Sync(allowHelpful, ignoreCollision));
 
             if (member != null) {
-                int lvl = net.pixeldreamstudios.rpgsystems.compat.LevelZCompat.getLevel(member);
+                int lvl = LevelZCompat.getLevel(member);
                 if (lvl < 0) {
                     lvl = computeTotalSkillsLevel(member);
                 }
@@ -1301,16 +1372,16 @@ public final class PartyNet {
                     ServerPlayNetworking.send(recipient, new PartyHudPayloads.PartyMemberLevel(memberId, lvl));
                 }
 
-                java.util.List<String> effIds =
-                        net.pixeldreamstudios.rpgsystems.network.party.PartyStatusEffectsSync.snapshotEffectIds(member);
+                List<String> effIds =
+                        PartyStatusEffectsSync.snapshotEffectIds(member);
                 ServerPlayNetworking.send(recipient,
-                        new net.pixeldreamstudios.rpgsystems.network.party.PartyStatusEffectsPayloads.MemberEffects(
+                        new PartyStatusEffectsPayloads.MemberEffects(
                                 memberId, effIds
                         ));
             } else {
                 ServerPlayNetworking.send(recipient,
-                        new net.pixeldreamstudios.rpgsystems.network.party.PartyStatusEffectsPayloads.MemberEffects(
-                                memberId, java.util.List.of()
+                        new PartyStatusEffectsPayloads.MemberEffects(
+                                memberId, List.of()
                         ));
             }
         }

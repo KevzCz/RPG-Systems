@@ -2,6 +2,7 @@ package net.pixeldreamstudios.rpgsystems.client.party.screen.box;
 
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
+import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.gui.DrawContext;
@@ -9,6 +10,7 @@ import net.minecraft.util.Identifier;
 import net.pixeldreamstudios.rpgsystems.client.party.ClientPartyHudData;
 import net.pixeldreamstudios.rpgsystems.client.party.ClientPartyInvites;
 import net.pixeldreamstudios.rpgsystems.client.party.CompatCommandHelper;
+import net.pixeldreamstudios.rpgsystems.network.party.PartyInvitePayloads;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -373,8 +375,8 @@ public final class PartyInviteBox implements PartyBox {
     private static void requestEligibleFromServer() {
         var mc = MinecraftClient.getInstance();
         if (mc != null && mc.getNetworkHandler() != null) {
-            net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking.send(
-                    new net.pixeldreamstudios.rpgsystems.network.party.PartyInvitePayloads.EligibleInviteesRequest());
+            ClientPlayNetworking.send(
+                    new PartyInvitePayloads.EligibleInviteesRequest());
         }
     }
 

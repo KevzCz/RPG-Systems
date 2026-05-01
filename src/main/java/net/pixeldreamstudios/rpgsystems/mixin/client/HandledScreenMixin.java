@@ -11,6 +11,7 @@ import net.minecraft.screen.PlayerScreenHandler;
 import net.minecraft.screen.ScreenHandler;
 import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
+import net.pixeldreamstudios.rpgsystems.client.config.MiscClientConfig;
 import net.pixeldreamstudios.rpgsystems.client.party.ClientPartyHudData;
 import net.pixeldreamstudios.rpgsystems.client.party.CompatCommandHelper;
 import net.pixeldreamstudios.rpgsystems.client.party.screen.PartyCreateSelectionScreen;
@@ -56,11 +57,11 @@ public abstract class HandledScreenMixin<T extends ScreenHandler> extends Screen
     @Unique
     private static final Identifier PARTY_CREATE_BTN_HOVER  = Identifier.of("rpg-systems", "textures/gui/button/party_create_hover.png");
 
-    @Unique private int titles$btnSize = 10;
+    @Unique private final int titles$btnSize = 10;
     @Unique private int titles$btnX;
     @Unique private int titles$btnY;
 
-    @Unique private int party$btnSize = 10;
+    @Unique private final int party$btnSize = 10;
     @Unique private int party$btnX;
     @Unique private int party$btnY;
 
@@ -83,7 +84,7 @@ public abstract class HandledScreenMixin<T extends ScreenHandler> extends Screen
 
     @Inject(method = "init", at = @At("TAIL"))
     private void titles$onInit(CallbackInfo ci) {
-        var misc = net.pixeldreamstudios.rpgsystems.client.config.MiscClientConfig.get();
+        var misc = MiscClientConfig.get();
 
         if (titles$shouldAttach()) {
             this.titles$btnX = this.x + misc.handledTitlesBtnOffsetX;
@@ -163,7 +164,7 @@ public abstract class HandledScreenMixin<T extends ScreenHandler> extends Screen
                     MinecraftClient mc = MinecraftClient.getInstance();
                     
                     if (ftbTeamsEnabled && partyAddonEnabled) {
-                        mc.setScreen(new PartyCreateSelectionScreen((Screen)(Object)this));
+                        mc.setScreen(new PartyCreateSelectionScreen(this));
                     } else if (partyAddonEnabled) {
                         CompatCommandHelper.openPartyScreen();
                     } else if (ftbTeamsEnabled) {

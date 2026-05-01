@@ -18,6 +18,7 @@ import net.pixeldreamstudios.rpgsystems.network.title.TitlePayloads;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -115,7 +116,7 @@ public final class TitleCommands {
             String line = String.format(
                     "§7 %2d) §f%-22s §7cur=%s  done=%s  target=%s  %s",
                     i + 1,
-                    c.type.name().toLowerCase(java.util.Locale.ROOT),
+                    c.type.name().toLowerCase(Locale.ROOT),
                     cur,
                     dn,
                     targetTxt,
@@ -162,7 +163,7 @@ public final class TitleCommands {
 
         TitleApi.clearProgress(target, id);
 
-        net.pixeldreamstudios.rpgsystems.network.TitleNet.syncSelfTo(ctx.getSource().getServer(), target);
+        TitleNet.syncSelfTo(ctx.getSource().getServer(), target);
         broadcastActiveToAll(ctx.getSource().getServer(), target.getUuid(), activeOf(ctx.getSource().getServer(), target.getUuid()));
 
         ctx.getSource().sendFeedback(
@@ -174,7 +175,7 @@ public final class TitleCommands {
     private static int reset(CommandContext<ServerCommandSource> ctx, ServerPlayerEntity target, Identifier id) {
         boolean had = TitleApi.clearProgress(target, id);
 
-        net.pixeldreamstudios.rpgsystems.network.TitleNet.syncSelfTo(ctx.getSource().getServer(), target);
+        TitleNet.syncSelfTo(ctx.getSource().getServer(), target);
 
         if (had) {
             ctx.getSource().sendFeedback(
@@ -190,7 +191,7 @@ public final class TitleCommands {
 
     private static int applySelf(CommandContext<ServerCommandSource> ctx, Identifier id) {
         ServerPlayerEntity self = ctx.getSource().getPlayer();
-        boolean ok = net.pixeldreamstudios.rpgsystems.api.TitleApi.setActive(self, Optional.of(id));
+        boolean ok = TitleApi.setActive(self, Optional.of(id));
         if (!ok) {
             ctx.getSource().sendError(Text.literal("You have not unlocked: " + id));
             return 0;
@@ -202,7 +203,7 @@ public final class TitleCommands {
     }
     private static int clearSelf(CommandContext<ServerCommandSource> ctx) {
         ServerPlayerEntity self = ctx.getSource().getPlayer();
-        boolean ok = net.pixeldreamstudios.rpgsystems.api.TitleApi.setActive(self, Optional.empty());
+        boolean ok = TitleApi.setActive(self, Optional.empty());
         if (!ok) {
             ctx.getSource().sendError(Text.literal("Failed to clear active title"));
             return 0;

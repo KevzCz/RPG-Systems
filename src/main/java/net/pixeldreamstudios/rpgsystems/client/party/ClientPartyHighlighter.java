@@ -7,6 +7,7 @@ import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.ClientPlayerEntity;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.text.Text;
 import net.pixeldreamstudios.rpgsystems.party.PartyAllies;
 
 import java.util.HashMap;
@@ -35,7 +36,7 @@ public final class ClientPartyHighlighter {
         enabled = !enabled;
         var p = MC.player;
         if (p != null) {
-            p.sendMessage(net.minecraft.text.Text.literal(
+            p.sendMessage(Text.literal(
                     enabled ? "Party highlight: ON" : "Party highlight: OFF"), true);
         }
     }
@@ -56,17 +57,13 @@ public final class ClientPartyHighlighter {
 
         if (e instanceof PlayerEntity) {
             UUID entityUuid = e.getUuid();
-            if (entityUuid != null && ClientPartyHudData.isMember(entityUuid)) {
+            if (ClientPartyHudData.isMember(entityUuid)) {
                 return true;
             }
         }
 
         UUID ownerUuid = PartyAllies.owningPlayerUuid(e);
-        if (ownerUuid != null && ClientPartyHudData.isMember(ownerUuid)) {
-            return true;
-        }
-
-        return false;
+        return ClientPartyHudData.isMember(ownerUuid);
     }
 
     public static int getColor(Entity e) {

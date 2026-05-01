@@ -34,7 +34,7 @@ public final class TitleClientData {
     }
 
     public static Set<Identifier> getSelfUnlocked() {
-        return java.util.Collections.unmodifiableSet(selfUnlocked);
+        return Collections.unmodifiableSet(selfUnlocked);
     }
 
     public static Identifier getSelfActive() {
@@ -57,7 +57,7 @@ public final class TitleClientData {
     }
 
     public static List<CondProg> getProgress(Identifier titleId) {
-        return selfProgress.getOrDefault(titleId, java.util.Collections.emptyList());
+        return selfProgress.getOrDefault(titleId, Collections.emptyList());
     }
 
     public record CondProg(long current, boolean done) {}

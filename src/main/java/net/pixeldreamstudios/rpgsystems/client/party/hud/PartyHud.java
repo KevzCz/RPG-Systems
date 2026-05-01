@@ -8,6 +8,7 @@ import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.network.ClientPlayNetworkHandler;
 import net.minecraft.client.network.OtherClientPlayerEntity;
@@ -331,7 +332,7 @@ public final class PartyHud implements HudRenderCallback {
         if (iw > 0) ctx.fill(x, y, x + iw, y + h, fillARGB);
     }
 
-    public static void drawScaledText(DrawContext ctx, net.minecraft.client.font.TextRenderer tr, String text, int x, int y, int color, float scale) {
+    public static void drawScaledText(DrawContext ctx, TextRenderer tr, String text, int x, int y, int color, float scale) {
         var m = ctx.getMatrices();
         m.push();
         m.translate(x, y, 0);
@@ -340,7 +341,7 @@ public final class PartyHud implements HudRenderCallback {
         m.pop();
     }
 
-    public static void drawScaledTextF(DrawContext ctx, net.minecraft.client.font.TextRenderer tr, String text, float x, float y, int color, float scale) {
+    public static void drawScaledTextF(DrawContext ctx, TextRenderer tr, String text, float x, float y, int color, float scale) {
         var m = ctx.getMatrices();
         m.push();
         m.translate(x, y, 0f);
@@ -349,7 +350,7 @@ public final class PartyHud implements HudRenderCallback {
         m.pop();
     }
 
-    public static String ellipsizeScaled(net.minecraft.client.font.TextRenderer tr, String s, int maxPx, float scale) {
+    public static String ellipsizeScaled(TextRenderer tr, String s, int maxPx, float scale) {
         if (Math.round(tr.getWidth(s) * scale) <= maxPx) return s;
         String dots = "...";
         int dw = Math.round(tr.getWidth(dots) * scale);

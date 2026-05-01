@@ -12,7 +12,9 @@ import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.texture.AbstractTexture;
 import net.minecraft.client.texture.TextureManager;
+import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
+import net.minecraft.util.math.RotationAxis;
 import net.pixeldreamstudios.rpgsystems.client.party.ClientPartyHudData;
 import net.pixeldreamstudios.rpgsystems.client.party.CompatCommandHelper;
 import net.pixeldreamstudios.rpgsystems.network.party.PartySettingsPayloads;
@@ -68,6 +70,8 @@ public final class PartyInfoBox implements PartyBox {
     private static float gearAnimAngle = 0f;
     private int settingsPanelGearX = -1, settingsPanelGearY = -1;
     private static final int SETTINGS_GEAR_SIZE = 12;
+
+    // Source toggle button tracking
     private int sourceToggleX = -1, sourceToggleY = -1, sourceToggleW = 0, sourceToggleH = 0;
 
     @Override
@@ -140,19 +144,17 @@ public final class PartyInfoBox implements PartyBox {
         int divY = partyY + scaledFontH + 2;
         ctx.drawTexture(DIVIDER, divX, divY, 0, 0, divW, dividerH + 3, divW, dividerH + 3);
 
-        int leaderTextAreaW = w - (BTN_GAP + BTN_W);
-        String leaderName = ellipsizeScaled(tr, leaderNameRaw, leaderTextAreaW - 4, s);
-        int leaderTextX = centeredScaledTextXWithinWidth(tr, leaderName, x, leaderTextAreaW, s);
+        // Leave button is always at a fixed position to the left of the gear, preventing overlap
+        int btnX = x + w - (GEAR_W + GEAR_PAD) - BTN_GAP - BTN_W;
         int leaderTextY = divY + dividerH + 2 + 5;
+        int btnY = leaderTextY + (scaledFontH - BTN_H) / 2;
+
+        int leaderTextAreaW = btnX - x - 1;
+        String leaderName = ellipsizeScaled(tr, leaderNameRaw, leaderTextAreaW, s);
+        int leaderTextX = centeredScaledTextXWithinWidth(tr, leaderName, x + 1, leaderTextAreaW, s);
 
         drawScaledText(ctx, tr, leaderName, leaderTextX, leaderTextY, 0xFFEFEFEF, s);
 
-        int leaderTextWpx = Math.round(tr.getWidth(leaderName) * s);
-        int btnX = leaderTextX + leaderTextWpx + BTN_GAP;
-        int btnTopBaseline = leaderTextY;
-        int btnY = btnTopBaseline + (scaledFontH - BTN_H) / 2;
-
-        if (btnX + BTN_W > x + w) btnX = x + w - BTN_W;
         boolean hoverLeave = isMouseOver(btnX, btnY, BTN_W, BTN_H);
         ctx.drawTexture(hoverLeave ? LEAVE_HOVER : LEAVE_NORMAL, btnX, btnY, 0, 0, 4, 7, 4, 7);
 
@@ -181,7 +183,7 @@ public final class PartyInfoBox implements PartyBox {
         m.push();
         m.translate(gearX + gearW / 2f, gearY + gearH / 2f, 0f);
         if (gearAnimAngle != 0f) {
-            m.multiply(net.minecraft.util.math.RotationAxis.POSITIVE_Z.rotationDegrees(gearAnimAngle));
+            m.multiply(RotationAxis.POSITIVE_Z.rotationDegrees(gearAnimAngle));
         }
         m.scale(0.75f, 0.75f, 1f);
         ctx.drawTexture(SETTINGS_BUTTON, -gearW / 2, -gearH / 2, 0, 0, gearW, gearH, 16, 16);
@@ -210,7 +212,9 @@ public final class PartyInfoBox implements PartyBox {
             ctx.fill(bx, by, bx + boxW, by + boxH, SETTINGS_BG);
             drawBorder(ctx, bx, by, boxW, boxH, SETTINGS_BORDER);
             int titleTextX = bx + innerPad;
-            drawScaledText(ctx, tr, net.minecraft.text.Text.translatable("party.rpgsystems.settings").getString(), titleTextX, by + innerPad, 0xFFFFFFFF, SETTINGS_TEXT_SCALE);
+            drawScaledText(ctx, tr, Text.translatable("party.rpgsystems.settings").getString(), titleTextX, by + innerPad, 0xFFFFFFFF, SETTINGS_TEXT_SCALE);
+            
+            // Show current source badge below title when multiple sources available
             int sourceBadgeOffset = 0;
             if (ClientPartyHudData.hasMultipleSources()) {
                 PartyDataProvider.PartySource currentSource = ClientPartyHudData.getCurrentSource();
@@ -219,7 +223,7 @@ public final class PartyInfoBox implements PartyBox {
                     case PARTY_ADDON -> "party.rpgsystems.source.party_addon";
                     case NATIVE -> "party.rpgsystems.source.native";
                 };
-                String sourceText = net.minecraft.text.Text.translatable(sourceKey).getString();
+                String sourceText = Text.translatable(sourceKey).getString();
                 float badgeScale = SETTINGS_TEXT_SCALE * 0.85f;
                 int badgeW = Math.round(tr.getWidth(sourceText) * badgeScale) + 8;
                 int badgeX = bx + innerPad;
@@ -268,6 +272,7 @@ public final class PartyInfoBox implements PartyBox {
     public boolean mouseClicked(double mouseX, double mouseY, int button,
                                 int canvasX, int canvasY, int canvasW, int canvasH, TextRenderer tr) {
 
+        // Handle source toggle click
         if (sourceToggleW > 0 && sourceToggleH > 0 &&
                 mouseX >= sourceToggleX && mouseX < sourceToggleX + sourceToggleW &&
                 mouseY >= sourceToggleY && mouseY < sourceToggleY + sourceToggleH) {
@@ -346,15 +351,9 @@ public final class PartyInfoBox implements PartyBox {
         int topLineY   = y + (h - (scaledFontH + 2 + dividerH + 2 + scaledFontH)) / 2;
         int divY       = topLineY + scaledFontH + 2;
 
-        int leaderTextAreaW = w - (BTN_GAP + BTN_W);
-        String leaderName = ellipsizeScaled(tr, leaderNameRaw, leaderTextAreaW - 4, s);
-        int leaderTextX = centeredScaledTextXWithinWidth(tr, leaderName, x, leaderTextAreaW, s);
         int leaderTextY = divY + dividerH + 2 + 5;
-
-        int leaderTextWpx = Math.round(tr.getWidth(leaderName) * s);
-        int btnX = leaderTextX + leaderTextWpx + BTN_GAP;
+        int btnX = x + w - (GEAR_W + GEAR_PAD) - BTN_GAP - BTN_W;
         int btnY = leaderTextY + (scaledFontH - BTN_H) / 2;
-        if (btnX + BTN_W > x + w) btnX = x + w - BTN_W;
 
         gearW = GEAR_W; gearH = GEAR_H;
         gearX = x + w - GEAR_PAD - gearW;

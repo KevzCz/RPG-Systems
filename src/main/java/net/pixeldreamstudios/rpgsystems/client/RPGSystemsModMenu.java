@@ -27,7 +27,7 @@ public final class RPGSystemsModMenu implements ModMenuApi {
         private CheckboxWidget usePartyAddon;
         private int restartWarningY = -1;
 
-        protected ReadOnlyConfigScreen(Screen parent) {
+        private ReadOnlyConfigScreen(Screen parent) {
             super(Text.literal("RPG Systems Config"));
             this.parent = parent;
         }

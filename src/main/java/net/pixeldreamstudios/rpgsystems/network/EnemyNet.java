@@ -18,6 +18,7 @@ import net.pixeldreamstudios.rpgsystems.client.enemy.DamageNumbersRenderer;
 import net.pixeldreamstudios.rpgsystems.client.enemy.EnemyHealthBarRenderer;
 import net.pixeldreamstudios.rpgsystems.client.enemy.HealingNumbersRenderer;
 import net.pixeldreamstudios.rpgsystems.client.enemy.config.DamageTypeConfig;
+import net.pixeldreamstudios.rpgsystems.client.enemy.config.HealingNumbersClientConfig;
 import net.pixeldreamstudios.rpgsystems.network.enemy.EnemyHudPayloads;
 
 import java.util.HashMap;
@@ -69,8 +70,8 @@ public final class EnemyNet {
 
         ClientPlayNetworking.registerGlobalReceiver(EnemyHudPayloads.HealingNumber.ID,
                 (payload, context) -> context.client().execute(() -> {
-                    var cfg = net.pixeldreamstudios.rpgsystems.client.enemy.config.HealingNumbersClientConfig.get();
-                    float display = (cfg.amountMode == net.pixeldreamstudios.rpgsystems.client.enemy.config.HealingNumbersClientConfig.AmountMode.APPLIED)
+                    var cfg = HealingNumbersClientConfig.get();
+                    float display = (cfg.amountMode == HealingNumbersClientConfig.AmountMode.APPLIED)
                             ? payload.applied()
                             : payload.attempted();
 

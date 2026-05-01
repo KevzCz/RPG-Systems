@@ -106,7 +106,7 @@ final class OriginalHud implements PartyHudRenderer {
         final int   lvlSlotW  = LVL_SLOT_W;
         final int   lvlSlotH  = Math.max(1, Math.round(tr.fontHeight * TEXT_SCALE)) + LVL_PAD_Y * 2;
 
-        String lvlText = (level >= 0) ? ("" + level) : "?";
+        String lvlText = (level >= 0) ? (String.valueOf(level)) : "?";
         int lvlTextW = Math.round(tr.getWidth(lvlText) * TEXT_SCALE);
         int lvlTextH = Math.max(1, Math.round(tr.fontHeight * TEXT_SCALE));
         float lvlTextX = lvlSlotXf + (lvlSlotW - lvlTextW) / 2f;

@@ -34,12 +34,12 @@ public abstract class EntityCollisionServerMixin {
         if (FabricLoader.getInstance().isModLoaded("ftbteams") && FTBTeamsIntegration.isEnabled()) {
 
             if (a instanceof ServerPlayerEntity pa) {
-                var ftbData = net.pixeldreamstudios.rpgsystems.party.FTBTeamsIntegration.getPartyDataForPlayer(pa);
+                var ftbData = FTBTeamsIntegration.getPartyDataForPlayer(pa);
                 if (ftbData != null) {
                     return ftbData.settings.ignorePartyCollision;
                 }
             } else if (b instanceof ServerPlayerEntity pb) {
-                var ftbData = net.pixeldreamstudios.rpgsystems.party.FTBTeamsIntegration.getPartyDataForPlayer(pb);
+                var ftbData = FTBTeamsIntegration.getPartyDataForPlayer(pb);
                 if (ftbData != null) {
                     return ftbData.settings.ignorePartyCollision;
                 }
@@ -47,7 +47,7 @@ public abstract class EntityCollisionServerMixin {
 
             ServerPlayerEntity owner = server.getPlayerManager().getPlayer(ownerA);
             if (owner != null) {
-                var ftbData = net.pixeldreamstudios.rpgsystems.party.FTBTeamsIntegration.getPartyDataForPlayer(owner);
+                var ftbData = FTBTeamsIntegration.getPartyDataForPlayer(owner);
                 if (ftbData != null) {
                     return ftbData.settings.ignorePartyCollision;
                 }

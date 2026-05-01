@@ -4,6 +4,7 @@ import com.mojang.authlib.GameProfile;
 import dev.ftb.mods.ftbteams.api.property.TeamProperties;
 import dev.ftb.mods.ftbteams.data.AbstractTeam;
 import dev.ftb.mods.ftbteams.data.PartyTeam;
+import dev.ftb.mods.ftbteams.data.TeamManagerImpl;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.pixeldreamstudios.rpgsystems.network.party.PartyInvitePayloads;
@@ -20,7 +21,7 @@ import java.util.UUID;
 @Mixin(value = PartyTeam.class, remap = false)
 public abstract class PartyTeamInviteMixin extends AbstractTeam {
 
-    public PartyTeamInviteMixin(dev.ftb.mods.ftbteams.data.TeamManagerImpl manager, UUID id) {
+    public PartyTeamInviteMixin(TeamManagerImpl manager, UUID id) {
         super(manager, id);
     }
 

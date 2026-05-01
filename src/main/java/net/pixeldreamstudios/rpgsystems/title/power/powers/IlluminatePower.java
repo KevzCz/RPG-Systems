@@ -3,6 +3,7 @@ package net.pixeldreamstudios.rpgsystems.title.power.powers;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.Blocks;
+import net.minecraft.registry.RegistryKey;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.util.Identifier;
@@ -16,7 +17,7 @@ import java.util.*;
 public final class IlluminatePower implements TitlePower {
     public static final Identifier ID = Identifier.of("rpg-systems", "illuminate");
     private final Map<UUID, BlockPos> lastPos = new HashMap<>();
-    private final Map<UUID, net.minecraft.registry.RegistryKey<World>> lastDim = new HashMap<>();
+    private final Map<UUID, RegistryKey<World>> lastDim = new HashMap<>();
     @Override
     public Identifier id() {
         return ID;
@@ -48,7 +49,7 @@ public final class IlluminatePower implements TitlePower {
         UUID id = player.getUuid();
 
         BlockPos previous = lastPos.get(id);
-        net.minecraft.registry.RegistryKey<World> prevDim = lastDim.get(id);
+        RegistryKey<World> prevDim = lastDim.get(id);
 
         if (previous != null && prevDim != null && prevDim != world.getRegistryKey()) {
             removeLight(player, previous, prevDim, true);
@@ -78,7 +79,7 @@ public final class IlluminatePower implements TitlePower {
     }
     private void removeLight(MinecraftServer server, UUID id) {
         BlockPos prev = lastPos.remove(id);
-        net.minecraft.registry.RegistryKey<World> dim = lastDim.remove(id);
+        RegistryKey<World> dim = lastDim.remove(id);
         if (prev == null || dim == null) return;
 
         World world = server.getWorld(dim);
@@ -89,7 +90,7 @@ public final class IlluminatePower implements TitlePower {
             world.removeBlock(prev, false);
         }
     }
-    private void removeLight(ServerPlayerEntity player, BlockPos pos, net.minecraft.registry.RegistryKey<World> dim, boolean strictDim) {
+    private void removeLight(ServerPlayerEntity player, BlockPos pos, RegistryKey<World> dim, boolean strictDim) {
         World world = player.getServer().getWorld(dim);
         if (world == null) return;
         BlockState cur = world.getBlockState(pos);

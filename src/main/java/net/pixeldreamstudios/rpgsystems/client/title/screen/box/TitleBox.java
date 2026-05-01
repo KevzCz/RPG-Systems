@@ -7,6 +7,7 @@ import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.gui.DrawContext;
+import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.render.BufferBuilder;
 import net.minecraft.client.render.BufferRenderer;
 import net.minecraft.client.render.GameRenderer;
@@ -23,6 +24,7 @@ import net.pixeldreamstudios.rpgsystems.client.title.widget.TitleButtonWidget;
 import net.pixeldreamstudios.rpgsystems.mixin.client.ScreenAccessor;
 import net.pixeldreamstudios.rpgsystems.network.title.TitlePayloads;
 import net.pixeldreamstudios.rpgsystems.title.Title;
+import org.joml.Matrix4f;
 
 import java.util.List;
 import java.util.Optional;
@@ -82,8 +84,8 @@ public final class TitleBox {
         return selected;
     }
 
-    public void attachToScreen(net.minecraft.client.gui.screen.Screen screen) {
-        ScreenAccessor acc = (ScreenAccessor) (Object) screen;
+    public void attachToScreen(Screen screen) {
+        ScreenAccessor acc = (ScreenAccessor) screen;
         if (applyButton != null) acc.rpgsystems$addDrawableChild(applyButton);
         if (disableButton != null) acc.rpgsystems$addDrawableChild(disableButton);
         updateButtonLayout();
@@ -264,7 +266,7 @@ public final class TitleBox {
         }
     }
 
-    private static void drawQuadGuiUV(org.joml.Matrix4f mat, float u0, float v0, float u1, float v1) {
+    private static void drawQuadGuiUV(Matrix4f mat, float u0, float v0, float u1, float v1) {
         Tessellator tess = Tessellator.getInstance();
         BufferBuilder buf = tess.begin(VertexFormat.DrawMode.QUADS, VertexFormats.POSITION_TEXTURE);
 

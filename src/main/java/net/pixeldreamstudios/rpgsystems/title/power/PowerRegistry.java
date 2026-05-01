@@ -1,6 +1,7 @@
 package net.pixeldreamstudios.rpgsystems.title.power;
 
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
+import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.util.Identifier;
@@ -47,7 +48,7 @@ public final class PowerRegistry {
 
         ServerTickEvents.START_SERVER_TICK.register(PowerRegistry::onServerTick);
 
-        net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> {
+        ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> {
             var player = handler.player;
             UUID uuid = player.getUuid();
             for (Map.Entry<Identifier, Set<UUID>> e : ACTIVE.entrySet()) {
@@ -80,7 +81,7 @@ public final class PowerRegistry {
             }
         }
     }
-    public static boolean isActive(Identifier powerId, java.util.UUID uuid) {
+    public static boolean isActive(Identifier powerId, UUID uuid) {
         var set = ACTIVE.get(powerId);
         return set != null && set.contains(uuid);
     }

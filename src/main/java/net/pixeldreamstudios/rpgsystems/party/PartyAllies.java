@@ -23,6 +23,7 @@ public final class PartyAllies {
         if (server == null) return false;
         if (a.equals(b)) return true;
 
+        // Check FTBTeams - if both players are in the same FTB party
         if (FabricLoader.getInstance().isModLoaded("ftbteams") && FTBTeamsIntegration.isEnabled()) {
             var pa = FTBTeamsIntegration.getPartyDataForPlayerId(server, a);
             var pb = FTBTeamsIntegration.getPartyDataForPlayerId(server, b);
@@ -31,6 +32,7 @@ public final class PartyAllies {
             }
         }
 
+        // Check PartyAddon - if both players are in the same PartyAddon group
         if (FabricLoader.getInstance().isModLoaded("partyaddon") && PartyAddonIntegration.isEnabled()) {
             var pa = PartyAddonIntegration.getPartyDataForPlayerId(server, a);
             var pb = PartyAddonIntegration.getPartyDataForPlayerId(server, b);
@@ -39,6 +41,7 @@ public final class PartyAllies {
             }
         }
 
+        // Check native party system
         var state = PartyPersistentState.get(server);
         var pa = state.getPartyByMember(a);
         var pb = state.getPartyByMember(b);
@@ -68,7 +71,7 @@ public final class PartyAllies {
         }
         if (e instanceof AbstractHorseEntity h) {
             UUID u = h.getOwnerUuid();
-            if (u != null) return u;
+            return u;
         }
 
         return null;

@@ -1,6 +1,9 @@
 package net.pixeldreamstudios.rpgsystems.party;
 
+import dev.ftb.mods.ftbteams.api.FTBTeamsAPI;
+import dev.ftb.mods.ftbteams.api.Team;
 import dev.ftb.mods.ftbteams.api.TeamManager;
+import dev.ftb.mods.ftbteams.api.property.TeamProperties;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerPlayerEntity;
@@ -8,8 +11,11 @@ import net.minecraft.text.Text;
 import net.pixeldreamstudios.rpgsystems.RPGSystems;
 import net.pixeldreamstudios.rpgsystems.network.party.PartyInvitePayloads;
 
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -57,8 +63,8 @@ public final class FTBTeamsJoinRequests {
             return;
         }
 
-        dev.ftb.mods.ftbteams.api.TeamManager ftbManager =
-                dev.ftb.mods.ftbteams.api.FTBTeamsAPI.api().getManager();
+        TeamManager ftbManager =
+                FTBTeamsAPI.api().getManager();
         ftbManager.getTeamByID(teamId).ifPresent(team -> {
             if (team.isPartyTeam()) {
                 ServerPlayerEntity leader = server.getPlayerManager().getPlayer(team.getOwner());
@@ -80,7 +86,7 @@ public final class FTBTeamsJoinRequests {
         if (name == null) return "";
 
         try {
-            String encoded = java.net.URLEncoder.encode(name, java.nio.charset.StandardCharsets.UTF_8);
+            String encoded = URLEncoder.encode(name, StandardCharsets.UTF_8);
 
             encoded = encoded.replace("%27", "_")
                     .replace("%20", "_")
@@ -96,14 +102,14 @@ public final class FTBTeamsJoinRequests {
     }
     public static void handleFTBTeamsInviteResponse(ServerPlayerEntity player, PartyInvitePayloads.InviteRespond payload) {
         try {
-            TeamManager manager = dev.ftb.mods.ftbteams.api.FTBTeamsAPI.api().getManager();
-            java.util.Optional<dev.ftb.mods.ftbteams.api.Team> teamOpt = manager.getTeamByID(payload.partyId());
+            TeamManager manager = FTBTeamsAPI.api().getManager();
+            Optional<Team> teamOpt = manager.getTeamByID(payload.partyId());
 
             if (teamOpt.isPresent()) {
-                dev.ftb.mods.ftbteams.api.Team team = teamOpt.get();
+                Team team = teamOpt.get();
 
                 String shortTeamId = team.getId().toString().substring(0, 8);
-                String displayName = team.getProperty(dev.ftb.mods.ftbteams.api.property.TeamProperties.DISPLAY_NAME);
+                String displayName = team.getProperty(TeamProperties.DISPLAY_NAME);
 
                 String encodedName = urlEncodeName(displayName);
                 String teamIdentifier = encodedName + "#" + shortTeamId;
@@ -135,7 +141,7 @@ public final class FTBTeamsJoinRequests {
 
             ServerPlayNetworking.send(player, new PartyInvitePayloads.InviteRemoved(payload.partyId()));
         } catch (Exception e) {
-            net.pixeldreamstudios.rpgsystems.RPGSystems.LOGGER.error("[FTB Teams] Error handling invite response", e);
+            RPGSystems.LOGGER.error("[FTB Teams] Error handling invite response", e);
         }
     }
 }

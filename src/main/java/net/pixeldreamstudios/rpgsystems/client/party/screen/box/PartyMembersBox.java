@@ -11,6 +11,7 @@ import net.minecraft.util.Identifier;
 import net.pixeldreamstudios.rpgsystems.client.party.ClientPartyHudData;
 import net.pixeldreamstudios.rpgsystems.client.party.ClientPartyPins;
 import net.pixeldreamstudios.rpgsystems.client.party.CompatCommandHelper;
+import net.pixeldreamstudios.rpgsystems.client.party.hud.PartyHud;
 
 import java.util.*;
 
@@ -81,9 +82,9 @@ public final class PartyMembersBox implements PartyBox {
     private UUID selected = null;
     private int scrollPx = 0;
     private boolean draggingScrollbar = false;
-    private int dragGrabOffsetY = 0;
+    private final int dragGrabOffsetY = 0;
 
-    private List<ClientPartyHudData.Member> lastListForPins = java.util.Collections.emptyList();
+    private List<ClientPartyHudData.Member> lastListForPins = Collections.emptyList();
 
     private ClientPartyHudData.Member hoverMember = null;
     private boolean hoverOverPinIcon = false;
@@ -92,7 +93,7 @@ public final class PartyMembersBox implements PartyBox {
     private boolean hoverOverLeaderIcon = false;
 
     private boolean showPromoteDialog = false;
-    private List<ClientPartyHudData.Member> promoteCandidates = java.util.Collections.emptyList();
+    private List<ClientPartyHudData.Member> promoteCandidates = Collections.emptyList();
     private int promoteSelectedIndex = -1;
     private int promoteListScrollPx = 0;
 
@@ -116,8 +117,8 @@ public final class PartyMembersBox implements PartyBox {
             drawBorder(ctx, x, y, w, h, 0xFF4CAF50);
         }
 
-        List<ClientPartyHudData.Member> base = net.pixeldreamstudios.rpgsystems.client.party.hud.PartyHud.DEBUG_FORCE_DUMMY
-                ? new ArrayList<>(net.pixeldreamstudios.rpgsystems.client.party.hud.PartyHud.partyMembers())
+        List<ClientPartyHudData.Member> base = PartyHud.DEBUG_FORCE_DUMMY
+                ? new ArrayList<>(PartyHud.partyMembers())
                 : new ArrayList<>(ClientPartyHudData.members());
         base.sort(Comparator.comparing(m -> m.name == null ? "" : m.name.toLowerCase(Locale.ROOT)));
         lastListForPins = base;
@@ -372,8 +373,8 @@ public final class PartyMembersBox implements PartyBox {
         }
 
         List<ClientPartyHudData.Member> base =
-                net.pixeldreamstudios.rpgsystems.client.party.hud.PartyHud.DEBUG_FORCE_DUMMY
-                        ? new ArrayList<>(net.pixeldreamstudios.rpgsystems.client.party.hud.PartyHud.partyMembers())
+                PartyHud.DEBUG_FORCE_DUMMY
+                        ? new ArrayList<>(PartyHud.partyMembers())
                         : new ArrayList<>(ClientPartyHudData.members());
         base.sort(Comparator.comparing(m -> m.name == null ? "" : m.name.toLowerCase(Locale.ROOT)));
 
@@ -478,8 +479,8 @@ public final class PartyMembersBox implements PartyBox {
 
         if (mouseX < x || mouseX >= x + w || mouseY < listTop || mouseY >= listBottom) return false;
 
-        List<ClientPartyHudData.Member> base = net.pixeldreamstudios.rpgsystems.client.party.hud.PartyHud.DEBUG_FORCE_DUMMY
-                ? new ArrayList<>(net.pixeldreamstudios.rpgsystems.client.party.hud.PartyHud.partyMembers())
+        List<ClientPartyHudData.Member> base = PartyHud.DEBUG_FORCE_DUMMY
+                ? new ArrayList<>(PartyHud.partyMembers())
                 : new ArrayList<>(ClientPartyHudData.members());
 
         int visibleH = Math.max(0, listBottom - listTop);
@@ -515,8 +516,8 @@ public final class PartyMembersBox implements PartyBox {
         int minVisibleH = 16 * ROW_H;
         if ((listBottom - listTop) < minVisibleH) listBottom = Math.min(listBottom, listTop + minVisibleH);
 
-        List<ClientPartyHudData.Member> base = net.pixeldreamstudios.rpgsystems.client.party.hud.PartyHud.DEBUG_FORCE_DUMMY
-                ? new ArrayList<>(net.pixeldreamstudios.rpgsystems.client.party.hud.PartyHud.partyMembers())
+        List<ClientPartyHudData.Member> base = PartyHud.DEBUG_FORCE_DUMMY
+                ? new ArrayList<>(PartyHud.partyMembers())
                 : new ArrayList<>(ClientPartyHudData.members());
         int visibleH = Math.max(0, listBottom - listTop);
         int totalH = base.size() * ROW_H;

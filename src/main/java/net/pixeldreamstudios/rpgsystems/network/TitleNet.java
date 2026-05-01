@@ -9,6 +9,7 @@ import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.minecraft.entity.attribute.EntityAttribute;
+import net.minecraft.nbt.NbtCompound;
 import net.minecraft.registry.Registries;
 import net.minecraft.registry.RegistryKey;
 import net.minecraft.registry.RegistryKeys;
@@ -51,7 +52,7 @@ public final class TitleNet {
             state.markDirty();
 
             // Rebuild perma effects immediately
-            var unlocked = net.pixeldreamstudios.rpgsystems.api.TitleApi
+            var unlocked = TitleApi
                     .getActive(player) // not needed for perma, but we’ll rebuild everything
                     .map(a -> a) // noop
                     ;
@@ -71,7 +72,7 @@ public final class TitleNet {
         ServerPlayNetworking.registerGlobalReceiver(TitlePayloads.RequestSetActive.ID, (payload, context) -> {
             ServerPlayerEntity player = context.player();
             Optional<Identifier> requested = payload.active();
-            boolean ok = net.pixeldreamstudios.rpgsystems.api.TitleApi.setActive(player, requested);
+            boolean ok = TitleApi.setActive(player, requested);
             if (ok) {
                 broadcastActiveToAll(player.getServer(), player.getUuid(), requested);
                 syncSelfTo(player.getServer(), player);
@@ -116,7 +117,7 @@ public final class TitleNet {
                 )
         );
         ClientPlayNetworking.registerGlobalReceiver(TitlePayloads.SyncPermaToggles.ID, (payload, ctx) ->
-                ctx.client().execute(() -> TitleClientData.setPermaDisabled(new java.util.LinkedHashSet<>(payload.disabled())))
+                ctx.client().execute(() -> TitleClientData.setPermaDisabled(new LinkedHashSet<>(payload.disabled())))
         );
         ClientPlayNetworking.registerGlobalReceiver(TitleListSyncPayload.ID, (payload, context) -> {
             context.client().execute(() -> {
@@ -240,7 +241,7 @@ public final class TitleNet {
         for (String s : pt.unlocked) unlocked.add(Identifier.of(s));
         Optional<Identifier> active = Optional.ofNullable(pt.active == null ? null : Identifier.of(pt.active));
 
-        ServerPlayNetworking.send(player, new net.pixeldreamstudios.rpgsystems.network.title.TitlePayloads.SyncSelf(unlocked, active));
+        ServerPlayNetworking.send(player, new TitlePayloads.SyncSelf(unlocked, active));
     }
 
     public static void sendAllTitles(ServerPlayerEntity player) {
@@ -265,17 +266,17 @@ public final class TitleNet {
             Title t = e.getValue();
             if (t.conditions.isEmpty()) continue;
 
-            List<net.pixeldreamstudios.rpgsystems.network.title.TitlePayloads.SyncProgress.CondProg> conds = new ArrayList<>();
+            List<TitlePayloads.SyncProgress.CondProg> conds = new ArrayList<>();
             for (int i = 0; i < t.conditions.size(); i++) {
-                net.minecraft.nbt.NbtCompound tag = pt.progress.get(id.toString());
+                NbtCompound tag = pt.progress.get(id.toString());
                 long cur = tag == null ? 0L : tag.getLong("c" + i);
                 boolean done = tag != null && tag.getBoolean("done_" + i);
-                conds.add(new net.pixeldreamstudios.rpgsystems.network.title.TitlePayloads.SyncProgress.CondProg(cur, done));
+                conds.add(new TitlePayloads.SyncProgress.CondProg(cur, done));
             }
-            out.add(new net.pixeldreamstudios.rpgsystems.network.title.TitlePayloads.SyncProgress.TitleProgress(id, conds));
+            out.add(new TitlePayloads.SyncProgress.TitleProgress(id, conds));
         }
 
-        ServerPlayNetworking.send(player, new net.pixeldreamstudios.rpgsystems.network.title.TitlePayloads.SyncProgress(out));
+        ServerPlayNetworking.send(player, new TitlePayloads.SyncProgress(out));
     }
 
     private static void sendDefinitionsTo(MinecraftServer server, ServerPlayerEntity player) {

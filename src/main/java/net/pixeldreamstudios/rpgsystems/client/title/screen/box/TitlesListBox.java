@@ -48,10 +48,10 @@ public final class TitlesListBox {
     private int scrollOffset = 0;
     private int selectedIndex = -1;
     private final List<Consumer<Title>> selectionListeners = new ArrayList<>();
-    private float textScale = 0.5f;
+    private final float textScale = 0.5f;
 
-    private int scrollbarOffsetX = 0;
-    private int scrollbarOffsetY = 0;
+    private final int scrollbarOffsetX = 0;
+    private final int scrollbarOffsetY = 0;
     private int scrollbarWidth = 1;
     private boolean draggingScrollbar = false;
     private int dragGrabOffsetY = 0;

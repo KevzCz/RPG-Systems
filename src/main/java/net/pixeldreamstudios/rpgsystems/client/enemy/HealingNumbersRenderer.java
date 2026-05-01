@@ -7,6 +7,7 @@ import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderContext;
 import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents;
 import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.render.Camera;
 import net.minecraft.client.render.LightmapTextureManager;
 import net.minecraft.client.render.VertexConsumerProvider;
@@ -181,7 +182,7 @@ public final class HealingNumbersRenderer {
         Matrix4f mat = ms.peek().getPositionMatrix();
 
         tr.draw(text, x, y, argb, true, mat, vcp,
-                net.minecraft.client.font.TextRenderer.TextLayerType.NORMAL, 0, light);
+                TextRenderer.TextLayerType.NORMAL, 0, light);
 
         ms.pop();
     }
@@ -215,7 +216,7 @@ public final class HealingNumbersRenderer {
             float abs = Math.abs(amount);
             long rounded = Math.round(abs);
             if (Math.abs(abs - rounded) < 0.005f) {
-                return "+" + Long.toString(rounded);
+                return "+" + rounded;
             }
             String s = String.format(Locale.ROOT, "+%.2f", abs);
             int dot = s.indexOf('.');

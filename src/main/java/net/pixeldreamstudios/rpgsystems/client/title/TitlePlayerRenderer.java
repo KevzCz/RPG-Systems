@@ -23,7 +23,12 @@ import net.minecraft.util.Identifier;
 import net.minecraft.util.Util;
 import net.minecraft.util.math.Box;
 import net.minecraft.util.math.RotationAxis;
+import net.pixeldreamstudios.rpgsystems.client.enemy.EnemyHealthBarRenderer;
+import net.pixeldreamstudios.rpgsystems.client.title.config.TitlesClientConfig;
+import net.pixeldreamstudios.rpgsystems.title.TitleRegistry;
 import org.joml.Matrix4f;
+
+import java.util.List;
 
 @Environment(EnvType.CLIENT)
 public final class TitlePlayerRenderer {
@@ -91,10 +96,10 @@ public final class TitlePlayerRenderer {
             double ez = lerp(tickDelta, player.prevZ, player.getZ());
             double head = box.getLengthY() + Y_OFFSET;
 
-            float hpOffset = net.pixeldreamstudios.rpgsystems.client.enemy.EnemyHealthBarRenderer.getNameYOffset(player, tickDelta) * 0.6f;
+            float hpOffset = EnemyHealthBarRenderer.getNameYOffset(player, tickDelta) * 0.6f;
 
             boolean isSelf = client.player != null && player.getId() == client.player.getId();
-            var titleCfg = net.pixeldreamstudios.rpgsystems.client.title.config.TitlesClientConfig.get();
+            var titleCfg = TitlesClientConfig.get();
             if (isSelf && !titleCfg.showOwnTitle) continue;
             if (!isSelf && !titleCfg.showOthersTitles) continue;
             if (isSelf && isFirstPerson) continue;
@@ -120,7 +125,7 @@ public final class TitlePlayerRenderer {
                 continue;
             }
 
-            var tTitle = net.pixeldreamstudios.rpgsystems.title.TitleRegistry.get(titleId);
+            var tTitle = TitleRegistry.get(titleId);
             Text label = tTitle != null ? tTitle.displayName : Text.literal(titleId.getPath());
             drawStyledTitle3D(context, matrices, label, finalAlpha);
             matrices.pop();
@@ -146,8 +151,8 @@ public final class TitlePlayerRenderer {
     private static void drawStyledTitle3D(WorldRenderContext context, MatrixStack matrices, Text text, float alpha) {
         TextRenderer tr = MinecraftClient.getInstance().textRenderer;
         String raw = text.getString();
-        java.util.List<net.pixeldreamstudios.rpgsystems.client.title.TitleStyleUtil.Span> spans =
-                net.pixeldreamstudios.rpgsystems.client.title.TitleStyleUtil.parseSpans(raw);
+        List<TitleStyleUtil.Span> spans =
+                TitleStyleUtil.parseSpans(raw);
 
         int light = LightmapTextureManager.pack(15, 15);
         float scale = 0.025f;
@@ -179,40 +184,40 @@ public final class TitlePlayerRenderer {
                 int cw = tr.getWidth(ch);
 
                 int rgb = span.gradient() != null
-                        ? net.pixeldreamstudios.rpgsystems.client.title.TitleStyleUtil.gradientRgb(localIndex, localLen, span.gradient())
+                        ? TitleStyleUtil.gradientRgb(localIndex, localLen, span.gradient())
                         : (span.rainbow()
-                        ? net.pixeldreamstudios.rpgsystems.client.title.TitleStyleUtil.rainbowRgb(nowMs, globalIndex, span.rainbowSpeed() != null ? span.rainbowSpeed() : 0.18f)
-                        : net.pixeldreamstudios.rpgsystems.client.title.TitleStyleUtil.resolveOrWhite(span.baseRgb()));
+                        ? TitleStyleUtil.rainbowRgb(nowMs, globalIndex, span.rainbowSpeed() != null ? span.rainbowSpeed() : 0.18f)
+                        : TitleStyleUtil.resolveOrWhite(span.baseRgb()));
 
                 if (span.pulseSpeed() != null) {
-                    rgb = net.pixeldreamstudios.rpgsystems.client.title.TitleStyleUtil.pulseRgb(nowMs, rgb, span.pulseSpeed());
+                    rgb = TitleStyleUtil.pulseRgb(nowMs, rgb, span.pulseSpeed());
                 }
 
                 float yOff = 0f;
                 if (span.wiggle()) {
                     float amp = span.wiggleAmp() != null ? span.wiggleAmp() : 2.0f;
-                    yOff += net.pixeldreamstudios.rpgsystems.client.title.TitleStyleUtil.wiggleYOffsetPx(nowMs, globalIndex, amp);
+                    yOff += TitleStyleUtil.wiggleYOffsetPx(nowMs, globalIndex, amp);
                 }
                 if (span.bounceAmp() != null || span.bounceSpeed() != null) {
                     float amp = span.bounceAmp() != null ? span.bounceAmp() : 0f;
                     float spd = span.bounceSpeed() != null ? span.bounceSpeed() : 3.0f;
-                    yOff += net.pixeldreamstudios.rpgsystems.client.title.TitleStyleUtil.bounceYOffsetPx(nowMs, globalIndex, amp, spd);
+                    yOff += TitleStyleUtil.bounceYOffsetPx(nowMs, globalIndex, amp, spd);
                 }
 
                 float xOff = 0f;
                 if (span.waveAmp() != null || span.waveSpeed() != null) {
                     float amp = span.waveAmp() != null ? span.waveAmp() : 0f;
                     float spd = span.waveSpeed() != null ? span.waveSpeed() : 2.5f;
-                    xOff += net.pixeldreamstudios.rpgsystems.client.title.TitleStyleUtil.waveXOffsetPx(nowMs, globalIndex, amp, spd);
+                    xOff += TitleStyleUtil.waveXOffsetPx(nowMs, globalIndex, amp, spd);
                 }
                 if (span.shakeAmp() != null) {
-                    xOff += net.pixeldreamstudios.rpgsystems.client.title.TitleStyleUtil.shakeXOffsetPx(nowMs, globalIndex, span.shakeAmp());
+                    xOff += TitleStyleUtil.shakeXOffsetPx(nowMs, globalIndex, span.shakeAmp());
                 }
 
-                if (span.glitchIntensity() != null && net.pixeldreamstudios.rpgsystems.client.title.TitleStyleUtil.glitchActive(nowMs, globalIndex, span.glitchIntensity())) {
-                    xOff += net.pixeldreamstudios.rpgsystems.client.title.TitleStyleUtil.glitchJitterX(nowMs, globalIndex, span.glitchIntensity());
-                    yOff += net.pixeldreamstudios.rpgsystems.client.title.TitleStyleUtil.glitchJitterY(nowMs, globalIndex, span.glitchIntensity());
-                    rgb = net.pixeldreamstudios.rpgsystems.client.title.TitleStyleUtil.glitchTintRgb(nowMs, globalIndex, rgb, span.glitchIntensity());
+                if (span.glitchIntensity() != null && TitleStyleUtil.glitchActive(nowMs, globalIndex, span.glitchIntensity())) {
+                    xOff += TitleStyleUtil.glitchJitterX(nowMs, globalIndex, span.glitchIntensity());
+                    yOff += TitleStyleUtil.glitchJitterY(nowMs, globalIndex, span.glitchIntensity());
+                    rgb = TitleStyleUtil.glitchTintRgb(nowMs, globalIndex, rgb, span.glitchIntensity());
                 }
 
                 int argb = ((Math.round(alpha * 255f) & 0xFF) << 24) | (rgb & 0xFFFFFF);

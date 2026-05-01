@@ -2,9 +2,18 @@ package net.pixeldreamstudios.rpgsystems.party;
 
 import net.fabricmc.loader.api.FabricLoader;
 import net.pixeldreamstudios.rpgsystems.RPGSystems;
+import net.pixeldreamstudios.rpgsystems.config.RPGSystemsConfig;
 
 public final class FTBTeamsLoader {
     private static boolean initialized = false;
+
+    /**
+     * Safe to call even when FTB Teams is not installed — does NOT load FTBTeamsIntegration.
+     * Use this as the guard everywhere instead of FTBTeamsIntegration.isEnabled().
+     */
+    public static boolean isEnabled() {
+        return FabricLoader.getInstance().isModLoaded("ftbteams") && RPGSystemsConfig.get().party.useFTBTeams;
+    }
 
     public static void tryInitialize() {
         if (initialized) return;

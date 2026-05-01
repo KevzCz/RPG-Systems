@@ -60,7 +60,7 @@ public final class TitleSpellBonusUtil {
 
         TitlesPersistentState state = TitlesPersistentState.get(player.getServer());
         var pt = state.getOrCreate(player.getUuid());
-        java.util.Set<String> disabled = pt.permaDisabledGroups;
+        Set<String> disabled = pt.permaDisabledGroups;
 
         Set<String> install = new HashSet<>();
         if (unlockedTitles != null) {

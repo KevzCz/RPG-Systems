@@ -2,7 +2,9 @@ package net.pixeldreamstudios.rpgsystems.util;
 
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.util.Identifier;
+import net.pixeldreamstudios.rpgsystems.title.PermaGroupKey;
 import net.pixeldreamstudios.rpgsystems.title.Title;
+import net.pixeldreamstudios.rpgsystems.title.TitlesPersistentState;
 import net.pixeldreamstudios.rpgsystems.title.power.PowerRegistry;
 
 import java.util.*;
@@ -40,10 +42,10 @@ public final class TitlePowerBonusUtil {
         UUID key = player.getUuid();
         Set<Identifier> previous = PERMA_INSTALLED.getOrDefault(key, Collections.emptySet());
 
-        net.pixeldreamstudios.rpgsystems.title.TitlesPersistentState state =
-                net.pixeldreamstudios.rpgsystems.title.TitlesPersistentState.get(player.getServer());
+        TitlesPersistentState state =
+                TitlesPersistentState.get(player.getServer());
         var pt = state.getOrCreate(player.getUuid());
-        java.util.Set<String> disabled = pt.permaDisabledGroups;
+        Set<String> disabled = pt.permaDisabledGroups;
 
         Set<Identifier> desired = new HashSet<>();
 
@@ -53,7 +55,7 @@ public final class TitlePowerBonusUtil {
                     if (b.powerId != null && b.powerId.isPresent()) {
                         Identifier pid = b.powerId.get();
 
-                        String gk = net.pixeldreamstudios.rpgsystems.title.PermaGroupKey.power(pid);
+                        String gk = PermaGroupKey.power(pid);
                         if (disabled.contains(gk)) continue;
 
                         desired.add(pid);

@@ -14,7 +14,8 @@ public final class CriticalStrikeCompat {
     private CriticalStrikeCompat() {}
 
     public static void init() {
-        if (!IS_LOADED) return;
+        if (!IS_LOADED) {
+        }
 
     }
 

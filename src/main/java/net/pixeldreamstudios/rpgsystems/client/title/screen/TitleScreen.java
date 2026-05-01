@@ -2,6 +2,7 @@ package net.pixeldreamstudios.rpgsystems.client.title.screen;
 
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
+import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.font.TextRenderer;
@@ -19,8 +20,11 @@ import net.pixeldreamstudios.rpgsystems.client.title.screen.box.TitleBox;
 import net.pixeldreamstudios.rpgsystems.client.title.screen.box.TitleDescriptionBox;
 import net.pixeldreamstudios.rpgsystems.client.title.screen.box.TitlesListBox;
 import net.pixeldreamstudios.rpgsystems.client.title.widget.TitleButtonWidget;
+import net.pixeldreamstudios.rpgsystems.network.title.TitlePayloads;
+import net.pixeldreamstudios.rpgsystems.title.PermaGroupKey;
 import net.pixeldreamstudios.rpgsystems.title.Title;
 import net.pixeldreamstudios.rpgsystems.title.TitleRegistry;
+import net.spell_engine.api.spell.registry.SpellRegistry;
 import net.spell_engine.client.util.SpellRender;
 
 import java.util.*;
@@ -39,8 +43,8 @@ public final class TitleScreen extends Screen {
     private static final int TOGGLE_W = 16;
     private static final int TOGGLE_H = 7;
     private static final int TOGGLE_PAD  = 2;
-    private MobSpotP hoveredMob = null;
-    private TagSpotP hoveredTag = null;
+    private final MobSpotP hoveredMob = null;
+    private final TagSpotP hoveredTag = null;
     private record RowHit(int y, int h, String key) {}
 
     private final List<RowHit> currentRowHits = new ArrayList<>();
@@ -143,7 +147,7 @@ public final class TitleScreen extends Screen {
 
         this.titlesListBox = new TitlesListBox(x, y, backgroundWidth, backgroundHeight);
         this.descriptionBox = new TitleDescriptionBox(x, y, backgroundWidth, backgroundHeight);
-        this.titleBox = new net.pixeldreamstudios.rpgsystems.client.title.screen.box.TitleBox(x, y, backgroundWidth, backgroundHeight);
+        this.titleBox = new TitleBox(x, y, backgroundWidth, backgroundHeight);
         this.titleBox.attachToScreen(this);
 
         this.titlesListBox.setSelectionListener(title -> this.descriptionBox.setTitle(title));
@@ -161,17 +165,17 @@ public final class TitleScreen extends Screen {
 
     private int toggleX() { return contentRight - TOGGLE_PAD - TOGGLE_W; }
 
-    private java.util.Set<String> disabledSet() {
-        return net.pixeldreamstudios.rpgsystems.client.title.TitleClientData.getPermaDisabled();
+    private Set<String> disabledSet() {
+        return TitleClientData.getPermaDisabled();
     }
     private boolean isDisabled(String key) {
         return disabledSet().contains(key);
     }
     private void toggleKey(String key) {
-        java.util.LinkedHashSet<String> newSet = new java.util.LinkedHashSet<>(disabledSet());
+        LinkedHashSet<String> newSet = new LinkedHashSet<>(disabledSet());
         if (!newSet.add(key)) newSet.remove(key);
 
-        net.pixeldreamstudios.rpgsystems.client.title.TitleClientData.setPermaDisabled(newSet);
+        TitleClientData.setPermaDisabled(newSet);
 
         sendPermaDisabledToServer(newSet);
     }
@@ -528,7 +532,7 @@ public final class TitleScreen extends Screen {
             drawScaled(ctx, name.asOrderedText(), l + icon + gap + CONTENT_TEXT_PAD_X,
                     iconY + (icon - Math.round(font.fontHeight * PANEL_TEXT_SCALE)) / 2, 0xFFFFFF, PANEL_TEXT_SCALE);
 
-            String key = net.pixeldreamstudios.rpgsystems.title.PermaGroupKey.spell(sid);
+            String key = PermaGroupKey.spell(sid);
             drawToggle(ctx, y, lineH, !isDisabled(key));
             currentRowHits.add(new RowHit(y - contentScroll, lineH, key));
 
@@ -570,7 +574,7 @@ public final class TitleScreen extends Screen {
             Text line = Text.literal("• " + toTitleCase(pid.getPath()));
             drawScaled(ctx, line.asOrderedText(), l + CONTENT_TEXT_PAD_X, y, 0xFFFFFF, PANEL_TEXT_SCALE);
 
-            String key = net.pixeldreamstudios.rpgsystems.title.PermaGroupKey.power(pid);
+            String key = PermaGroupKey.power(pid);
             drawToggle(ctx, y, lineH, !isDisabled(key));
             currentRowHits.add(new RowHit(y - contentScroll, lineH, key));
 
@@ -631,7 +635,7 @@ public final class TitleScreen extends Screen {
                                 .append(Text.literal(" (total)"));
                     }
 
-                    String key = net.pixeldreamstudios.rpgsystems.title.PermaGroupKey.attr(k.attrId, k.op);
+                    String key = PermaGroupKey.attr(k.attrId, k.op);
                     drawScaled(ctx, rowText.asOrderedText(), l + CONTENT_TEXT_PAD_X, y, 0xFFFFFF, scale);
                     drawToggle(ctx, y, lineH, !isDisabled(key));
                     currentRowHits.add(new RowHit(y - contentScroll, lineH, key));
@@ -649,7 +653,7 @@ public final class TitleScreen extends Screen {
                 rowText = Text.literal("• ").append(Text.literal(sign + trim(amt * 100.0) + "% ")).append(attrName).append(Text.literal(" (total)"));
             }
 
-            String key = net.pixeldreamstudios.rpgsystems.title.PermaGroupKey.attr(k.attrId, k.op);
+            String key = PermaGroupKey.attr(k.attrId, k.op);
             drawScaled(ctx, rowText.asOrderedText(), l + CONTENT_TEXT_PAD_X, y, 0xFFFFFF, scale);
             drawToggle(ctx, y, lineH, !isDisabled(key));
             currentRowHits.add(new RowHit(y - contentScroll, lineH, key));
@@ -749,8 +753,8 @@ public final class TitleScreen extends Screen {
 
             // existing toggle logic
             String key = k.isTag
-                    ? net.pixeldreamstudios.rpgsystems.title.PermaGroupKey.dmgTag(k.idOrTag, k.op)
-                    : net.pixeldreamstudios.rpgsystems.title.PermaGroupKey.dmgTarget(k.idOrTag, k.op);
+                    ? PermaGroupKey.dmgTag(k.idOrTag, k.op)
+                    : PermaGroupKey.dmgTarget(k.idOrTag, k.op);
             drawToggle(ctx, y, lineH, !isDisabled(key));
             currentRowHits.add(new RowHit(y - contentScroll, lineH, key));
 
@@ -1004,7 +1008,7 @@ public final class TitleScreen extends Screen {
     }
 
     private static String trim(double v) {
-        String s = String.format(java.util.Locale.ROOT, "%.2f", v);
+        String s = String.format(Locale.ROOT, "%.2f", v);
         if (s.indexOf('.') >= 0) s = s.replaceAll("0+$", "").replaceAll("\\.$", "");
         return s;
     }
@@ -1012,7 +1016,7 @@ public final class TitleScreen extends Screen {
     private Text resolveSpellName(Identifier id) {
         var client = MinecraftClient.getInstance();
         if (client != null && client.world != null) {
-            var reg = net.spell_engine.api.spell.registry.SpellRegistry.from(client.world);
+            var reg = SpellRegistry.from(client.world);
             var entry = reg.getEntry(id).orElse(null);
             if (entry != null) {
                 Text t = Text.translatable("spell." + id.getNamespace() + "." + id.getPath());
@@ -1087,10 +1091,10 @@ public final class TitleScreen extends Screen {
         return false;
     }
 
-    private void sendPermaDisabledToServer(java.util.Set<String> disabled) {
-        net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking.send(
-                new net.pixeldreamstudios.rpgsystems.network.title.TitlePayloads.RequestSetPermaToggles(
-                        new java.util.ArrayList<>(disabled)
+    private void sendPermaDisabledToServer(Set<String> disabled) {
+        ClientPlayNetworking.send(
+                new TitlePayloads.RequestSetPermaToggles(
+                        new ArrayList<>(disabled)
                 )
         );
     }

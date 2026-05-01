@@ -1,10 +1,12 @@
 package net.pixeldreamstudios.rpgsystems.api;
 
 import net.minecraft.entity.attribute.EntityAttributeModifier;
+import net.minecraft.nbt.NbtCompound;
 import net.minecraft.registry.RegistryKey;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
+import net.pixeldreamstudios.rpgsystems.title.PermaGroupKey;
 import net.pixeldreamstudios.rpgsystems.title.Title;
 import net.pixeldreamstudios.rpgsystems.title.TitleRegistry;
 import net.pixeldreamstudios.rpgsystems.title.TitlesPersistentState;
@@ -48,7 +50,7 @@ public final class TitleApi {
         boolean removed = pt.unlocked.remove(titleId.toString());
         if (removed) {
 
-            if (pt.active != null && titleId.toString().equals(pt.active)) {
+            if (titleId.toString().equals(pt.active)) {
                 applyActiveTitle(player,
                         Optional.ofNullable(Identifier.of(pt.active)),
                         Optional.empty());
@@ -111,7 +113,7 @@ public final class TitleApi {
     public static boolean clearProgress(ServerPlayerEntity player, Identifier titleId) {
         TitlesPersistentState state = TitlesPersistentState.get(player.getServer());
         TitlesPersistentState.PlayerTitles pt = state.getOrCreate(player.getUuid());
-        net.minecraft.nbt.NbtCompound removed = pt.progress.remove(titleId.toString());
+        NbtCompound removed = pt.progress.remove(titleId.toString());
         state.markDirty();
         return removed != null;
     }
@@ -216,7 +218,7 @@ public final class TitleApi {
                     if (inst == null) continue;
 
                     var attrId = attributeIdOf(b);
-                    var key = net.pixeldreamstudios.rpgsystems.title.PermaGroupKey.attr(attrId, b.operation);
+                    var key = PermaGroupKey.attr(attrId, b.operation);
                     if (disabled.contains(key)) continue;
 
                     Identifier mid = modifierIdPerma(t, b);

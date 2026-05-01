@@ -20,7 +20,7 @@ public abstract class NoFriendlyTargetMixin {
         var a = PartyAllies.owningPlayerUuid(self);
         var b = PartyAllies.owningPlayerUuid(target);
 
-        if (a != null && b != null && PartyAllies.sameParty(server, a, b)) {
+        if (b != null && PartyAllies.sameParty(server, a, b)) {
             ci.cancel();
         }
     }

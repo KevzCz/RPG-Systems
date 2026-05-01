@@ -247,8 +247,7 @@ public final class EnemyHealthBarRenderer {
         var viewer = mc != null ? mc.player : null;
         if (living.isInvisible()) return true;
         if (viewer != null && living.isInvisibleTo(viewer)) return true;
-        if (living.hasStatusEffect(StatusEffects.INVISIBILITY)) return true;
-        return false;
+        return living.hasStatusEffect(StatusEffects.INVISIBILITY);
     }
 
     private static HudState setHitTime(HudState st, long now) {

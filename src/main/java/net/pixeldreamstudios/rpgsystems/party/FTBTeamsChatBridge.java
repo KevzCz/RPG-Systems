@@ -16,7 +16,6 @@ public final class FTBTeamsChatBridge {
 
     public static void register() {
         if (!FTBTeamsIntegration.isEnabled()) {
-            return;
         }
     }
 

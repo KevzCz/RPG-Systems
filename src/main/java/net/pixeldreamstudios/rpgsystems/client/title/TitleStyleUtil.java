@@ -4,6 +4,7 @@ import net.minecraft.util.Formatting;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Deque;
 import java.util.List;
 
@@ -398,7 +399,7 @@ public final class TitleStyleUtil {
         for (String c : cols) {
             try { out[n++] = (int)Long.parseLong(c.replace("#","").trim(), 16) & 0xFFFFFF; } catch (Exception ignore) {}
         }
-        return n == 0 ? null : (n == out.length ? out : java.util.Arrays.copyOf(out, n));
+        return n == 0 ? null : (n == out.length ? out : Arrays.copyOf(out, n));
     }
 
     public static int resolveOrWhite(Integer rgb) { return rgb != null ? rgb : 0xFFFFFF; }

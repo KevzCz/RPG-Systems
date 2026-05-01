@@ -91,7 +91,7 @@ public final class PetCommands {
             p.sendMessage(Text.literal("Look at a mob within 5 blocks"));
             return 0;
         }
-        PetOwnable own = (PetOwnable) (Object) mob;
+        PetOwnable own = (PetOwnable) mob;
         own.rpgsystems$setPet(true);
         own.rpgsystems$setOwnerUuid(p.getUuid());
         if (name != null) {
@@ -108,7 +108,7 @@ public final class PetCommands {
             p.sendMessage(Text.literal("Look at a mob within 5 blocks"));
             return 0;
         }
-        PetOwnable own = (PetOwnable) (Object) mob;
+        PetOwnable own = (PetOwnable) mob;
         UUID owner = own.rpgsystems$getOwnerUuid();
         if (owner == null || !owner.equals(p.getUuid())) {
             p.sendMessage(Text.literal("You are not the owner"));
@@ -128,7 +128,7 @@ public final class PetCommands {
             p.sendMessage(Text.literal("Look at a mob within 5 blocks"));
             return 0;
         }
-        PetOwnable own = (PetOwnable) (Object) mob;
+        PetOwnable own = (PetOwnable) mob;
         if (!p.getUuid().equals(own.rpgsystems$getOwnerUuid())) {
             p.sendMessage(Text.literal("You are not the owner"));
             return 0;
@@ -154,7 +154,7 @@ public final class PetCommands {
         MobEntity best = null;
         double bestDist = Double.MAX_VALUE;
         for (MobEntity mob : mobs) {
-            PetOwnable own = (PetOwnable) (Object) mob;
+            PetOwnable own = (PetOwnable) mob;
             if (own.rpgsystems$isPet() && me.equals(own.rpgsystems$getOwnerUuid())) {
                 double d = mob.squaredDistanceTo(p);
                 if (d < bestDist) {

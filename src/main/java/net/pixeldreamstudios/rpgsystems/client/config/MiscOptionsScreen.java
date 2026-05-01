@@ -3,6 +3,7 @@ package net.pixeldreamstudios.rpgsystems.client.config;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.screen.narration.NarrationMessageBuilder;
@@ -10,6 +11,11 @@ import net.minecraft.client.gui.widget.ButtonWidget;
 import net.minecraft.client.gui.widget.ClickableWidget;
 import net.minecraft.client.gui.widget.TextFieldWidget;
 import net.minecraft.text.Text;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.function.DoubleConsumer;
+import java.util.function.DoubleSupplier;
 
 @Environment(EnvType.CLIENT)
 public final class MiscOptionsScreen extends Screen {
@@ -178,10 +184,10 @@ public final class MiscOptionsScreen extends Screen {
     private static final class ScrollForm extends ClickableWidget {
         private static final int LABEL_COLOR = 0xAAAAAA;
         private static final int ROW_GAP = 24;
-        private final java.util.List<Row> rows = new java.util.ArrayList<>();
-        private final net.minecraft.client.font.TextRenderer tr;
-        private final java.util.function.DoubleSupplier getInitialScroll;
-        private final java.util.function.DoubleConsumer onScrollChanged;
+        private final List<Row> rows = new ArrayList<>();
+        private final TextRenderer tr;
+        private final DoubleSupplier getInitialScroll;
+        private final DoubleConsumer onScrollChanged;
 
         private double scroll;
         private int contentHeight;
@@ -189,9 +195,9 @@ public final class MiscOptionsScreen extends Screen {
         private ClickableWidget focusedChild;
 
         ScrollForm(int x, int y, int w, int h,
-                   net.minecraft.client.font.TextRenderer tr,
-                   java.util.function.DoubleSupplier initialScroll,
-                   java.util.function.DoubleConsumer onScrollChanged) {
+                   TextRenderer tr,
+                   DoubleSupplier initialScroll,
+                   DoubleConsumer onScrollChanged) {
             super(x, y, w, h, Text.empty());
             this.tr = tr;
             this.getInitialScroll = initialScroll;

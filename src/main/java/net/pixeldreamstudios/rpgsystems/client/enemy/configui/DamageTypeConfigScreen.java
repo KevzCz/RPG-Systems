@@ -230,8 +230,7 @@ public final class DamageTypeConfigScreen extends Screen {
             @Override
             public boolean mouseReleased(double mouseX, double mouseY, int button) {
                 if (this.colorField.mouseReleased(mouseX, mouseY, button)) return true;
-                if (this.checkbox.mouseReleased(mouseX, mouseY, button)) return true;
-                return false;
+                return this.checkbox.mouseReleased(mouseX, mouseY, button);
             }
 
             @Override

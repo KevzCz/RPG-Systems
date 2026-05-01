@@ -10,6 +10,9 @@ import net.minecraft.server.command.ServerCommandSource;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
+import net.partyaddon.access.GroupManagerAccess;
+import net.partyaddon.group.GroupManager;
+import net.pixeldreamstudios.rpgsystems.compat.CriticalStrikeCompat;
 import net.pixeldreamstudios.rpgsystems.compat.KevsLibraryCritCompat;
 import net.pixeldreamstudios.rpgsystems.compat.showbuild.ShowBuildCompatNetServer;
 import net.pixeldreamstudios.rpgsystems.config.RPGSystemsConfig;
@@ -56,7 +59,7 @@ public class RPGSystems implements ModInitializer {
 			ShowBuildCompatNetServer.initServer();
 		}
 		if (FabricLoader.getInstance().isModLoaded("critical_strike")) {
-			net.pixeldreamstudios.rpgsystems.compat.CriticalStrikeCompat.init();
+			CriticalStrikeCompat.init();
 		}
 		EnemyNet.initCommon();
 
@@ -104,11 +107,11 @@ public class RPGSystems implements ModInitializer {
 
 		player.sendMessage(Text.literal("Integration Status:").formatted(Formatting.YELLOW));
 		player.sendMessage(Text.literal("  FTBTeams loaded: " + FabricLoader.getInstance().isModLoaded("ftbteams")).formatted(Formatting.GRAY));
-		player.sendMessage(Text.literal("  FTBTeams enabled: " + FTBTeamsIntegration.isEnabled()).formatted(Formatting.GRAY));
+		player.sendMessage(Text.literal("  FTBTeams enabled: " + FTBTeamsLoader.isEnabled()).formatted(Formatting.GRAY));
 		player.sendMessage(Text.literal("  PartyAddon loaded: " + FabricLoader.getInstance().isModLoaded("partyaddon")).formatted(Formatting.GRAY));
 		player.sendMessage(Text.literal("  PartyAddon enabled: " + PartyAddonIntegration.isEnabled()).formatted(Formatting.GRAY));
 
-		if (FTBTeamsIntegration.isEnabled()) {
+		if (FTBTeamsLoader.isEnabled()) {
 			player.sendMessage(Text.literal("FTB Teams Data:").formatted(Formatting.YELLOW));
 			FTBTeamsIntegration.FTBPartyData ftbData = FTBTeamsIntegration.getPartyDataForPlayer(player);
 			if (ftbData != null) {
@@ -122,7 +125,7 @@ public class RPGSystems implements ModInitializer {
 		if (FabricLoader.getInstance().isModLoaded("partyaddon")) {
 			player.sendMessage(Text.literal("PartyAddon Data:").formatted(Formatting.YELLOW));
 			try {
-				net.partyaddon.group.GroupManager gm = ((net.partyaddon.access.GroupManagerAccess) player).getGroupManager();
+				GroupManager gm = ((GroupManagerAccess) player).getGroupManager();
 				UUID leaderId = gm.getGroupLeaderId();
 				List<UUID> members = gm.getGroupPlayerIdList();
 

@@ -7,6 +7,7 @@ import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderContext;
 import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents;
 import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.render.Camera;
 import net.minecraft.client.render.LightmapTextureManager;
 import net.minecraft.client.render.VertexConsumerProvider;
@@ -19,10 +20,12 @@ import net.minecraft.util.math.RotationAxis;
 import net.minecraft.util.math.Vec3d;
 import net.pixeldreamstudios.rpgsystems.client.enemy.config.DamageNumbersClientConfig;
 import net.pixeldreamstudios.rpgsystems.client.enemy.config.DamageTypeConfig;
+import net.pixeldreamstudios.rpgsystems.client.party.ClientPartyHudData;
 import org.joml.Matrix4f;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.UUID;
 
 @Environment(EnvType.CLIENT)
@@ -169,7 +172,7 @@ public final class DamageNumbersRenderer {
         if (mc == null || mc.player == null) return false;
         if (sourceUuid.equals(mc.player.getUuid())) return true;
 
-        return net.pixeldreamstudios.rpgsystems.client.party.ClientPartyHudData.isInMyParty(sourceUuid);
+        return ClientPartyHudData.isInMyParty(sourceUuid);
     }
 
     private static void drawTextAt(int alpha255, int rgb, String text, Vec3d pos, Camera camera, MatrixStack ms, VertexConsumerProvider vcp, float scale, float tiltDeg) {
@@ -196,7 +199,7 @@ public final class DamageNumbersRenderer {
         Matrix4f mat = ms.peek().getPositionMatrix();
 
         tr.draw(text, x, y, argb, true, mat, vcp,
-                net.minecraft.client.font.TextRenderer.TextLayerType.NORMAL, 0, light);
+                TextRenderer.TextLayerType.NORMAL, 0, light);
 
         ms.pop();
     }
@@ -237,7 +240,7 @@ public final class DamageNumbersRenderer {
             if (Math.abs(abs - rounded) < 0.005f) {
                 return Long.toString(rounded);
             }
-            String s = String.format(java.util.Locale.ROOT, "%.2f", abs);
+            String s = String.format(Locale.ROOT, "%.2f", abs);
             int dot = s.indexOf('.');
             if (dot >= 0) {
                 int end = s.length();

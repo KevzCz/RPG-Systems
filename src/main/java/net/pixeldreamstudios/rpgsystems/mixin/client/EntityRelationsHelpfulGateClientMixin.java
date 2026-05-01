@@ -6,12 +6,15 @@ import net.minecraft.entity.Entity;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.pixeldreamstudios.rpgsystems.client.party.ClientPartyHudData;
+import net.pixeldreamstudios.rpgsystems.party.PartyAllies;
 import net.spell_engine.internals.target.EntityRelations;
 import net.spell_engine.internals.target.SpellTarget;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
+
+import java.util.UUID;
 
 @Environment(EnvType.CLIENT)
 @Mixin(EntityRelations.class)
@@ -35,7 +38,7 @@ public abstract class EntityRelationsHelpfulGateClientMixin {
                 return;
             }
 
-            java.util.UUID owner = net.pixeldreamstudios.rpgsystems.party.PartyAllies.owningPlayerUuid(target);
+            UUID owner = PartyAllies.owningPlayerUuid(target);
             if (owner != null && !ClientPartyHudData.isSameParty(caster.getUuid(), owner)) {
                 cir.setReturnValue(false);
             }
@@ -51,7 +54,7 @@ public abstract class EntityRelationsHelpfulGateClientMixin {
                 return;
             }
 
-            java.util.UUID owner = net.pixeldreamstudios.rpgsystems.party.PartyAllies.owningPlayerUuid(target);
+            UUID owner = PartyAllies.owningPlayerUuid(target);
             if (owner != null && ClientPartyHudData.isSameParty(caster.getUuid(), owner)) {
                 cir.setReturnValue(false);
             }

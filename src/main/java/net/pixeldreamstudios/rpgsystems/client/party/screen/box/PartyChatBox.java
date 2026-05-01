@@ -164,7 +164,7 @@ public final class PartyChatBox implements PartyBox {
             ClientPartyChat.Msg m = msgs.get(i);
             String msgText = (m.text == null ? "" : m.text);
             String who     = (m.name == null ? "Unknown" : m.name);
-            boolean isSelf = (self != null && m.sender != null && self.equals(m.sender));
+            boolean isSelf = (self != null && self.equals(m.sender));
 
             List<String> lines = wrapLines(tr, msgText, wrapTextPx);
             int widestScaled = 0;

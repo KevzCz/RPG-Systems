@@ -26,7 +26,7 @@ public abstract class FriendlyFireMixin {
 
         UUID victimUuid = PartyAllies.owningPlayerUuid(victim);
 
-        if (attackerUuid != null && victimUuid != null && PartyAllies.sameParty(server, attackerUuid, victimUuid)) {
+        if (victimUuid != null && PartyAllies.sameParty(server, attackerUuid, victimUuid)) {
             cir.setReturnValue(false);
         }
     }

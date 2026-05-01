@@ -6,6 +6,7 @@ import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.MinecraftClient;
 import net.pixeldreamstudios.rpgsystems.compat.showbuild.ShowBuildCompatPayloads.OpenBuildData;
+import net.pixeldreamstudios.showmeyourbuild.client.gui.BuildViewScreen;
 
 @Environment(EnvType.CLIENT)
 public final class ShowBuildCompatNetClient {
@@ -16,7 +17,7 @@ public final class ShowBuildCompatNetClient {
             context.client().execute(() -> {
                 if (!FabricLoader.getInstance().isModLoaded("showmeyourbuild")) return;
                 MinecraftClient.getInstance().setScreen(
-                        new net.pixeldreamstudios.showmeyourbuild.client.gui.BuildViewScreen(payload.data())
+                        new BuildViewScreen(payload.data())
                 );
             });
         });

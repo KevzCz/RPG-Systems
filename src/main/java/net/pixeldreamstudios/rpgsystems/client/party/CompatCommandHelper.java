@@ -5,6 +5,7 @@ import net.fabricmc.api.Environment;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.AbstractClientPlayerEntity;
+import net.minecraft.text.Text;
 import net.partyaddon.network.PartyAddonClientPacket;
 import net.pixeldreamstudios.rpgsystems.party.FTBTeamsIntegration;
 import net.pixeldreamstudios.rpgsystems.party.PartyAddonIntegration;
@@ -17,12 +18,18 @@ import java.util.UUID;
 @Environment(EnvType.CLIENT)
 public final class CompatCommandHelper {
 
+    /**
+     * Checks if FTBTeams is the active party source
+     */
     public static boolean isFTBTeamsActive() {
         return FabricLoader.getInstance().isModLoaded("ftbteams") 
                 && FTBTeamsIntegration.isEnabled()
                 && ClientPartyHudData.getCurrentSource() == PartyDataProvider.PartySource.FTB_TEAMS;
     }
 
+    /**
+     * Checks if PartyAddon is the active party source
+     */
     public static boolean isPartyAddonActive() {
         return FabricLoader.getInstance().isModLoaded("partyaddon") 
                 && PartyAddonIntegration.isEnabled()
@@ -36,7 +43,7 @@ public final class CompatCommandHelper {
         if (isFTBTeamsActive()) {
             mc.getNetworkHandler().sendChatCommand("ftbteams party leave");
         } else if (isPartyAddonActive()) {
-
+            // Use PartyAddon's packet system
             sendPartyAddonLeavePacket();
         } else {
             mc.getNetworkHandler().sendChatCommand("party leave");
@@ -52,12 +59,16 @@ public final class CompatCommandHelper {
         if (isFTBTeamsActive()) {
             mc.getNetworkHandler().sendChatCommand("ftbteams party invite " + targetName);
         } else if (isPartyAddonActive()) {
+            // PartyAddon uses UUID for invites, need to get UUID from player name
             sendPartyAddonInviteByName(targetName);
         } else {
             mc.getNetworkHandler().sendChatCommand("party invite " + targetName);
         }
     }
 
+    /**
+     * Invite by UUID - used for PartyAddon which requires UUID
+     */
     public static void sendInviteByUuid(UUID targetUuid) {
         if (targetUuid == null) return;
 
@@ -82,12 +93,16 @@ public final class CompatCommandHelper {
         if (isFTBTeamsActive()) {
             mc.getNetworkHandler().sendChatCommand("ftbteams party kick " + memberName);
         } else if (isPartyAddonActive()) {
+            // PartyAddon kick requires UUIDs, need to look up from roster
             sendPartyAddonKickByName(memberName);
         } else {
             mc.getNetworkHandler().sendChatCommand("party kick " + memberName);
         }
     }
 
+    /**
+     * Kick by UUID - used for PartyAddon which requires UUID
+     */
     public static void sendKickByUuid(UUID memberUuid) {
         if (memberUuid == null) return;
 
@@ -113,13 +128,17 @@ public final class CompatCommandHelper {
                 mc.getNetworkHandler().sendChatCommand("ftbteams party transfer_ownership_for " + teamIdentifier + " " + memberName);
             }
         } else if (isPartyAddonActive()) {
+            // PartyAddon doesn't support leader transfer via API
             MinecraftClient.getInstance().player.sendMessage(
-                    net.minecraft.text.Text.literal("PartyAddon doesn't support leader transfer."), false);
+                    Text.literal("PartyAddon doesn't support leader transfer."), false);
         } else {
             mc.getNetworkHandler().sendChatCommand("party promote " + memberName);
         }
     }
 
+    /**
+     * Opens the party creation/management screen for the appropriate mod
+     */
     public static void openPartyScreen() {
         if (isPartyAddonActive() || (FabricLoader.getInstance().isModLoaded("partyaddon") && PartyAddonIntegration.isEnabled())) {
             sendPartyAddonOpenScreenPacket();
@@ -131,10 +150,13 @@ public final class CompatCommandHelper {
         }
     }
 
+    // ==================== PartyAddon Packet Methods ====================
+    
     private static void sendPartyAddonLeavePacket() {
         try {
             PartyAddonClientPacket.writeC2SLeaveGroupPacket();
         } catch (Exception e) {
+            // Fallback to command if packet fails
             MinecraftClient mc = MinecraftClient.getInstance();
             if (mc != null && mc.getNetworkHandler() != null) {
                 mc.getNetworkHandler().sendChatCommand("party leave");
@@ -172,6 +194,7 @@ public final class CompatCommandHelper {
     }
 
     private static void sendPartyAddonKickByName(String memberName) {
+        // Look up UUID from roster
         ClientPartyHudData.Member member = null;
         for (ClientPartyHudData.Member m : ClientPartyHudData.members()) {
             if (m.name.equalsIgnoreCase(memberName)) {

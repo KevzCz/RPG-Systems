@@ -3,12 +3,14 @@ package net.pixeldreamstudios.rpgsystems.client.title.screen.box;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import net.fabricmc.loader.api.FabricLoader;
+import net.fabricmc.loader.api.ModContainer;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.entity.EntityType;
 import net.minecraft.entity.attribute.EntityAttributeModifier;
 import net.minecraft.registry.Registries;
+import net.minecraft.registry.RegistryKey;
 import net.minecraft.registry.RegistryKeys;
 import net.minecraft.registry.entry.RegistryEntry;
 import net.minecraft.registry.tag.TagKey;
@@ -23,6 +25,7 @@ import net.pixeldreamstudios.rpgsystems.client.title.TitleClientData;
 import net.pixeldreamstudios.rpgsystems.client.title.TitleIconRenderer;
 import net.pixeldreamstudios.rpgsystems.client.title.TitleStyleUtil;
 import net.pixeldreamstudios.rpgsystems.title.Title;
+import net.spell_engine.api.spell.registry.SpellRegistry;
 import net.spell_engine.client.util.SpellRender;
 
 import java.util.ArrayList;
@@ -72,13 +75,13 @@ public final class TitleDescriptionBox {
     private int bgHeight;
     private final TextRenderer font;
     private Title current;
-    private float textScale = 0.5f;
+    private final float textScale = 0.5f;
     private int scrollY = 0;
     private int maxScrollCached = 0;
 
-    private int scrollbarOffsetX = 4;
-    private int scrollbarOffsetY = 0;
-    private int scrollbarWidth = 1;
+    private final int scrollbarOffsetX = 4;
+    private final int scrollbarOffsetY = 0;
+    private final int scrollbarWidth = 1;
     private boolean draggingScrollbar = false;
     private int dragGrabOffsetY = 0;
 
@@ -812,7 +815,7 @@ public final class TitleDescriptionBox {
 
     private static String modNameOf(String namespace) {
         if ("minecraft".equals(namespace)) return "Minecraft";
-        Optional<? extends net.fabricmc.loader.api.ModContainer> c =
+        Optional<? extends ModContainer> c =
                 FabricLoader.getInstance().getModContainer(namespace);
         return c.map(mc -> mc.getMetadata().getName()).orElse(namespace);
     }
@@ -1014,7 +1017,7 @@ public final class TitleDescriptionBox {
     private Text resolveSpellName(Identifier id) {
         var client = MinecraftClient.getInstance();
         if (client != null && client.world != null) {
-            var reg = net.spell_engine.api.spell.registry.SpellRegistry.from(client.world);
+            var reg = SpellRegistry.from(client.world);
             var entry = reg.getEntry(id).orElse(null);
             if (entry != null) {
                 Text t = Text.translatable("spell." + id.getNamespace() + "." + id.getPath());
@@ -1382,7 +1385,7 @@ public final class TitleDescriptionBox {
 
                     MutableText attrName;
                     if (c.attributeId.isPresent()) {
-                        var key = net.minecraft.registry.RegistryKey.of(RegistryKeys.ATTRIBUTE, c.attributeId.get());
+                        var key = RegistryKey.of(RegistryKeys.ATTRIBUTE, c.attributeId.get());
                         var entry = MinecraftClient.getInstance().world
                                 .getRegistryManager().get(RegistryKeys.ATTRIBUTE).getEntry(key).orElse(null);
                         if (entry != null) {
@@ -1459,7 +1462,7 @@ public final class TitleDescriptionBox {
     }
 
     private static String trim(double v) {
-        String s = String.format(java.util.Locale.ROOT, "%.2f", v);
+        String s = String.format(Locale.ROOT, "%.2f", v);
         if (s.indexOf('.') >= 0) s = s.replaceAll("0+$", "").replaceAll("\\.$", "");
         return s;
     }

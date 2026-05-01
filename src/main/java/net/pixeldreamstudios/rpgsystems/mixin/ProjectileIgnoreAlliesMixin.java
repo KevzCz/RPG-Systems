@@ -30,7 +30,7 @@ public abstract class ProjectileIgnoreAlliesMixin {
         UUID shooterUuid = PartyAllies.owningPlayerUuidFromAttacker(owner);
         UUID targetUuid  = PartyAllies.owningPlayerUuidOfVictim(living);
 
-        if (shooterUuid != null && targetUuid != null &&
+        if (targetUuid != null &&
                 PartyAllies.sameParty(server, shooterUuid, targetUuid)) {
             cir.setReturnValue(false);
         }

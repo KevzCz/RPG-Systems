@@ -320,10 +320,20 @@ public final class PartyPersistentState extends PersistentState {
         if (p == null) return false;
 
         if (p.leader.equals(player)) {
-            parties.remove(p.id);
-            for (UUID u : new HashSet<>(p.members)) membership.remove(u);
-            purgePartyFromInvites(p.id);
-            purgePartyFromJoinRequests(p.id);
+            Set<UUID> others = new HashSet<>(p.members);
+            others.remove(player);
+            if (others.isEmpty()) {
+                // Solo leader — disband the party entirely
+                parties.remove(p.id);
+                membership.remove(player);
+                purgePartyFromInvites(p.id);
+                purgePartyFromJoinRequests(p.id);
+            } else {
+                // Transfer leadership to the first remaining member, then remove old leader
+                p.leader = others.iterator().next();
+                p.members.remove(player);
+                membership.remove(player);
+            }
         } else {
             p.members.remove(player);
             membership.remove(player);

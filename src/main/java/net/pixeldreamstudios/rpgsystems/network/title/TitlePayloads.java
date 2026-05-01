@@ -1,5 +1,6 @@
 package net.pixeldreamstudios.rpgsystems.network.title;
 
+import io.netty.buffer.ByteBuf;
 import net.minecraft.entity.attribute.EntityAttributeModifier;
 import net.minecraft.network.RegistryByteBuf;
 import net.minecraft.network.codec.PacketCodec;
@@ -16,7 +17,7 @@ import java.util.UUID;
 public final class TitlePayloads {
     private TitlePayloads() {}
 
-    private static <V> PacketCodec<RegistryByteBuf, V> wrap(PacketCodec<io.netty.buffer.ByteBuf, V> base) {
+    private static <V> PacketCodec<RegistryByteBuf, V> wrap(PacketCodec<ByteBuf, V> base) {
         return new PacketCodec<>() {
             @Override
             public V decode(RegistryByteBuf buf) {

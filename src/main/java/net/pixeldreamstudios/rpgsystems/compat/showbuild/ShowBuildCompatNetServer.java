@@ -8,6 +8,8 @@ import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.text.Text;
 import net.pixeldreamstudios.rpgsystems.compat.showbuild.ShowBuildCompatPayloads.OpenBuildData;
 import net.pixeldreamstudios.rpgsystems.compat.showbuild.ShowBuildCompatPayloads.OpenBuildRequest;
+import net.pixeldreamstudios.showmeyourbuild.network.BuildDataSerializer;
+import net.pixeldreamstudios.showmeyourbuild.network.SkillTreeDataSerializer;
 
 public final class ShowBuildCompatNetServer {
     private ShowBuildCompatNetServer() {}
@@ -34,9 +36,9 @@ public final class ShowBuildCompatNetServer {
                     return;
                 }
 
-                NbtCompound data = net.pixeldreamstudios.showmeyourbuild.network.BuildDataSerializer.serialize(target);
+                NbtCompound data = BuildDataSerializer.serialize(target);
                 if (FabricLoader.getInstance().isModLoaded("puffish_skills")) {
-                    NbtCompound skills = net.pixeldreamstudios.showmeyourbuild.network.SkillTreeDataSerializer.serialize(target);
+                    NbtCompound skills = SkillTreeDataSerializer.serialize(target);
                     data.put("Skills", skills);
                 }
 

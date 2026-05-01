@@ -16,6 +16,7 @@ import net.minecraft.client.texture.AbstractTexture;
 import net.minecraft.client.texture.TextureManager;
 import net.minecraft.client.world.ClientWorld;
 import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.math.RotationAxis;
 import net.pixeldreamstudios.rpgsystems.client.party.ClientPartyHudData;
@@ -266,7 +267,7 @@ public final class PartyMemberInfoBox implements PartyBox {
             } else {
                 var mc = MinecraftClient.getInstance();
                 if (mc != null && mc.player != null) {
-                    mc.player.sendMessage(net.minecraft.text.Text.literal("No member selected."), false);
+                    mc.player.sendMessage(Text.literal("No member selected."), false);
                 }
             }
             return true;

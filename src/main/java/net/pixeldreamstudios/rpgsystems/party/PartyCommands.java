@@ -20,6 +20,9 @@ import net.pixeldreamstudios.rpgsystems.network.party.PartyHudPayloads;
 import net.pixeldreamstudios.rpgsystems.network.party.PartyInvitePayloads;
 import net.pixeldreamstudios.rpgsystems.network.party.PartyJoinRequestPayloads;
 
+import java.util.HashSet;
+import java.util.LinkedHashSet;
+import java.util.Locale;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
@@ -456,22 +459,41 @@ public final class PartyCommands {
         String partyName = displayName(p);
         boolean isLeader = p.leader.equals(self.getUuid());
         Set<UUID> membersSnapshot = Set.copyOf(p.members);
+        Set<UUID> otherMembers = new HashSet<>(membersSnapshot);
+
+        otherMembers.remove(self.getUuid());
+
         boolean ok = state.leave(self.getUuid());
         if (!ok) return 0;
 
-        if (isLeader) {
-            for (UUID u : membersSnapshot) {
-                if (!u.equals(self.getUuid())) {
-                    ServerPlayerEntity sp = server.getPlayerManager().getPlayer(u);
-                    if (sp != null) {
-                        ServerPlayNetworking.send(sp, new PartyHudPayloads.PartyRosterReset());
-                        sp.sendMessage(Text.literal("Your party disbanded (leader left)."));
-                    }
+        if (isLeader && otherMembers.isEmpty()) {
+            // Was a solo leader — party is now disbanded
+            self.sendMessage(Text.literal("You left and the party was disbanded."));
+        } else if (isLeader) {
+            // Leadership was transferred to another member
+            UUID anyRemaining = otherMembers.iterator().next();
+            Party remaining = state.getPartyByMember(anyRemaining);
+            String newLeaderName = null;
+            if (remaining != null) {
+                newLeaderName = state.nameOf(remaining.leader);
+                if (newLeaderName == null) {
+                    ServerPlayerEntity sp = server.getPlayerManager().getPlayer(remaining.leader);
+                    if (sp != null) newLeaderName = sp.getName().getString();
                 }
             }
-            self.sendMessage(Text.literal("You disbanded the party."));
+            String leftMsg = self.getName().getString() + " left the party.";
+            String promoteMsg = (newLeaderName != null ? newLeaderName : "Someone") + " is now the party leader.";
+            for (UUID u : otherMembers) {
+                ServerPlayerEntity sp = server.getPlayerManager().getPlayer(u);
+                if (sp != null) {
+                    sp.sendMessage(Text.literal(leftMsg));
+                    sp.sendMessage(Text.literal(promoteMsg));
+                }
+            }
+            if (remaining != null) PartyNet.broadcastRoster(server, remaining);
+            self.sendMessage(Text.literal("You left the party."));
         } else {
-            UUID anyRemaining = membersSnapshot.stream().filter(u -> !u.equals(self.getUuid())).findFirst().orElse(null);
+            UUID anyRemaining = otherMembers.stream().findFirst().orElse(null);
             Party remaining = state.getPartyByMember(anyRemaining);
             if (remaining != null) {
                 String name = self.getName().getString();
@@ -612,7 +634,7 @@ public final class PartyCommands {
         if (leader == null) return 0;
 
         var server = leader.getServer();
-        var state  = net.pixeldreamstudios.rpgsystems.party.PartyPersistentState.get(server);
+        var state  = PartyPersistentState.get(server);
         var p      = state.getPartyByMember(leader.getUuid());
 
         if (p == null) {
@@ -665,9 +687,9 @@ public final class PartyCommands {
             if (sp != null) selfPartyId = sp.id;
         }
 
-        java.util.Set<String> labels = new java.util.LinkedHashSet<>();
+        Set<String> labels = new LinkedHashSet<>();
         for (Party p : state.allParties()) {
-            if (selfPartyId != null && p.id.equals(selfPartyId)) continue;
+            if (p.id.equals(selfPartyId)) continue;
 
             String leader = state.nameOf(p.leader);
             if (leader == null) {
@@ -689,7 +711,7 @@ public final class PartyCommands {
         try { return UUID.fromString(input.trim()); } catch (IllegalArgumentException ignored) {}
 
         String qi = input.trim();
-        String qiLower = qi.toLowerCase(java.util.Locale.ROOT);
+        String qiLower = qi.toLowerCase(Locale.ROOT);
 
         UUID match = null;
         int matches = 0;
@@ -711,7 +733,7 @@ public final class PartyCommands {
                 match = p.id; matches++; continue;
             }
 
-            if (labelLeader.toLowerCase(java.util.Locale.ROOT).contains(qiLower)) {
+            if (labelLeader.toLowerCase(Locale.ROOT).contains(qiLower)) {
                 match = p.id; matches++;
             }
         }
@@ -748,7 +770,7 @@ public final class PartyCommands {
         try { return UUID.fromString(input.trim()); } catch (IllegalArgumentException ignored) {}
 
         String qi = input.trim();
-        String qiLower = qi.toLowerCase(java.util.Locale.ROOT);
+        String qiLower = qi.toLowerCase(Locale.ROOT);
 
         UUID match = null; int matches = 0;
         for (UUID pid : state.invitesOf(self.getUuid())) {
@@ -767,7 +789,7 @@ public final class PartyCommands {
             if (labelPlain.equalsIgnoreCase(qi) || labelLeader.equalsIgnoreCase(qi) || labelShort.equalsIgnoreCase(qi)) {
                 match = p.id; matches++; continue;
             }
-            if (labelLeader.toLowerCase(java.util.Locale.ROOT).contains(qiLower)) { match = p.id; matches++; }
+            if (labelLeader.toLowerCase(Locale.ROOT).contains(qiLower)) { match = p.id; matches++; }
         }
         return (matches == 1) ? match : null;
     }
@@ -821,7 +843,7 @@ public final class PartyCommands {
         try { return UUID.fromString(input.trim()); } catch (IllegalArgumentException ignored) {}
 
         String qi = input.trim();
-        String qiLower = qi.toLowerCase(java.util.Locale.ROOT);
+        String qiLower = qi.toLowerCase(Locale.ROOT);
 
         UUID match = null; int matches = 0;
 
@@ -837,8 +859,8 @@ public final class PartyCommands {
             if (label1.equalsIgnoreCase(qi) || label2.equalsIgnoreCase(qi)) {
                 match = u; matches++; continue;
             }
-            if (label1.toLowerCase(java.util.Locale.ROOT).contains(qiLower) ||
-                    label2.toLowerCase(java.util.Locale.ROOT).contains(qiLower)) {
+            if (label1.toLowerCase(Locale.ROOT).contains(qiLower) ||
+                    label2.toLowerCase(Locale.ROOT).contains(qiLower)) {
                 match = u; matches++;
             }
             if (shortId(u).equalsIgnoreCase(qi)) { match = u; matches++; }

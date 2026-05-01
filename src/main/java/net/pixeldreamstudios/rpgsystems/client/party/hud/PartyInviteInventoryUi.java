@@ -13,7 +13,10 @@ import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
 import net.pixeldreamstudios.rpgsystems.client.config.MiscClientConfig;
 import net.pixeldreamstudios.rpgsystems.client.party.ClientPartyInvites;
+import net.pixeldreamstudios.rpgsystems.mixin.client.ScreenAccessor;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 @Environment(EnvType.CLIENT)
@@ -62,11 +65,11 @@ public final class PartyInviteInventoryUi {
                     i++;
                 }
             };
-            var acc = (net.pixeldreamstudios.rpgsystems.mixin.client.ScreenAccessor) screen;
+            var acc = (ScreenAccessor) screen;
             acc.rpgsystems$addDrawable(plateDrawable);
 
-            final java.util.List<ClickableWidget> liveButtons = new java.util.ArrayList<>();
-            final java.util.List<UUID> lastInviteIds = new java.util.ArrayList<>();
+            final List<ClickableWidget> liveButtons = new ArrayList<>();
+            final List<UUID> lastInviteIds = new ArrayList<>();
 
             Runnable rebuildButtons = () -> {
                 for (var wgt : liveButtons) {
@@ -77,7 +80,7 @@ public final class PartyInviteInventoryUi {
                 }
                 liveButtons.clear();
 
-                var invites = new java.util.ArrayList<>(ClientPartyInvites.invites());
+                var invites = new ArrayList<>(ClientPartyInvites.invites());
                 if (invites.isEmpty()) return;
 
                 for (int i = 0; i < invites.size(); i++) {

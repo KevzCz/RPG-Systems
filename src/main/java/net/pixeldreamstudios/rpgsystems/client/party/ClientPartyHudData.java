@@ -60,6 +60,8 @@ public final class ClientPartyHudData {
     private static final PartySettingsClient SETTINGS = new PartySettingsClient();
     public static boolean allowHelpfulNonMembers() { return SETTINGS.allowHelpfulNonMembers; }
     public static boolean ignorePartyCollision()   { return SETTINGS.ignorePartyCollision; }
+
+    // Party source switching
     private static final List<PartyDataProvider.PartySource> availableSources = new ArrayList<>();
     private static PartyDataProvider.PartySource currentSource = PartyDataProvider.PartySource.NATIVE;
 
@@ -188,7 +190,7 @@ public final class ClientPartyHudData {
         UUID self = mc != null && mc.player != null ? mc.player.getUuid() : null;
         return MEMBERS.values().stream()
                 .filter(m -> m.online)
-                .filter(m -> self == null || !m.uuid.equals(self))
+                .filter(m -> !m.uuid.equals(self))
                 .sorted(Comparator.comparing(m -> m.name.toLowerCase(Locale.ROOT)))
                 .toList();
     }

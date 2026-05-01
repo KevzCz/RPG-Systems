@@ -9,6 +9,8 @@ import net.minecraft.registry.entry.RegistryEntry;
 import net.minecraft.registry.tag.TagKey;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.util.Identifier;
+import net.pixeldreamstudios.rpgsystems.api.TitleApi;
+import net.pixeldreamstudios.rpgsystems.title.PermaGroupKey;
 import net.pixeldreamstudios.rpgsystems.title.Title;
 import net.pixeldreamstudios.rpgsystems.title.TitleRegistry;
 import net.pixeldreamstudios.rpgsystems.title.TitlesPersistentState;
@@ -31,7 +33,7 @@ public class LivingEntityDamageBonusMixin {
         double add = 0.0;
         double mul = 0.0;
 
-        Title equipped = net.pixeldreamstudios.rpgsystems.api.TitleApi.getActive(player).orElse(null);
+        Title equipped = TitleApi.getActive(player).orElse(null);
         if (equipped != null) {
             for (Title.Bonus b : equipped.bonuses) {
                 if (b.damageOp == null) continue;
@@ -67,7 +69,7 @@ public class LivingEntityDamageBonusMixin {
                     if (b.damageTarget != null && b.damageTarget.isPresent()) {
                         Identifier targetId = b.damageTarget.get();
 
-                        String key = net.pixeldreamstudios.rpgsystems.title.PermaGroupKey
+                        String key = PermaGroupKey
                                 .dmgTarget(targetId, b.damageOp);
                         if (disabledGroups.contains(key)) continue;
 
@@ -80,7 +82,7 @@ public class LivingEntityDamageBonusMixin {
                     if (b.damageTag != null && b.damageTag.isPresent()) {
                         Identifier tagId = b.damageTag.get();
 
-                        String key = net.pixeldreamstudios.rpgsystems.title.PermaGroupKey
+                        String key = PermaGroupKey
                                 .dmgTag(tagId, b.damageOp);
                         if (disabledGroups.contains(key)) continue;
 

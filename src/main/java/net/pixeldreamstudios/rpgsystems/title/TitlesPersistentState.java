@@ -3,6 +3,7 @@ package net.pixeldreamstudios.rpgsystems.title;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.nbt.NbtElement;
 import net.minecraft.nbt.NbtList;
+import net.minecraft.nbt.NbtString;
 import net.minecraft.registry.RegistryWrapper;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.PersistentState;
@@ -61,7 +62,7 @@ public final class TitlesPersistentState extends PersistentState {
             row.putUuid("Uuid", e.getKey());
             NbtList unlocked = new NbtList();
             for (String id : e.getValue().unlocked) {
-                unlocked.add(net.minecraft.nbt.NbtString.of(id));
+                unlocked.add(NbtString.of(id));
             }
             row.put("Unlocked", unlocked);
             if (e.getValue().active != null) row.putString("Active", e.getValue().active);
@@ -75,7 +76,7 @@ public final class TitlesPersistentState extends PersistentState {
             }
             if (!e.getValue().permaDisabledGroups.isEmpty()) {
                 NbtList dl = new NbtList();
-                for (String k : e.getValue().permaDisabledGroups) dl.add(net.minecraft.nbt.NbtString.of(k));
+                for (String k : e.getValue().permaDisabledGroups) dl.add(NbtString.of(k));
                 row.put("PermaDisabled", dl);
             }
             players.add(row);

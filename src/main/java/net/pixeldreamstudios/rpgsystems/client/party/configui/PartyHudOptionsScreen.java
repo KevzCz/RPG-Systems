@@ -7,6 +7,7 @@ import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.widget.ButtonWidget;
 import net.minecraft.client.gui.widget.CheckboxWidget;
+import net.minecraft.client.gui.widget.ClickableWidget;
 import net.minecraft.client.gui.widget.TextFieldWidget;
 import net.minecraft.text.Text;
 import net.pixeldreamstudios.rpgsystems.client.party.config.PartyHudClientConfig;
@@ -199,7 +200,7 @@ public final class PartyHudOptionsScreen extends Screen {
         return y1 > top && widgetY < bottom;
     }
 
-    private void setVis(net.minecraft.client.gui.widget.ClickableWidget w, boolean v) {
+    private void setVis(ClickableWidget w, boolean v) {
         w.visible = v;
     }
 

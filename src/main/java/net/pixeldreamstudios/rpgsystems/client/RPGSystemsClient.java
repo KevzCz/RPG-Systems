@@ -28,6 +28,7 @@ import net.pixeldreamstudios.rpgsystems.client.party.screen.PartyScreen;
 import net.pixeldreamstudios.rpgsystems.client.title.TitlePlayerRenderer;
 import net.pixeldreamstudios.rpgsystems.client.title.TitlePowersClient;
 import net.pixeldreamstudios.rpgsystems.client.title.TitleTextureResolver;
+import net.pixeldreamstudios.rpgsystems.compat.showbuild.ShowBuildCompatNetClient;
 import net.pixeldreamstudios.rpgsystems.config.RPGSystemsConfig;
 import net.pixeldreamstudios.rpgsystems.network.EnemyNet;
 import net.pixeldreamstudios.rpgsystems.network.SystemNet;
@@ -60,8 +61,8 @@ public final class RPGSystemsClient implements ClientModInitializer {
         PartyJoinRequestHud.init();
         ClientPartyHighlighter.init();
 
-        if (net.fabricmc.loader.api.FabricLoader.getInstance().isModLoaded("showmeyourbuild")) {
-            net.pixeldreamstudios.rpgsystems.compat.showbuild.ShowBuildCompatNetClient.initClient();
+        if (FabricLoader.getInstance().isModLoaded("showmeyourbuild")) {
+            ShowBuildCompatNetClient.initClient();
         }
 
         EnemyNet.initClient();

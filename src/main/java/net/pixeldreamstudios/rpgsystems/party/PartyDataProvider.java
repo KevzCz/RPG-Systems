@@ -18,7 +18,7 @@ public final class PartyDataProvider {
         List<PartySource> available = new ArrayList<>();
         boolean hasExternalMod = false;
         
-        if (FTBTeamsIntegration.isEnabled()) {
+        if (FTBTeamsLoader.isEnabled()) {
             hasExternalMod = true;
             FTBTeamsIntegration.FTBPartyData ftbData = FTBTeamsIntegration.getPartyDataForPlayer(player);
             if (ftbData != null) {
@@ -45,29 +45,37 @@ public final class PartyDataProvider {
         return available;
     }
 
+    /**
+     * Gets the effective party source for a player, respecting their preference
+     */
     public static PartySource getEffectiveSourceForPlayer(ServerPlayerEntity player) {
         PartyPersistentState state = PartyPersistentState.get(player.getServer());
         PartySource preference = state.getPlayerSourcePreference(player.getUuid());
         List<PartySource> available = getAvailableSourcesForPlayer(player);
         
         if (available.isEmpty()) {
-            return PartySource.NATIVE;
+            return PartySource.NATIVE; // Default to native if nothing available
         }
         
+        // If player has a preference and it's available, use it
         if (preference != null && available.contains(preference)) {
             return preference;
         }
         
+        // Otherwise use the first available (priority: FTB_TEAMS > PARTY_ADDON > NATIVE)
         return available.get(0);
     }
 
+    /**
+     * Gets party data from a specific source for a player
+     */
     @Nullable
     public static PartyInfo getPartyFromSource(ServerPlayerEntity player, PartySource source) {
         if (source == null) return null;
         
         return switch (source) {
             case FTB_TEAMS -> {
-                if (!FTBTeamsIntegration.isEnabled()) yield null;
+                if (!FTBTeamsLoader.isEnabled()) yield null;
                 FTBTeamsIntegration.FTBPartyData ftbData = FTBTeamsIntegration.getPartyDataForPlayer(player);
                 if (ftbData == null) yield null;
                 yield new PartyInfo(
@@ -116,12 +124,15 @@ public final class PartyDataProvider {
 
     @Nullable
     public static PartyInfo getPartyForPlayerId(MinecraftServer server, UUID playerId) {
+        // For player ID lookups, we need to check if player is online for preferences
         ServerPlayerEntity player = server.getPlayerManager().getPlayer(playerId);
         if (player != null) {
             return getPartyForPlayer(player);
         }
-
-        if (FTBTeamsIntegration.isEnabled()) {
+        
+        // Player is offline - use cascade logic without preferences
+        // First check FTBTeams
+        if (FTBTeamsLoader.isEnabled()) {
             FTBTeamsIntegration.FTBPartyData ftbData = FTBTeamsIntegration.getPartyDataForPlayerId(server, playerId);
             if (ftbData != null) {
                 return new PartyInfo(
@@ -147,6 +158,7 @@ public final class PartyDataProvider {
                         PartySource.PARTY_ADDON
                 );
             }
+            // Player not in PartyAddon group, continue checking native
         }
 
         PartyPersistentState state = PartyPersistentState.get(server);
@@ -164,37 +176,45 @@ public final class PartyDataProvider {
     }
 
     public static boolean isInSameParty(ServerPlayerEntity player1, ServerPlayerEntity player2) {
-        if (FTBTeamsIntegration.isEnabled()) {
+        // Check FTBTeams first - if both players are in the same FTB party
+        if (FTBTeamsLoader.isEnabled()) {
             if (FTBTeamsIntegration.isInSameParty(player1, player2)) {
                 return true;
             }
+            // Not in same FTB party - but might be in same PartyAddon group
         }
 
+        // Check PartyAddon - if both players are in the same group
         if (PartyAddonIntegration.isEnabled()) {
             if (PartyAddonIntegration.isInSameParty(player1, player2)) {
                 return true;
             }
+            // Not in same PartyAddon group - check native
         }
 
+        // Check native party system
         PartyPersistentState state = PartyPersistentState.get(player1.getServer());
         return state.sameParty(player1.getUuid(), player2.getUuid());
     }
 
     @Nullable
     public static UUID getPartyIdForPlayer(ServerPlayerEntity player) {
+        // Use the effective source based on player preference
         PartyInfo info = getPartyForPlayer(player);
         return info != null ? info.id : null;
     }
 
     @Nullable
     public static UUID getPartyIdForPlayerId(MinecraftServer server, UUID playerId) {
-        if (FTBTeamsIntegration.isEnabled()) {
+        // Check FTBTeams first
+        if (FTBTeamsLoader.isEnabled()) {
             FTBTeamsIntegration.FTBPartyData ftbData = FTBTeamsIntegration.getPartyDataForPlayerId(server, playerId);
             if (ftbData != null) {
                 return ftbData.partyId;
             }
         }
 
+        // Check PartyAddon
         if (PartyAddonIntegration.isEnabled()) {
             PartyAddonIntegration.PartyAddonData partyData = PartyAddonIntegration.getPartyDataForPlayerId(server, playerId);
             if (partyData != null) {
@@ -208,13 +228,15 @@ public final class PartyDataProvider {
     }
 
     public static List<UUID> getPartyMembers(MinecraftServer server, UUID partyId) {
-        if (FTBTeamsIntegration.isEnabled()) {
+        // Try FTBTeams first
+        if (FTBTeamsLoader.isEnabled()) {
             List<UUID> members = FTBTeamsIntegration.getPartyMembers(server, partyId);
             if (!members.isEmpty()) {
                 return members;
             }
         }
 
+        // Try PartyAddon
         if (PartyAddonIntegration.isEnabled()) {
             List<UUID> members = PartyAddonIntegration.getPartyMembers(server, partyId);
             if (!members.isEmpty()) {
@@ -222,6 +244,7 @@ public final class PartyDataProvider {
             }
         }
 
+        // Fall back to native
         PartyPersistentState state = PartyPersistentState.get(server);
         Party party = state.getParty(partyId);
         if (party == null) return Collections.emptyList();
@@ -231,7 +254,10 @@ public final class PartyDataProvider {
 
     @Nullable
     public static Party getPartyById(MinecraftServer server, UUID partyId) {
-        if (FTBTeamsIntegration.isEnabled() || PartyAddonIntegration.isEnabled()) {
+        // External mods don't use native Party objects
+        if (FTBTeamsLoader.isEnabled() || PartyAddonIntegration.isEnabled()) {
+            // Check if this partyId belongs to an external mod - if so, return null
+            // since we can't convert their data to a native Party object
         }
 
         PartyPersistentState state = PartyPersistentState.get(server);
@@ -241,25 +267,29 @@ public final class PartyDataProvider {
     public static boolean isPlayerInParty(ServerPlayerEntity player, UUID partyId) {
         if (partyId == null) return false;
 
-        if (FTBTeamsIntegration.isEnabled()) {
+        // Check FTBTeams first
+        if (FTBTeamsLoader.isEnabled()) {
             UUID playerPartyId = FTBTeamsIntegration.getPartyIdForPlayer(player);
-            if (playerPartyId != null && partyId.equals(playerPartyId)) {
+            if (partyId.equals(playerPartyId)) {
                 return true;
             }
         }
 
+        // Check PartyAddon
         if (PartyAddonIntegration.isEnabled()) {
             UUID playerPartyId = PartyAddonIntegration.getPartyIdForPlayer(player);
-            if (playerPartyId != null && partyId.equals(playerPartyId)) {
+            if (partyId.equals(playerPartyId)) {
                 return true;
             }
         }
 
+        // Check native
         PartyPersistentState state = PartyPersistentState.get(player.getServer());
         Party party = state.getPartyByMember(player.getUuid());
         return party != null && party.id.equals(partyId);
     }
     public static Collection<Party> getAllParties(MinecraftServer server) {
+        // Return native parties only - external mods manage their own party systems
         PartyPersistentState state = PartyPersistentState.get(server);
         return state.allParties();
     }
@@ -271,6 +301,9 @@ public final class PartyDataProvider {
         public final PartySettings settings;
         public final PartySource source;
 
+        /**
+         * @deprecated Use {@link #PartyInfo(UUID, String, UUID, Set, PartySettings, PartySource)} instead
+         */
         @Deprecated
         public PartyInfo(UUID id, String name, UUID leader, Set<UUID> members, PartySettings settings, boolean fromFTBTeams) {
             this(id, name, leader, members, settings, fromFTBTeams ? PartySource.FTB_TEAMS : PartySource.NATIVE);
@@ -285,6 +318,9 @@ public final class PartyDataProvider {
             this.source = source != null ? source : PartySource.NATIVE;
         }
 
+        /**
+         * @deprecated Use {@link #source} == {@link PartySource#FTB_TEAMS} instead
+         */
         @Deprecated
         public boolean isFromFTBTeams() {
             return source == PartySource.FTB_TEAMS;

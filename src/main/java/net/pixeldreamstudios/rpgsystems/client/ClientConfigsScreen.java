@@ -5,6 +5,7 @@ import net.fabricmc.api.Environment;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
+import net.minecraft.client.gui.screen.narration.NarrationMessageBuilder;
 import net.minecraft.client.gui.widget.ButtonWidget;
 import net.minecraft.client.gui.widget.ClickableWidget;
 import net.minecraft.text.Text;
@@ -15,6 +16,12 @@ import net.pixeldreamstudios.rpgsystems.client.enemy.configui.HealingNumbersScre
 import net.pixeldreamstudios.rpgsystems.client.party.configui.PartyHudOptionsScreen;
 import net.pixeldreamstudios.rpgsystems.client.party.configui.PartyMemberInfoOptionsScreen;
 import net.pixeldreamstudios.rpgsystems.client.title.configui.TitlesOptionsScreen;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.function.DoubleConsumer;
+import java.util.function.DoubleSupplier;
 
 @Environment(EnvType.CLIENT)
 public final class ClientConfigsScreen extends Screen {
@@ -101,15 +108,15 @@ public final class ClientConfigsScreen extends Screen {
     }
 
     private static final class VerticalColumn extends ClickableWidget {
-        private final java.util.List<ButtonWidget> children = new java.util.ArrayList<>();
+        private final List<ButtonWidget> children = new ArrayList<>();
         private double scroll;
         private int contentHeight;
-        private final java.util.function.DoubleSupplier getInitialScroll;
-        private final java.util.function.DoubleConsumer onScrollChanged;
+        private final DoubleSupplier getInitialScroll;
+        private final DoubleConsumer onScrollChanged;
 
         VerticalColumn(int x, int y, int w, int h,
-                       java.util.function.DoubleSupplier initialScroll,
-                       java.util.function.DoubleConsumer onScrollChanged) {
+                       DoubleSupplier initialScroll,
+                       DoubleConsumer onScrollChanged) {
             super(x, y, w, h, Text.empty());
             this.getInitialScroll = initialScroll;
             this.onScrollChanged = onScrollChanged;
@@ -118,7 +125,7 @@ public final class ClientConfigsScreen extends Screen {
 
         void setButtons(ButtonWidget... btns) {
             children.clear();
-            java.util.Collections.addAll(children, btns);
+            Collections.addAll(children, btns);
             layout();
         }
 
@@ -147,7 +154,7 @@ public final class ClientConfigsScreen extends Screen {
             return s;
         }
 
-        @Override protected void appendClickableNarrations(net.minecraft.client.gui.screen.narration.NarrationMessageBuilder b) {}
+        @Override protected void appendClickableNarrations(NarrationMessageBuilder b) {}
 
         @Override
         protected void renderWidget(DrawContext ctx, int mouseX, int mouseY, float delta) {

@@ -13,6 +13,7 @@ import net.minecraft.entity.EntityType;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.attribute.EntityAttribute;
 import net.minecraft.entity.attribute.EntityAttributeInstance;
+import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.Item;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.registry.Registries;
@@ -30,21 +31,24 @@ import net.minecraft.util.Identifier;
 import net.minecraft.util.hit.BlockHitResult;
 import net.minecraft.util.hit.EntityHitResult;
 import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.World;
 import net.minecraft.world.gen.StructureAccessor;
 import net.minecraft.world.gen.structure.Structure;
 import net.pixeldreamstudios.rpgsystems.accessor.LivingEntityRawDamageAccess;
 import net.pixeldreamstudios.rpgsystems.api.TitleApi;
 import net.pixeldreamstudios.rpgsystems.network.TitleNet;
+import net.puffish.skillsmod.SkillsMod;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
 public final class TitleConditionEvents {
     private TitleConditionEvents() {}
-    private static final Map<UUID, net.minecraft.util.math.Vec3d> LAST_POS = new HashMap<>();
+    private static final Map<UUID, Vec3d> LAST_POS = new HashMap<>();
     private static final Map<UUID, RegistryKey<World>> LAST_DIM = new HashMap<>();
     private static final int INVENTORY_CHECK_INTERVAL = 20;
     private static int tickCounter = 0;
@@ -98,7 +102,7 @@ public final class TitleConditionEvents {
         UseEntityCallback.EVENT.register((player, world, hand, entity, hit) -> onUseEntity(player, world, hand, entity, hit));
     }
 
-    private static ActionResult onUseBlock(net.minecraft.entity.player.PlayerEntity player, World world, Hand hand, BlockHitResult hit) {
+    private static ActionResult onUseBlock(PlayerEntity player, World world, Hand hand, BlockHitResult hit) {
         if (!(player instanceof ServerPlayerEntity sp)) return ActionResult.PASS;
         if (!(world instanceof ServerWorld sw)) return ActionResult.PASS;
 
@@ -139,7 +143,7 @@ public final class TitleConditionEvents {
         return ActionResult.PASS;
     }
 
-    private static ActionResult onUseEntity(net.minecraft.entity.player.PlayerEntity player, World world, Hand hand, Entity entity, EntityHitResult hit) {
+    private static ActionResult onUseEntity(PlayerEntity player, World world, Hand hand, Entity entity, EntityHitResult hit) {
         if (!(player instanceof ServerPlayerEntity sp)) return ActionResult.PASS;
         if (!(entity instanceof LivingEntity le)) return ActionResult.PASS;
 
@@ -183,8 +187,8 @@ public final class TitleConditionEvents {
             TitlesPersistentState state = TitlesPersistentState.get(server);
             TitlesPersistentState.PlayerTitles pt = state.getOrCreate(player.getUuid());
 
-            net.minecraft.util.math.Vec3d last = LAST_POS.get(player.getUuid());
-            net.minecraft.util.math.Vec3d now = player.getPos();
+            Vec3d last = LAST_POS.get(player.getUuid());
+            Vec3d now = player.getPos();
             if (last == null) {
                 LAST_POS.put(player.getUuid(), now);
             } else {
@@ -236,7 +240,7 @@ public final class TitleConditionEvents {
 
         float lastRaw = 0f;
         if (killed instanceof LivingEntityRawDamageAccess acc) {
-            java.util.UUID a = acc.rpgsystems$getLastRawDamageAttacker();
+            UUID a = acc.rpgsystems$getLastRawDamageAttacker();
             if (a != null && a.equals(player.getUuid())) {
                 lastRaw = acc.rpgsystems$getLastRawDamageAmount();
             }
@@ -454,7 +458,7 @@ public final class TitleConditionEvents {
         }
 
         Identifier targetId = Identifier.tryParse(spec);
-        return targetId != null && id.equals(targetId);
+        return id.equals(targetId);
     }
 
     private static boolean matchesNbt(LivingEntity entity, Title.Condition c) {
@@ -664,7 +668,7 @@ public final class TitleConditionEvents {
     private static int computeTotalSkillsLevel(ServerPlayerEntity player) {
         if (!puffishLoaded()) return -1;
         try {
-            net.puffish.skillsmod.SkillsMod mod = net.puffish.skillsmod.SkillsMod.getInstance();
+            SkillsMod mod = SkillsMod.getInstance();
             if (mod == null) return -1;
             int total = 0;
             for (Identifier cat : mod.getUnlockedCategories(player)) {
@@ -676,7 +680,7 @@ public final class TitleConditionEvents {
         }
     }
 
-    private static java.util.List<Map.Entry<Identifier, Title>> snapshotTitleEntries() {
+    private static List<Map.Entry<Identifier, Title>> snapshotTitleEntries() {
         var map = TitleRegistry.all();
         var list = new ArrayList<Map.Entry<Identifier, Title>>(map.size());
         map.forEach((id, t) -> list.add(Map.entry(id, t)));

@@ -5,6 +5,7 @@ import net.fabricmc.api.Environment;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.registry.entry.RegistryEntry;
+import net.pixeldreamstudios.rpgsystems.party.PartyAllies;
 import net.spell_engine.api.spell.Spell;
 import net.spell_engine.internals.SpellHelper;
 import net.spell_engine.internals.target.SpellTarget;
@@ -56,7 +57,7 @@ public abstract class SpellTargetHelpfulFilterMixin {
             if (e instanceof PlayerEntity tp) {
                 keep = ClientPartyHudData.isSameParty(casterUuid, tp.getUuid());
             } else {
-                UUID owner = net.pixeldreamstudios.rpgsystems.party.PartyAllies.owningPlayerUuid(e);
+                UUID owner = PartyAllies.owningPlayerUuid(e);
                 keep = (owner == null) || ClientPartyHudData.isSameParty(casterUuid, owner);
             }
             if (keep) filtered.add(e);
