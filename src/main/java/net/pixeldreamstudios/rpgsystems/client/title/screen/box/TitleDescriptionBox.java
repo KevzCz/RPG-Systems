@@ -1103,7 +1103,7 @@ public final class TitleDescriptionBox {
 
             if (c.hidden && c.hint.isPresent()) {
                 int color = doneFlag ? COLOR_DONE : COLOR_TODO;
-                MutableText line = Text.literal(c.hint.get())
+                MutableText line = c.hint.get().copy()
                         .append(Text.literal(" "))
                         .append(progressTail(c, cur, doneFlag));
                 out.add(CondLine.text(line, null, color, doneFlag, c));
@@ -1121,7 +1121,7 @@ public final class TitleDescriptionBox {
                         Identifier tagId = c.entityTagId.get();
                         Text pre = Text.literal("Defeat " + target + " any ");
                         Text tagText = Text.literal(toTitleCase(tagId.getPath())).setStyle(Style.EMPTY.withUnderline(true));
-                        out.add(CondLine.tag(pre, tagText, tagId, tail, c.hint.map(Text::literal).orElse(null), color, reached, c));
+                        out.add(CondLine.tag(pre, tagText, tagId, tail, c.hint.orElse(null), color, reached, c));
                         break;
                     }
 
@@ -1130,7 +1130,7 @@ public final class TitleDescriptionBox {
                         Text mobName = plainName(Text.translatable(Registries.ENTITY_TYPE.get(id).getTranslationKey()));
                         Text pre = Text.literal("Defeat " + target + " ");
                         Text post = tail;
-                        out.add(CondLine.mob(pre, mobName, id, post, c.hint.map(Text::literal).orElse(null), color, reached, c));
+                        out.add(CondLine.mob(pre, mobName, id, post, c.hint.orElse(null), color, reached, c));
                     } else if (c.entitySpec.isPresent()) {
                         String spec = c.entitySpec.get();
                         Identifier mid = Identifier.tryParse(spec);
@@ -1138,21 +1138,21 @@ public final class TitleDescriptionBox {
                             Text mobName = plainName(Text.translatable(Registries.ENTITY_TYPE.get(mid).getTranslationKey()));
                             Text pre = Text.literal("Defeat " + target + " ");
                             Text post = tail;
-                            out.add(CondLine.mob(pre, mobName, mid, post, c.hint.map(Text::literal).orElse(null), color, reached, c));
+                            out.add(CondLine.mob(pre, mobName, mid, post, c.hint.orElse(null), color, reached, c));
                         } else if ("any".equalsIgnoreCase(spec)) {
                             Text line = Text.translatable("title.rpgsystems.condition.kill_any", target).append(tail);
-                            out.add(CondLine.text(line, c.hint.map(Text::literal).orElse(null), color, reached, c));
+                            out.add(CondLine.text(line, c.hint.orElse(null), color, reached, c));
                         } else if (spec.endsWith(":*")) {
                             String ns = spec.substring(0, spec.indexOf(':'));
                             Text line = Text.literal("Defeat " + target + " mobs from " + ns).append(tail);
-                            out.add(CondLine.text(line, c.hint.map(Text::literal).orElse(null), color, reached, c));
+                            out.add(CondLine.text(line, c.hint.orElse(null), color, reached, c));
                         } else {
                             Text line = Text.literal("Defeat " + target + " mobs: " + spec).append(tail);
-                            out.add(CondLine.text(line, c.hint.map(Text::literal).orElse(null), color, reached, c));
+                            out.add(CondLine.text(line, c.hint.orElse(null), color, reached, c));
                         }
                     } else {
                         Text line = Text.translatable("title.rpgsystems.condition.kill_any", target).append(tail);
-                        out.add(CondLine.text(line, c.hint.map(Text::literal).orElse(null), color, reached, c));
+                        out.add(CondLine.text(line, c.hint.orElse(null), color, reached, c));
                     }
                 }
 
@@ -1165,7 +1165,7 @@ public final class TitleDescriptionBox {
                         Text pre  = Text.literal("Obtain " + target + " ");
                         Text post = Text.literal(" (" + Math.min(cur, target) + "/" + target + ")");
 
-                        out.add(CondLine.inlineIcon(pre, post, c.hint.map(Text::literal).orElse(null), color, reached, c));
+                        out.add(CondLine.inlineIcon(pre, post, c.hint.orElse(null), color, reached, c));
                     }
                 }
 
@@ -1175,7 +1175,7 @@ public final class TitleDescriptionBox {
                     int color = reached ? COLOR_DONE : COLOR_TODO;
                     MutableText line = Text.translatable("title.rpgsystems.condition.walk", target)
                             .append(Text.literal(" (" + Math.min(cur, target) + "/" + target + ")"));
-                    out.add(CondLine.text(line, c.hint.map(Text::literal).orElse(null), color, reached, c));
+                    out.add(CondLine.text(line, c.hint.orElse(null), color, reached, c));
                 }
                 case CRAFT_ITEM -> {
                     int target = Math.max(1, c.count);
@@ -1185,7 +1185,7 @@ public final class TitleDescriptionBox {
                     if (c.item.isPresent()) {
                         Text pre  = Text.literal("Craft " + target + " ");
                         Text post = Text.literal(" (" + Math.min(cur, target) + "/" + target + ")");
-                        out.add(CondLine.inlineIcon(pre, post, c.hint.map(Text::literal).orElse(null), color, reached, c));
+                        out.add(CondLine.inlineIcon(pre, post, c.hint.orElse(null), color, reached, c));
                     }
                 }
 
@@ -1197,11 +1197,11 @@ public final class TitleDescriptionBox {
                     if (c.block.isPresent()) {
                         Text pre  = Text.literal("Mine " + target + " ");
                         Text post = Text.literal(" (" + Math.min(cur, target) + "/" + target + ")");
-                        out.add(CondLine.inlineIcon(pre, post, c.hint.map(Text::literal).orElse(null), color, reached, c));
+                        out.add(CondLine.inlineIcon(pre, post, c.hint.orElse(null), color, reached, c));
                     } else {
                         MutableText line = Text.literal("Mine " + target + " blocks")
                                 .append(Text.literal(" (" + Math.min(cur, target) + "/" + target + ")"));
-                        out.add(CondLine.text(line, c.hint.map(Text::literal).orElse(null), color, reached, c));
+                        out.add(CondLine.text(line, c.hint.orElse(null), color, reached, c));
                     }
                 }
 
@@ -1211,7 +1211,7 @@ public final class TitleDescriptionBox {
                     int color = reached ? COLOR_DONE : COLOR_TODO;
                     MutableText line = Text.translatable("title.rpgsystems.condition.reach_xp", target)
                             .append(Text.literal(" (" + Math.min(cur, target) + "/" + target + ")"));
-                    out.add(CondLine.text(line, c.hint.map(Text::literal).orElse(null), color, reached, c));
+                    out.add(CondLine.text(line, c.hint.orElse(null), color, reached, c));
                 }
                 case REACH_LEVEL_PUFFERFISH -> {
                     int target = Math.max(1, c.level);
@@ -1219,7 +1219,7 @@ public final class TitleDescriptionBox {
                     int color = reached ? COLOR_DONE : COLOR_TODO;
                     MutableText line = Text.translatable("title.rpgsystems.condition.reach_pufferfish", target)
                             .append(Text.literal(" (" + Math.min(cur, target) + "/" + target + ")"));
-                    out.add(CondLine.text(line, c.hint.map(Text::literal).orElse(null), color, reached, c));
+                    out.add(CondLine.text(line, c.hint.orElse(null), color, reached, c));
                 }
                 case ADVANCEMENT -> {
                     boolean reached = doneFlag;
@@ -1228,7 +1228,7 @@ public final class TitleDescriptionBox {
                             ? Text.translatable("title.rpgsystems.condition.advancement", c.advancement.get().toString())
                             : Text.translatable("title.rpgsystems.condition.advancement", "");
                     MutableText line = base.append(Text.literal(" (" + (reached ? 1 : 0) + "/1)"));
-                    out.add(CondLine.text(line, c.hint.map(Text::literal).orElse(null), color, reached, c));
+                    out.add(CondLine.text(line, c.hint.orElse(null), color, reached, c));
                 }
                 case VISIT_BIOME -> {
                     boolean reached = doneFlag;
@@ -1237,7 +1237,7 @@ public final class TitleDescriptionBox {
                             ? Text.literal("Visit ").append(Text.translatable("biome." + c.biome.get().getNamespace() + "." + c.biome.get().getPath()))
                             : Text.literal("Visit a biome");
                     line = line.append(Text.literal(" (" + (reached ? 1 : 0) + "/1)"));
-                    out.add(CondLine.text(line, c.hint.map(Text::literal).orElse(null), color, reached, c));
+                    out.add(CondLine.text(line, c.hint.orElse(null), color, reached, c));
                 }
                 case ENTER_DIMENSION -> {
                     boolean reached = doneFlag;
@@ -1246,7 +1246,7 @@ public final class TitleDescriptionBox {
                             ? Text.literal("Enter " + c.dimension.get())
                             : Text.literal("Enter a dimension");
                     line = line.append(Text.literal(" (" + (reached ? 1 : 0) + "/1)"));
-                    out.add(CondLine.text(line, c.hint.map(Text::literal).orElse(null), color, reached, c));
+                    out.add(CondLine.text(line, c.hint.orElse(null), color, reached, c));
                 }
                 case INTERACT_BLOCK -> {
                     int target = Math.max(1, c.count);
@@ -1255,11 +1255,11 @@ public final class TitleDescriptionBox {
                     if (c.block.isPresent()) {
                         Text pre  = Text.literal("Interact with ");
                         Text post = Text.literal(" (" + Math.min(cur, target) + "/" + target + ")");
-                        out.add(CondLine.inlineIcon(pre, post, c.hint.map(Text::literal).orElse(null), color, reached, c));
+                        out.add(CondLine.inlineIcon(pre, post, c.hint.orElse(null), color, reached, c));
                     } else {
                         MutableText line = Text.literal("Interact with a block")
                                 .append(Text.literal(" (" + Math.min(cur, target) + "/" + target + ")"));
-                        out.add(CondLine.text(line, c.hint.map(Text::literal).orElse(null), color, reached, c));
+                        out.add(CondLine.text(line, c.hint.orElse(null), color, reached, c));
                     }
                 }
                 case INTERACT_ENTITY -> {
@@ -1270,13 +1270,13 @@ public final class TitleDescriptionBox {
                     if (c.entityType.isPresent()) {
                         Text pre  = Text.literal("Interact with ");
                         Text post = Text.literal(" (" + Math.min(cur, target) + "/" + target + ")");
-                        out.add(CondLine.inlineIcon(pre, post, c.hint.map(Text::literal).orElse(null), color, reached, c));
+                        out.add(CondLine.inlineIcon(pre, post, c.hint.orElse(null), color, reached, c));
                     } else if (c.entityTagId != null && c.entityTagId.isPresent()) {
                         Identifier tagId = c.entityTagId.get();
                         Text pre  = Text.literal("Interact with any ");
                         Text tagText = Text.literal(toTitleCase(tagId.getPath())).setStyle(Style.EMPTY.withUnderline(true));
                         Text post = Text.literal(" (" + Math.min(cur, target) + "/" + target + ")");
-                        out.add(CondLine.tag(pre, tagText, tagId, post, c.hint.map(Text::literal).orElse(null), color, reached, c));
+                        out.add(CondLine.tag(pre, tagText, tagId, post, c.hint.orElse(null), color, reached, c));
                     } else {
                         Text who;
                         if (c.entitySpec.isPresent()) {
@@ -1298,7 +1298,7 @@ public final class TitleDescriptionBox {
                         }
                         MutableText line = Text.literal("Interact with ").append(who)
                                 .append(Text.literal(" (" + Math.min(cur, target) + "/" + target + ")"));
-                        out.add(CondLine.text(line, c.hint.map(Text::literal).orElse(null), color, reached, c));
+                        out.add(CondLine.text(line, c.hint.orElse(null), color, reached, c));
                     }
                 }
                 case FIND_STRUCTURE -> {
@@ -1321,7 +1321,7 @@ public final class TitleDescriptionBox {
 
                     MutableText line = Text.literal("Discover ").append(what)
                             .append(Text.literal(" (" + (reached ? 1 : 0) + "/1)"));
-                    out.add(CondLine.text(line, c.hint.map(Text::literal).orElse(null), color, reached, c));
+                    out.add(CondLine.text(line, c.hint.orElse(null), color, reached, c));
                 }
                 case DEAL_DAMAGE_TOTAL -> {
                     long target = Math.max(1, c.count);
@@ -1333,7 +1333,7 @@ public final class TitleDescriptionBox {
                         Text pre = Text.literal("Deal " + target + " total damage to any ");
                         Text tagText = Text.literal(toTitleCase(tagId.getPath())).setStyle(Style.EMPTY.withUnderline(true));
                         Text post = Text.literal(" (" + Math.min(cur, target) + "/" + target + ")");
-                        out.add(CondLine.tag(pre, tagText, tagId, post, c.hint.map(Text::literal).orElse(null), color, reached, c));
+                        out.add(CondLine.tag(pre, tagText, tagId, post, c.hint.orElse(null), color, reached, c));
                     } else {
                         Text who = c.entitySpec.isPresent()
                                 ? Text.literal(c.entitySpec.get())
@@ -1349,7 +1349,7 @@ public final class TitleDescriptionBox {
                                 .append(Text.literal("/"))
                                 .append(Text.literal(String.valueOf(target)))
                                 .append(Text.literal(")"));
-                        out.add(CondLine.text(line, c.hint.map(Text::literal).orElse(null), color, reached, c));
+                        out.add(CondLine.text(line, c.hint.orElse(null), color, reached, c));
                     }
                 }
                 case DEAL_DAMAGE_MAX -> {
@@ -1362,7 +1362,7 @@ public final class TitleDescriptionBox {
                         Text pre = Text.literal("Deal a single hit of at least " + target + " to any ");
                         Text tagText = Text.literal(toTitleCase(tagId.getPath())).setStyle(Style.EMPTY.withUnderline(true));
                         Text post = Text.literal(" (best: " + cur + ")");
-                        out.add(CondLine.tag(pre, tagText, tagId, post, c.hint.map(Text::literal).orElse(null), color, reached, c));
+                        out.add(CondLine.tag(pre, tagText, tagId, post, c.hint.orElse(null), color, reached, c));
                     } else {
                         Text who = c.entitySpec.isPresent()
                                 ? Text.literal(c.entitySpec.get())
@@ -1376,7 +1376,7 @@ public final class TitleDescriptionBox {
                                 .append(Text.literal(" (best: "))
                                 .append(Text.literal(String.valueOf(cur)))
                                 .append(Text.literal(")"));
-                        out.add(CondLine.text(line, c.hint.map(Text::literal).orElse(null), color, reached, c));
+                        out.add(CondLine.text(line, c.hint.orElse(null), color, reached, c));
                     }
                 }
                 case CHECK_ATTRIBUTE -> {
@@ -1402,7 +1402,7 @@ public final class TitleDescriptionBox {
                             .append(attrName)
                             .append(Text.literal(" ≥ " + trim(min)))
                             .append(Text.literal(" (now: " + cur + ")"));
-                    out.add(CondLine.text(line, c.hint.map(Text::literal).orElse(null), color, reached, c));
+                    out.add(CondLine.text(line, c.hint.orElse(null), color, reached, c));
                 }
             }
         }

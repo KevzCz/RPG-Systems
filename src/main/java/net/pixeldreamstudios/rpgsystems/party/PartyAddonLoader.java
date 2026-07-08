@@ -2,9 +2,14 @@ package net.pixeldreamstudios.rpgsystems.party;
 
 import net.fabricmc.loader.api.FabricLoader;
 import net.pixeldreamstudios.rpgsystems.RPGSystems;
+import net.pixeldreamstudios.rpgsystems.config.RPGSystemsConfig;
 
 public final class PartyAddonLoader {
     private static boolean initialized = false;
+
+    public static boolean isEnabled() {
+        return FabricLoader.getInstance().isModLoaded("partyaddon") && RPGSystemsConfig.get().party.usePartyAddon;
+    }
 
     public static void tryInitialize() {
         if (initialized) return;

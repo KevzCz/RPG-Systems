@@ -1,7 +1,7 @@
 {
   "hidden": true,
-  "name": "{color:#7fff00}{bounce:amp=1.0,speed=4.0}Slime Slayer{/bounce}{/color}",
-  "description": "No more squish.",
+  "name_key": "title.rpgsystems.slime_slayer",
+  "description_key": "title.rpgsystems.slime_slayer.desc",
   "bonuses": [
     {
       "damage_bonus": [

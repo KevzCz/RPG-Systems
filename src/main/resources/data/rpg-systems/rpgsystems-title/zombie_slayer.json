@@ -1,7 +1,7 @@
 {
   "hidden": true,
-  "name": "{color:#98fb98}{shake:1.0}Zombie Slayer{/shake}{/color}",
-  "description": "You’ve learned how the undead fall.",
+  "name_key": "title.rpgsystems.zombie_slayer",
+  "description_key": "title.rpgsystems.zombie_slayer.desc",
   "bonuses": [
     {
       "damage_bonus": [

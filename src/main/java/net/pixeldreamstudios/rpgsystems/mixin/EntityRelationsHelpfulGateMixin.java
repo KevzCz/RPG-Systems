@@ -1,11 +1,12 @@
 package net.pixeldreamstudios.rpgsystems.mixin;
 
-import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.pixeldreamstudios.rpgsystems.party.FTBTeamsIntegration;
+import net.pixeldreamstudios.rpgsystems.party.FTBTeamsLoader;
+import net.pixeldreamstudios.rpgsystems.party.PartyDataProvider;
 import net.pixeldreamstudios.rpgsystems.party.PartyAllies;
 import net.pixeldreamstudios.rpgsystems.party.PartyPersistentState;
 import net.pixeldreamstudios.rpgsystems.party.PartySettings;
@@ -36,10 +37,10 @@ public abstract class EntityRelationsHelpfulGateMixin {
 
             PartySettings casterSettings = null;
 
-            if (FabricLoader.getInstance().isModLoaded("ftbteams") && FTBTeamsIntegration.isEnabled() && caster instanceof ServerPlayerEntity serverPlayer) {
-                FTBTeamsIntegration.FTBPartyData ftbData = FTBTeamsIntegration.getPartyDataForPlayer(serverPlayer);
-                if (ftbData != null) {
-                    casterSettings = ftbData.settings;
+            if (FTBTeamsLoader.isEnabled() && caster instanceof ServerPlayerEntity serverPlayer) {
+                PartyDataProvider.PartyInfo info = FTBTeamsIntegration.getPartyInfoForPlayer(serverPlayer);
+                if (info != null) {
+                    casterSettings = info.settings;
                 }
             } else {
                 var state = PartyPersistentState.get(server);

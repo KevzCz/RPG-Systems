@@ -1,6 +1,6 @@
 {
-  "name": "{rainbow:0.20}{wave:amp=0.8,speed=2.8}End Voyager{/wave}{/rainbow}",
-  "description": "Gaze into the void.",
+  "name_key": "title.rpgsystems.end_voyager",
+  "description_key": "title.rpgsystems.end_voyager.desc",
   "bonuses": [
     {
       "attribute": [
@@ -10,6 +10,6 @@
     }
   ],
   "conditions": [
-    { "type": "enter_dimension", "dimension": "minecraft:the_end", "hint": "Enter the End." }
+    { "type": "enter_dimension", "dimension": "minecraft:the_end", "hint_key": "title.rpgsystems.end_voyager.hint.1" }
   ]
 }

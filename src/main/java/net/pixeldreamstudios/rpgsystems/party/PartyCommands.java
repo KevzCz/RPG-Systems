@@ -6,7 +6,6 @@ import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.suggestion.Suggestions;
 import com.mojang.brigadier.suggestion.SuggestionsBuilder;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
-import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.command.CommandSource;
 import net.minecraft.command.argument.EntityArgumentType;
 import net.minecraft.command.argument.UuidArgumentType;
@@ -35,10 +34,10 @@ public final class PartyCommands {
     private PartyCommands() {}
 
     private static String getActiveExternalSystem() {
-        if (FabricLoader.getInstance().isModLoaded("ftbteams") && FTBTeamsIntegration.isEnabled()) {
+        if (FTBTeamsLoader.isEnabled()) {
             return "FTB Teams";
         }
-        if (FabricLoader.getInstance().isModLoaded("partyaddon") && PartyAddonIntegration.isEnabled()) {
+        if (PartyAddonLoader.isEnabled()) {
             return "Party Addon";
         }
         return null;

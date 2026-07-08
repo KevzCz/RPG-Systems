@@ -1,6 +1,6 @@
 {
-  "name": "{rainbow:0.25}{wave:amp=1.0,speed=3.0}Journeyman{/wave}{/rainbow}",
-  "description": "Grow wiser through experience.",
+  "name_key": "title.rpgsystems.journeyman",
+  "description_key": "title.rpgsystems.journeyman.desc",
   "bonuses": [
     {
       "attribute": [
@@ -10,6 +10,6 @@
     }
   ],
   "conditions": [
-    { "type": "reach_level_xp", "level": 10, "hint": "Reach player level 10." }
+    { "type": "reach_level_xp", "level": 10, "hint_key": "title.rpgsystems.journeyman.hint.1" }
   ]
 }

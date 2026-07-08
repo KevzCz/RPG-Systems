@@ -206,7 +206,7 @@ public final class TitleNet {
                             b.addCondition(new Title.Condition(
                                     t,
                                     cd.item(), cd.entityType(), cd.advancement(),
-                                    cd.distance(), cd.count(), cd.hint(), cd.hidden(),
+                                    cd.distance(), cd.count(), cd.hint().map(Text::literal), cd.hidden(),
                                     cd.entitySpec(), cd.nbtQuery(), cd.level(),
                                     cd.block(), cd.biome(), cd.dimension(),
                                     cd.structure(), cd.attribute(), cd.min(),
@@ -372,7 +372,7 @@ public final class TitleNet {
 
                 cdefs.add(new TitlePayloads.SyncDefinitions.ConditionDef(
                         type, c.item, c.entityType, c.advancement,
-                        c.distance, c.count, c.hint, c.hidden,
+                        c.distance, c.count, c.hint.map(Text::getString), c.hidden,
                         c.entitySpec, c.nbtQuery, c.level, c.block, c.biome, c.dimension,
                         c.structure, c.attributeId, c.minValue,
                         c.entityTagId

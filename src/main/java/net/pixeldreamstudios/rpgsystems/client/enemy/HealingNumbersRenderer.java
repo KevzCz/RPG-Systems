@@ -82,17 +82,22 @@ public final class HealingNumbersRenderer {
         float tickDelta = mc.getRenderTickCounter().getTickDelta(false);
         Vec3d camPos = camera.getPos();
 
+        boolean firstPerson = mc.options.getPerspective().isFirstPerson();
+        int localPlayerEntityId = mc.player != null ? mc.player.getId() : Integer.MIN_VALUE;
+
         RenderSystem.enableBlend();
         RenderSystem.enableDepthTest();
 
         for (int i = ACTIVE.size() - 1; i >= 0; i--) {
             Floating f = ACTIVE.get(i);
 
-            Entity e = world.getEntityById(f.entityId);
-            LivingEntity living = e instanceof LivingEntity ? (LivingEntity) e : null;
-
             int ageTicks = (int)(now - f.spawnTick);
             if (ageTicks >= LIFETIME_TICKS) { ACTIVE.remove(i); continue; }
+
+            if (firstPerson && f.entityId == localPlayerEntityId) continue;
+
+            Entity e = world.getEntityById(f.entityId);
+            LivingEntity living = e instanceof LivingEntity ? (LivingEntity) e : null;
 
             if (living != null && f.needsBootstrap()) {
                 f.bootstrapFromEntity(living);

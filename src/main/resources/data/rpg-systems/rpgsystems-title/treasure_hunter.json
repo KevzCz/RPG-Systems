@@ -1,7 +1,7 @@
 {
   "hidden": true,
-  "name": "{gradient:#ffd700,#fff2a6}{wiggle:amp=0.7,speed=4.8}Treasure Hunter{/wiggle}{/gradient}",
-  "description": "X marks the spot.",
+  "name_key": "title.rpgsystems.treasure_hunter",
+  "description_key": "title.rpgsystems.treasure_hunter.desc",
   "bonuses": [
     {
       "attribute": [

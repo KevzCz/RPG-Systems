@@ -1,6 +1,6 @@
 {
-  "name": "{gradient:#ff4500,#ffae00}{shake:1.0}Nether Runner{/shake}{/gradient}",
-  "description": "Step into the Nether and live to tell it.",
+  "name_key": "title.rpgsystems.nether_runner",
+  "description_key": "title.rpgsystems.nether_runner.desc",
   "bonuses": [
     {
       "attribute": [
@@ -10,6 +10,6 @@
     }
   ],
   "conditions": [
-    { "type": "enter_dimension", "dimension": "minecraft:the_nether", "hint": "Enter the Nether." }
+    { "type": "enter_dimension", "dimension": "minecraft:the_nether", "hint_key": "title.rpgsystems.nether_runner.hint.1" }
   ]
 }

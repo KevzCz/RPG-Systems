@@ -22,6 +22,7 @@ import net.pixeldreamstudios.rpgsystems.title.TitleRegistry;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 
 public final class TitlesDataReloader extends JsonDataLoader implements IdentifiableResourceReloadListener {
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
@@ -55,8 +56,9 @@ public final class TitlesDataReloader extends JsonDataLoader implements Identifi
                 if (leaf.endsWith(".json")) leaf = leaf.substring(0, leaf.length() - 5);
                 Identifier id = Identifier.of(fileId.getNamespace(), leaf);
 
-                Title.Builder b = Title.builder(id, Text.literal(data.name().orElse(leaf)));
-                data.description().ifPresent(desc -> b.description(Text.literal(desc)));
+                Title.Builder b = Title.builder(id, resolveText(data.nameKey(), data.name(), leaf));
+                Text descText = resolveTextOrNull(data.descriptionKey(), data.description());
+                if (descText != null) b.description(descText);
 
                 boolean hiddenTitle = root != null && root.has("hidden") && root.get("hidden").getAsBoolean();
                 if (hiddenTitle) b.hidden(true);
@@ -129,7 +131,7 @@ public final class TitlesDataReloader extends JsonDataLoader implements Identifi
                             jc.advancement(),
                             jc.distance().orElse(0L),
                             jc.count().orElse(0),
-                            jc.hint(),
+                            Optional.ofNullable(resolveTextOrNull(jc.hintKey(), jc.hint())),
                             jc.hidden().orElse(false),
                             jc.entity(),
                             jc.nbt(),
@@ -152,6 +154,21 @@ public final class TitlesDataReloader extends JsonDataLoader implements Identifi
 
         TitleRegistry.replaceAll(loaded);
         TitleRegistry.bootstrapFallback();
+    }
+
+    private static Text resolveText(Optional<String> key, Optional<String> literal, String fallback) {
+        Text t = resolveTextOrNull(key, literal);
+        return t != null ? t : Text.literal(fallback);
+    }
+
+    private static Text resolveTextOrNull(Optional<String> key, Optional<String> literal) {
+        if (key.isPresent() && !key.get().isBlank()) {
+            return Text.translatable(key.get());
+        }
+        if (literal.isPresent()) {
+            return Text.literal(literal.get());
+        }
+        return null;
     }
 
     @Override

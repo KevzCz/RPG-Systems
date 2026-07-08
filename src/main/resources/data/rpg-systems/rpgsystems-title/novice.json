@@ -1,6 +1,6 @@
 {
-  "name": "{color:#adff2f}{pulse:1.4}Novice{/pulse}{/color}",
-  "description": "Take your first crafting step.",
+  "name_key": "title.rpgsystems.novice",
+  "description_key": "title.rpgsystems.novice.desc",
   "bonuses": [
     {
       "attribute": [
@@ -9,6 +9,6 @@
     }
   ],
   "conditions": [
-    { "type": "obtain_item", "item": "minecraft:crafting_table", "count": 1, "hint": "Obtain a Crafting Table." }
+    { "type": "obtain_item", "item": "minecraft:crafting_table", "count": 1, "hint_key": "title.rpgsystems.novice.hint.1" }
   ]
 }

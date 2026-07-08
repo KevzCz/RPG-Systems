@@ -9,11 +9,9 @@
   "title.rpgsystems.bonuses": "Bonuses:",
   "title.rpgsystems.permanent_bonuses": "Perma Bonuses:",
   "title.rpgsystems.bonus_damage_against": "Bonus Damage Against",
-  "title.rpgsystems.novice": "Novice",
   "title.rpgsystems.slayer": "Slayer",
   "title.rpgsystems.sprinter": "Sprinter",
   "title.rpgsystems.conditions": "Conditions",
-  "title.rpgsystems.novice.desc": "This is the default title when there are no titles available",
   "title.rpgsystems.condition.obtain_x": "Obtain %s",
   "title.rpgsystems.condition.kill_any": "Defeat %s mobs",
   "title.rpgsystems.condition.kill_specific": "Defeat %2$s × %1$s",
@@ -35,6 +33,121 @@
   "title.rpgsystems.condition.deal_damage_total": "Deal %1$s total damage to %2$s",
   "title.rpgsystems.condition.deal_damage_max": "Deal at least %1$s damage in a single hit to %2$s",
   "title.rpgsystems.condition.check_attribute": "Reach attribute %1$s ≥ %2$s",
+
+  "title.rpgsystems.novice": "{color:#adff2f}{pulse:1.4}Novice{/pulse}{/color}",
+  "title.rpgsystems.novice.desc": "Take your first crafting step.",
+  "title.rpgsystems.novice.hint.1": "Obtain a Crafting Table.",
+
+  "title.rpgsystems.journeyman": "{rainbow:0.25}{wave:amp=1.0,speed=3.0}Journeyman{/wave}{/rainbow}",
+  "title.rpgsystems.journeyman.desc": "Grow wiser through experience.",
+  "title.rpgsystems.journeyman.hint.1": "Reach player level 10.",
+
+  "title.rpgsystems.scholar": "{color:#dda0dd}{wiggle:amp=0.8,speed=5.5}Scholar{/wiggle}{/color}",
+  "title.rpgsystems.scholar.desc": "Knowledge is power.",
+  "title.rpgsystems.scholar.hint.1": "Reach player level 20.",
+
+  "title.rpgsystems.arcane_adept": "{gradient:#7b68ee,#00e5ff}{wiggle:amp=0.7,speed=5.5}Arcane Adept{/wiggle}{/gradient}",
+  "title.rpgsystems.arcane_adept.desc": "Tools, tomes, and tempered minds.",
+  "title.rpgsystems.arcane_adept.hint.1": "Reach player level 25.",
+  "title.rpgsystems.arcane_adept.hint.2": "Obtain an Enchanting Table.",
+  "title.rpgsystems.arcane_adept.hint.3": "Get the “Enchanter” advancement.",
+
+  "title.rpgsystems.warrior": "{color:#ff4d4d}{pulse:1.3}Warrior{/pulse}{/color}",
+  "title.rpgsystems.warrior.desc": "Win battles and grow stronger.",
+  "title.rpgsystems.warrior.hint.1": "Defeat 50 mobs.",
+
+  "title.rpgsystems.champion": "{color:#ff4444}{pulse:1.25}Champion{/pulse}{/color}",
+  "title.rpgsystems.champion.desc": "Prove your strength in steel and spirit.",
+  "title.rpgsystems.champion.hint.1": "Defeat 100 mobs.",
+  "title.rpgsystems.champion.hint.2": "Reach player level 30.",
+  "title.rpgsystems.champion.hint.3": "Craft a Diamond Chestplate.",
+
+  "title.rpgsystems.defender": "{color:#87ceeb}{bounce:amp=1.0,speed=4.0}Defender{/bounce}{/color}",
+  "title.rpgsystems.defender.desc": "Stand your ground when the bells toll.",
+  "title.rpgsystems.defender.hint.1": "Earn Hero of the Village.",
+
+  "title.rpgsystems.vanguard": "{color:#87cefa}{bounce:amp=1.0,speed=2.8}Vanguard{/bounce}{/color}",
+  "title.rpgsystems.vanguard.desc": "First to find, first to fight.",
+  "title.rpgsystems.vanguard.hint.1": "Locate a Stronghold.",
+  "title.rpgsystems.vanguard.hint.2": "Defeat 10 mobs.",
+  "title.rpgsystems.vanguard.hint.3": "Deal 12 damage in a single hit.",
+  "title.rpgsystems.vanguard.hint.4": "Reach at least 8 Armor.",
+
+  "title.rpgsystems.adventurer": "{gradient:#ff8c00,#ffd700}{wiggle:amp=1.0,speed=6.0}Adventurer{/wiggle}{/gradient}",
+  "title.rpgsystems.adventurer.desc": "Travel far and best foes.",
+  "title.rpgsystems.adventurer.hint.1": "Walk 500 blocks.",
+  "title.rpgsystems.adventurer.hint.2": "Defeat 5 Skeletons.",
+  "title.rpgsystems.adventurer.hint.3": "Defeat 5 Zombies.",
+  "title.rpgsystems.adventurer.hint.4": "Defeat 5 Creepers.",
+  "title.rpgsystems.adventurer.hint.5": "Defeat 5 Spiders.",
+  "title.rpgsystems.adventurer.hint.6": "Defeat the Ender Dragon.",
+
+  "title.rpgsystems.explorer": "{gradient:#4bd3ff,#48baff}{wave:amp=1.0,speed=4.0}Explorer{/wave}{/gradient}",
+  "title.rpgsystems.explorer.desc": "Chart new paths across the land.",
+  "title.rpgsystems.explorer.hint.1": "Walk 1,500 blocks.",
+
+  "title.rpgsystems.pathfinder": "{gradient:#00b3ff,#00ffaa}{pulse:1.1}Pathfinder{/pulse}{/gradient}",
+  "title.rpgsystems.pathfinder.desc": "Blaze trails across the world.",
+  "title.rpgsystems.pathfinder.hint.1": "Walk 1,000 blocks.",
+
+  "title.rpgsystems.trailblazer": "{gradient:#ff7f50,#ffd700}{wave:amp=0.9,speed=3.2}Trailblazer{/wave}{/gradient}",
+  "title.rpgsystems.trailblazer.desc": "Forge the path, fight what follows.",
+  "title.rpgsystems.trailblazer.hint.1": "Walk 2,500 blocks.",
+  "title.rpgsystems.trailblazer.hint.2": "Defeat 20 mobs.",
+  "title.rpgsystems.trailblazer.hint.3": "Obtain an Iron Sword.",
+  "title.rpgsystems.trailblazer.hint.4": "Visit a Savanna biome.",
+
+  "title.rpgsystems.ranger": "{gradient:#00ffbf,#00ffaa}{wave:amp=0.9,speed=3.6}Ranger{/wave}{/gradient}",
+  "title.rpgsystems.ranger.desc": "Swift feet and surer shots.",
+  "title.rpgsystems.ranger.hint.1": "Walk 3,000 blocks.",
+  "title.rpgsystems.ranger.hint.2": "Visit a Taiga biome.",
+  "title.rpgsystems.ranger.hint.3": "Defeat 25 Skeletons.",
+  "title.rpgsystems.ranger.hint.4": "Craft a Bow.",
+
+  "title.rpgsystems.miner": "{gradient:#bfbfbf,#8e8e8e}{bounce:amp=0.8,speed=3.5}Miner{/bounce}{/gradient}",
+  "title.rpgsystems.miner.desc": "Put pick to stone until the tunnels sing.",
+  "title.rpgsystems.miner.hint.1": "Mine 256 Stone.",
+
+  "title.rpgsystems.treasure_hunter": "{gradient:#ffd700,#fff2a6}{wiggle:amp=0.7,speed=4.8}Treasure Hunter{/wiggle}{/gradient}",
+  "title.rpgsystems.treasure_hunter.desc": "X marks the spot.",
+
+  "title.rpgsystems.nether_runner": "{gradient:#ff4500,#ffae00}{shake:1.0}Nether Runner{/shake}{/gradient}",
+  "title.rpgsystems.nether_runner.desc": "Step into the Nether and live to tell it.",
+  "title.rpgsystems.nether_runner.hint.1": "Enter the Nether.",
+
+  "title.rpgsystems.end_voyager": "{rainbow:0.20}{wave:amp=0.8,speed=2.8}End Voyager{/wave}{/rainbow}",
+  "title.rpgsystems.end_voyager.desc": "Gaze into the void.",
+  "title.rpgsystems.end_voyager.hint.1": "Enter the End.",
+
+  "title.rpgsystems.free_the_end": "{gradient:#6a00ff,#9b59ff,#00c3ff}{pulse:1.1}{glitch:intensity=0.55}Free{/glitch} {wave:amp=1.0,speed=2.8}The End{/wave}{/pulse}{/gradient}",
+  "title.rpgsystems.free_the_end.desc": "From End to end.",
+
+  "title.rpgsystems.destroyer": "{color:#ff4444}{shake:1.4}Destroyer{/shake}{/color}",
+  "title.rpgsystems.destroyer.desc": "One swing. No mercy.",
+
+  "title.rpgsystems.zombie_slayer": "{color:#98fb98}{shake:1.0}Zombie Slayer{/shake}{/color}",
+  "title.rpgsystems.zombie_slayer.desc": "You’ve learned how the undead fall.",
+
+  "title.rpgsystems.creeper_slayer": "{gradient:#2ecc71,#1abc9c}{wiggle:amp=1.0,speed=7.0}Creeper Slayer{/wiggle}{/gradient}",
+  "title.rpgsystems.creeper_slayer.desc": "Hiss no more.",
+
+  "title.rpgsystems.spider_slayer": "{color:#ff69b4}{pulse:1.2}Spider Slayer{/pulse}{/color}",
+  "title.rpgsystems.spider_slayer.desc": "No more eight-legged ambushes.",
+
+  "title.rpgsystems.enderman_slayer": "{color:#b19cd9}{shake:1.0}Enderman Slayer{/shake}{/color}",
+  "title.rpgsystems.enderman_slayer.desc": "You stare back into the abyss.",
+
+  "title.rpgsystems.witch_hunter": "{gradient:#c86dd7,#9a5cff}{wiggle:amp=1.0,speed=6.5}Witch Hunter{/wiggle}{/gradient}",
+  "title.rpgsystems.witch_hunter.desc": "Brews won’t save them.",
+
+  "title.rpgsystems.blaze_slayer": "{gradient:#ff7a00,#ffd000}{pulse:1.3}Blaze Slayer{/pulse}{/gradient}",
+  "title.rpgsystems.blaze_slayer.desc": "Ashes to ashes.",
+
+  "title.rpgsystems.slime_slayer": "{color:#7fff00}{bounce:amp=1.0,speed=4.0}Slime Slayer{/bounce}{/color}",
+  "title.rpgsystems.slime_slayer.desc": "No more squish.",
+
+  "title.rpgsystems.skeleton_slayer": "{color:#e6e6fa}{shake:1.0}Skeleton Slayer{/shake}{/color}",
+  "title.rpgsystems.skeleton_slayer.desc": "Bones break the same as anything else.",
 
   "party.rpgsystems.settings": "Settings",
   "party.rpgsystems.source.ftb_teams": "FTB Teams",

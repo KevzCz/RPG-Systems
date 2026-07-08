@@ -143,7 +143,7 @@ public final class Title {
         public final Optional<Identifier> advancement;
         public final long distance;
         public final int count;
-        public final Optional<String> hint;
+        public final Optional<Text> hint;
         public final boolean hidden;
         public final Optional<String> entitySpec;
         public final Optional<String> nbtQuery;
@@ -162,7 +162,7 @@ public final class Title {
                          Optional<Identifier> advancement,
                          long distance,
                          int count,
-                         Optional<String> hint,
+                         Optional<Text> hint,
                          boolean hidden,
                          Optional<String> entitySpec,
                          Optional<String> nbtQuery,

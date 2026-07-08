@@ -6,7 +6,6 @@ import dev.ftb.mods.ftbteams.data.PlayerPermissions;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
-import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.gui.DrawContext;
@@ -18,7 +17,7 @@ import net.minecraft.util.math.RotationAxis;
 import net.pixeldreamstudios.rpgsystems.client.party.ClientPartyHudData;
 import net.pixeldreamstudios.rpgsystems.client.party.CompatCommandHelper;
 import net.pixeldreamstudios.rpgsystems.network.party.PartySettingsPayloads;
-import net.pixeldreamstudios.rpgsystems.party.FTBTeamsIntegration;
+import net.pixeldreamstudios.rpgsystems.party.FTBTeamsLoader;
 import net.pixeldreamstudios.rpgsystems.party.PartyDataProvider;
 
 import java.util.LinkedHashMap;
@@ -287,7 +286,7 @@ public final class PartyInfoBox implements PartyBox {
                 if (mouseX >= settingsPanelGearX && mouseX < settingsPanelGearX + SETTINGS_GEAR_SIZE &&
                         mouseY >= settingsPanelGearY && mouseY < settingsPanelGearY + SETTINGS_GEAR_SIZE) {
 
-                    if (FabricLoader.getInstance().isModLoaded("ftbteams") && FTBTeamsIntegration.isEnabled()) {
+                    if (FTBTeamsLoader.isEnabled()) {
                         openFTBTeamsPropertyConfig();
                     }
                     return true;

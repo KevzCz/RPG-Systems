@@ -1,6 +1,6 @@
 {
-  "name": "{gradient:#4bd3ff,#48baff}{wave:amp=1.0,speed=4.0}Explorer{/wave}{/gradient}",
-  "description": "Chart new paths across the land.",
+  "name_key": "title.rpgsystems.explorer",
+  "description_key": "title.rpgsystems.explorer.desc",
   "bonuses": [
     {
       "attribute": [
@@ -10,6 +10,6 @@
     }
   ],
   "conditions": [
-    { "type": "walk_blocks", "distance": 1500, "hint": "Walk 1,500 blocks." }
+    { "type": "walk_blocks", "distance": 1500, "hint_key": "title.rpgsystems.explorer.hint.1" }
   ]
 }

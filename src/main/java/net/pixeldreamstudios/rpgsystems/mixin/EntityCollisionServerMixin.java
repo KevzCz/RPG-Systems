@@ -1,11 +1,11 @@
 package net.pixeldreamstudios.rpgsystems.mixin;
 
-import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.entity.Entity;
 import net.minecraft.server.network.ServerPlayerEntity;
-import net.pixeldreamstudios.rpgsystems.party.FTBTeamsIntegration;
+import net.pixeldreamstudios.rpgsystems.party.FTBTeamsLoader;
 import net.pixeldreamstudios.rpgsystems.party.Party;
 import net.pixeldreamstudios.rpgsystems.party.PartyAllies;
+import net.pixeldreamstudios.rpgsystems.party.PartyDataProvider;
 import net.pixeldreamstudios.rpgsystems.party.PartyPersistentState;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -31,25 +31,25 @@ public abstract class EntityCollisionServerMixin {
 
         if (!PartyAllies.sameParty(server, ownerA, ownerB)) return false;
 
-        if (FabricLoader.getInstance().isModLoaded("ftbteams") && FTBTeamsIntegration.isEnabled()) {
+        if (FTBTeamsLoader.isEnabled()) {
 
             if (a instanceof ServerPlayerEntity pa) {
-                var ftbData = FTBTeamsIntegration.getPartyDataForPlayer(pa);
-                if (ftbData != null) {
-                    return ftbData.settings.ignorePartyCollision;
+                PartyDataProvider.PartyInfo info = PartyDataProvider.getPartyForPlayer(pa);
+                if (info != null && info.settings != null) {
+                    return info.settings.ignorePartyCollision;
                 }
             } else if (b instanceof ServerPlayerEntity pb) {
-                var ftbData = FTBTeamsIntegration.getPartyDataForPlayer(pb);
-                if (ftbData != null) {
-                    return ftbData.settings.ignorePartyCollision;
+                PartyDataProvider.PartyInfo info = PartyDataProvider.getPartyForPlayer(pb);
+                if (info != null && info.settings != null) {
+                    return info.settings.ignorePartyCollision;
                 }
             }
 
             ServerPlayerEntity owner = server.getPlayerManager().getPlayer(ownerA);
             if (owner != null) {
-                var ftbData = FTBTeamsIntegration.getPartyDataForPlayer(owner);
-                if (ftbData != null) {
-                    return ftbData.settings.ignorePartyCollision;
+                PartyDataProvider.PartyInfo info = PartyDataProvider.getPartyForPlayer(owner);
+                if (info != null && info.settings != null) {
+                    return info.settings.ignorePartyCollision;
                 }
             }
 

@@ -7,8 +7,14 @@
 Titles will have:
 ```
 {
+  // The display name. Either "name" (literal/markup) or "name_key" (translation key) is required.
   "name": "A required name",
+  // Optional: a translation key resolved from the lang files instead of "name".
+  // Takes priority over "name" when both are present. Lang values may contain name tokens.
+  "name_key": "title.namespace.my_title",
+  // An optional description; "description_key" is the translation-key equivalent (takes priority).
   "description": "An optional description",
+  "description_key": "title.namespace.my_title.desc",
   // Default is true, doesn't load the title if false (Optional)
   "enabled": false
   // Default is false, hides from the list if true (Optional)
@@ -108,6 +114,32 @@ Titles will have:
 | `entity`      | Flexible string spec             | `any` • `minecraft:*` • `modid:*` • `minecraft:zombie`               | Supports `any`, exact id, or **namespace-wide wildcard** (`namespace:*`). No partial name wildcards like `zomb*`.                 |
 | `nbt`         | Extra filter on the target’s NBT | `tag:Boss` • `CustomName:"Zombie King"` • `NoAI:1b` • `Health:20.0f` | Two modes: `tag:<CommandTag>` checks command tags; otherwise it does a **substring match** on full SNBT. Match is case-sensitive. |
 
+Every condition also accepts an optional `hint` (literal text shown for the condition) or `hint_key` (translation key, takes priority over `hint`).
+
+### Translation keys
+
+`name`, `description`, and each condition’s `hint` each have a `*_key` variant (`name_key`, `description_key`, `hint_key`) that resolves the text from the lang files instead of using the literal string. When both are present the `*_key` wins.
+
+```json
+// data/namespace/rpgsystems-title/adventurer.json
+{
+  "name_key": "title.namespace.adventurer",
+  "description_key": "title.namespace.adventurer.desc",
+  "conditions": [
+    { "type": "walk_blocks", "distance": 500, "hint_key": "title.namespace.adventurer.hint.1" }
+  ]
+}
+```
+```json
+// assets/namespace/lang/en_us.json
+{
+  "title.namespace.adventurer": "{gradient:#ff8c00,#ffd700}{wiggle:amp=1.0,speed=6.0}Adventurer{/wiggle}{/gradient}",
+  "title.namespace.adventurer.desc": "Travel far and best foes.",
+  "title.namespace.adventurer.hint.1": "Walk 500 blocks."
+}
+```
+
+Name tokens (`{gradient}`, `{wiggle}`, …) work inside the `name_key` lang value — the resolved string is parsed for tokens the same way a literal `name` is. `description_key`/`hint_key` values render as plain text (no token parsing).
 
 ### Title sprite
 - Depending on the title's id: ``` rpg-systems:free_the_end ``` = ```free the end```. 

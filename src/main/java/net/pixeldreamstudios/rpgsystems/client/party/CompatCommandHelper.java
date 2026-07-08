@@ -2,13 +2,12 @@ package net.pixeldreamstudios.rpgsystems.client.party;
 
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
-import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.AbstractClientPlayerEntity;
 import net.minecraft.text.Text;
 import net.partyaddon.network.PartyAddonClientPacket;
-import net.pixeldreamstudios.rpgsystems.party.FTBTeamsIntegration;
-import net.pixeldreamstudios.rpgsystems.party.PartyAddonIntegration;
+import net.pixeldreamstudios.rpgsystems.party.FTBTeamsLoader;
+import net.pixeldreamstudios.rpgsystems.party.PartyAddonLoader;
 import net.pixeldreamstudios.rpgsystems.party.PartyDataProvider;
 
 import java.net.URLEncoder;
@@ -22,8 +21,7 @@ public final class CompatCommandHelper {
      * Checks if FTBTeams is the active party source
      */
     public static boolean isFTBTeamsActive() {
-        return FabricLoader.getInstance().isModLoaded("ftbteams") 
-                && FTBTeamsIntegration.isEnabled()
+        return FTBTeamsLoader.isEnabled()
                 && ClientPartyHudData.getCurrentSource() == PartyDataProvider.PartySource.FTB_TEAMS;
     }
 
@@ -31,8 +29,7 @@ public final class CompatCommandHelper {
      * Checks if PartyAddon is the active party source
      */
     public static boolean isPartyAddonActive() {
-        return FabricLoader.getInstance().isModLoaded("partyaddon") 
-                && PartyAddonIntegration.isEnabled()
+        return PartyAddonLoader.isEnabled()
                 && ClientPartyHudData.getCurrentSource() == PartyDataProvider.PartySource.PARTY_ADDON;
     }
 
@@ -140,9 +137,9 @@ public final class CompatCommandHelper {
      * Opens the party creation/management screen for the appropriate mod
      */
     public static void openPartyScreen() {
-        if (isPartyAddonActive() || (FabricLoader.getInstance().isModLoaded("partyaddon") && PartyAddonIntegration.isEnabled())) {
+        if (isPartyAddonActive() || PartyAddonLoader.isEnabled()) {
             sendPartyAddonOpenScreenPacket();
-        } else if (isFTBTeamsActive() || (FabricLoader.getInstance().isModLoaded("ftbteams") && FTBTeamsIntegration.isEnabled())) {
+        } else if (isFTBTeamsActive() || FTBTeamsLoader.isEnabled()) {
             MinecraftClient mc = MinecraftClient.getInstance();
             if (mc != null && mc.getNetworkHandler() != null) {
                 mc.getNetworkHandler().sendChatCommand("ftbteams party create");

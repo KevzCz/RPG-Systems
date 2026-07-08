@@ -1,6 +1,6 @@
 {
-  "name": "{gradient:#bfbfbf,#8e8e8e}{bounce:amp=0.8,speed=3.5}Miner{/bounce}{/gradient}",
-  "description": "Put pick to stone until the tunnels sing.",
+  "name_key": "title.rpgsystems.miner",
+  "description_key": "title.rpgsystems.miner.desc",
   "bonuses": [
     {
       "attribute": [
@@ -9,6 +9,6 @@
     }
   ],
   "conditions": [
-    { "type": "mine_blocks", "block": "minecraft:stone", "count": 256, "hint": "Mine 256 Stone." }
+    { "type": "mine_blocks", "block": "minecraft:stone", "count": 256, "hint_key": "title.rpgsystems.miner.hint.1" }
   ]
 }

@@ -14,14 +14,18 @@ import java.util.Optional;
 
 public record TitleData(
         Optional<String> name,
+        Optional<String> nameKey,
         Optional<String> description,
+        Optional<String> descriptionKey,
         List<Condition> conditions,
         List<Bonus> bonuses,
         List<Bonus> permaBonuses
 ) {
     public static final Codec<TitleData> CODEC = RecordCodecBuilder.create(i -> i.group(
             Codec.STRING.optionalFieldOf("name").forGetter(TitleData::name),
+            Codec.STRING.optionalFieldOf("name_key").forGetter(TitleData::nameKey),
             Codec.STRING.optionalFieldOf("description").forGetter(TitleData::description),
+            Codec.STRING.optionalFieldOf("description_key").forGetter(TitleData::descriptionKey),
             Codec.list(Condition.CODEC).optionalFieldOf("conditions", List.of()).forGetter(TitleData::conditions),
             Codec.list(Bonus.CODEC).optionalFieldOf("bonuses", List.of()).forGetter(TitleData::bonuses),
             Codec.list(Bonus.CODEC).optionalFieldOf("perma_bonuses", List.of()).forGetter(TitleData::permaBonuses)
@@ -147,6 +151,7 @@ public record TitleData(
             Optional<Long> distance,
             Optional<Integer> count,
             Optional<String> hint,
+            Optional<String> hintKey,
             Optional<Boolean> hidden,
             Optional<String> entity,
             Optional<String> nbt,
@@ -159,6 +164,12 @@ public record TitleData(
             Optional<Double> min,
             Optional<Identifier> entityTag
     ) {
+        private static final MapCodec<Pair<Optional<String>, Optional<String>>> HINT_AND_KEY =
+                RecordCodecBuilder.mapCodec(inst -> inst.group(
+                        Codec.STRING.optionalFieldOf("hint").forGetter(Pair::getFirst),
+                        Codec.STRING.optionalFieldOf("hint_key").forGetter(Pair::getSecond)
+                ).apply(inst, Pair::of));
+
         private static final MapCodec<Pair<Optional<String>, Optional<String>>> ENTITY_AND_NBT =
                 RecordCodecBuilder.mapCodec(inst -> inst.group(
                         Codec.STRING.optionalFieldOf("entity").forGetter(Pair::getFirst),
@@ -177,7 +188,7 @@ public record TitleData(
                 Identifier.CODEC.optionalFieldOf("advancement").forGetter(Condition::advancement),
                 Codec.LONG.optionalFieldOf("distance").forGetter(Condition::distance),
                 Codec.INT.optionalFieldOf("count").forGetter(Condition::count),
-                Codec.STRING.optionalFieldOf("hint").forGetter(Condition::hint),
+                HINT_AND_KEY.forGetter(c -> Pair.of(c.hint(), c.hintKey())),
                 Codec.BOOL.optionalFieldOf("hidden").forGetter(Condition::hidden),
                 ENTITY_AND_NBT.forGetter(c -> Pair.of(c.entity(), c.nbt())),
                 Codec.INT.optionalFieldOf("level").forGetter(Condition::level),
@@ -194,7 +205,7 @@ public record TitleData(
                  Optional<Identifier> advancement,
                  Optional<Long> distance,
                  Optional<Integer> count,
-                 Optional<String> hint,
+                 Pair<Optional<String>, Optional<String>> hintPair,
                  Optional<Boolean> hidden,
                  Pair<Optional<String>, Optional<String>> enNbt,
                  Optional<Integer> level,
@@ -212,7 +223,8 @@ public record TitleData(
                                 advancement,
                                 distance,
                                 count,
-                                hint,
+                                hintPair.getFirst(),
+                                hintPair.getSecond(),
                                 hidden,
                                 enNbt.getFirst(),
                                 enNbt.getSecond(),

@@ -1,7 +1,7 @@
 {
   "hidden": true,
-  "name": "{color:#ff4444}{shake:1.4}Destroyer{/shake}{/color}",
-  "description": "One swing. No mercy.",
+  "name_key": "title.rpgsystems.destroyer",
+  "description_key": "title.rpgsystems.destroyer.desc",
   "bonuses": [
     {
       "attribute": [

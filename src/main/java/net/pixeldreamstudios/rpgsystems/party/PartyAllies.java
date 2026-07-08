@@ -1,6 +1,5 @@
 package net.pixeldreamstudios.rpgsystems.party;
 
-import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.entity.AreaEffectCloudEntity;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.LightningEntity;
@@ -13,10 +12,14 @@ import net.minecraft.entity.projectile.ProjectileEntity;
 import net.minecraft.entity.damage.DamageSource;
 import net.minecraft.server.MinecraftServer;
 
+import java.util.HashSet;
+import java.util.Set;
 import java.util.UUID;
 
 public final class PartyAllies {
     private PartyAllies() {}
+
+    private static final int MAX_OWNER_DEPTH = 16;
 
     public static boolean sameParty(MinecraftServer server, UUID a, UUID b) {
         if (a == null || b == null) return false;
@@ -24,19 +27,19 @@ public final class PartyAllies {
         if (a.equals(b)) return true;
 
         // Check FTBTeams - if both players are in the same FTB party
-        if (FabricLoader.getInstance().isModLoaded("ftbteams") && FTBTeamsIntegration.isEnabled()) {
-            var pa = FTBTeamsIntegration.getPartyDataForPlayerId(server, a);
-            var pb = FTBTeamsIntegration.getPartyDataForPlayerId(server, b);
-            if (pa != null && pb != null && pa.partyId.equals(pb.partyId)) {
+        if (FTBTeamsLoader.isEnabled()) {
+            PartyDataProvider.PartyInfo pa = FTBTeamsIntegration.getPartyInfoForPlayerId(server, a);
+            PartyDataProvider.PartyInfo pb = FTBTeamsIntegration.getPartyInfoForPlayerId(server, b);
+            if (pa != null && pb != null && pa.id.equals(pb.id)) {
                 return true;
             }
         }
 
         // Check PartyAddon - if both players are in the same PartyAddon group
-        if (FabricLoader.getInstance().isModLoaded("partyaddon") && PartyAddonIntegration.isEnabled()) {
-            var pa = PartyAddonIntegration.getPartyDataForPlayerId(server, a);
-            var pb = PartyAddonIntegration.getPartyDataForPlayerId(server, b);
-            if (pa != null && pb != null && pa.partyId.equals(pb.partyId)) {
+        if (PartyAddonLoader.isEnabled()) {
+            PartyDataProvider.PartyInfo pa = PartyAddonIntegration.getPartyInfoForPlayerId(server, a);
+            PartyDataProvider.PartyInfo pb = PartyAddonIntegration.getPartyInfoForPlayerId(server, b);
+            if (pa != null && pb != null && pa.id.equals(pb.id)) {
                 return true;
             }
         }
@@ -49,15 +52,21 @@ public final class PartyAllies {
     }
 
     public static UUID owningPlayerUuid(Entity e) {
+        return owningPlayerUuid(e, new HashSet<>(), 0);
+    }
+
+    private static UUID owningPlayerUuid(Entity e, Set<Entity> visited, int depth) {
         if (e == null) return null;
+        if (depth >= MAX_OWNER_DEPTH) return null;
+        if (!visited.add(e)) return null;
 
         if (e instanceof PlayerEntity p) return p.getUuid();
 
-        if (e instanceof ProjectileEntity proj) return owningPlayerUuid(proj.getOwner());
-        if (e instanceof AreaEffectCloudEntity cloud) return owningPlayerUuid(cloud.getOwner());
+        if (e instanceof ProjectileEntity proj) return owningPlayerUuid(proj.getOwner(), visited, depth + 1);
+        if (e instanceof AreaEffectCloudEntity cloud) return owningPlayerUuid(cloud.getOwner(), visited, depth + 1);
 
         if (e instanceof LightningEntity lightning) {
-            return owningPlayerUuid(lightning.getChanneler());
+            return owningPlayerUuid(lightning.getChanneler(), visited, depth + 1);
         }
 
         if (e instanceof Ownable ownable) {

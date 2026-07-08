@@ -1,6 +1,6 @@
 {
-  "name": "{color:#dda0dd}{wiggle:amp=0.8,speed=5.5}Scholar{/wiggle}{/color}",
-  "description": "Knowledge is power.",
+  "name_key": "title.rpgsystems.scholar",
+  "description_key": "title.rpgsystems.scholar.desc",
   "bonuses": [
     {
       "attribute": [
@@ -10,6 +10,6 @@
     }
   ],
   "conditions": [
-    { "type": "reach_level_xp", "level": 20, "hint": "Reach player level 20." }
+    { "type": "reach_level_xp", "level": 20, "hint_key": "title.rpgsystems.scholar.hint.1" }
   ]
 }

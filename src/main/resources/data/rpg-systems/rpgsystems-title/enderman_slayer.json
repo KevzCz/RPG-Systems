@@ -1,7 +1,7 @@
 {
   "hidden": true,
-  "name": "{color:#b19cd9}{shake:1.0}Enderman Slayer{/shake}{/color}",
-  "description": "You stare back into the abyss.",
+  "name_key": "title.rpgsystems.enderman_slayer",
+  "description_key": "title.rpgsystems.enderman_slayer.desc",
   "bonuses": [
     {
       "damage_bonus": [

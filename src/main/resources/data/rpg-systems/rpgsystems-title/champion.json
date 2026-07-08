@@ -1,6 +1,6 @@
 {
-  "name": "{color:#ff4444}{pulse:1.25}Champion{/pulse}{/color}",
-  "description": "Prove your strength in steel and spirit.",
+  "name_key": "title.rpgsystems.champion",
+  "description_key": "title.rpgsystems.champion.desc",
   "bonuses": [
     {
       "attribute": [
@@ -10,8 +10,8 @@
     }
   ],
   "conditions": [
-    { "type": "kill_mobs", "entity": "any", "count": 100, "hint": "Defeat 100 mobs." },
-    { "type": "reach_level_xp", "level": 30, "hint": "Reach player level 30." },
-    { "type": "craft_item", "item": "minecraft:diamond_chestplate", "count": 1, "hint": "Craft a Diamond Chestplate." }
+    { "type": "kill_mobs", "entity": "any", "count": 100, "hint_key": "title.rpgsystems.champion.hint.1" },
+    { "type": "reach_level_xp", "level": 30, "hint_key": "title.rpgsystems.champion.hint.2" },
+    { "type": "craft_item", "item": "minecraft:diamond_chestplate", "count": 1, "hint_key": "title.rpgsystems.champion.hint.3" }
   ]
 }

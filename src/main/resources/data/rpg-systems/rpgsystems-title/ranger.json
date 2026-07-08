@@ -1,6 +1,6 @@
 {
-  "name": "{gradient:#00ffbf,#00ffaa}{wave:amp=0.9,speed=3.6}Ranger{/wave}{/gradient}",
-  "description": "Swift feet and surer shots.",
+  "name_key": "title.rpgsystems.ranger",
+  "description_key": "title.rpgsystems.ranger.desc",
   "bonuses": [
     {
       "attribute": [
@@ -10,9 +10,9 @@
     }
   ],
   "conditions": [
-    { "type": "walk_blocks", "distance": 3000, "hint": "Walk 3,000 blocks." },
-    { "type": "visit_biome", "biome": "minecraft:taiga", "hint": "Visit a Taiga biome." },
-    { "type": "kill_mobs", "entity_type": "minecraft:skeleton", "count": 25, "hint": "Defeat 25 Skeletons." },
-    { "type": "craft_item", "item": "minecraft:bow", "count": 1, "hint": "Craft a Bow." }
+    { "type": "walk_blocks", "distance": 3000, "hint_key": "title.rpgsystems.ranger.hint.1" },
+    { "type": "visit_biome", "biome": "minecraft:taiga", "hint_key": "title.rpgsystems.ranger.hint.2" },
+    { "type": "kill_mobs", "entity_type": "minecraft:skeleton", "count": 25, "hint_key": "title.rpgsystems.ranger.hint.3" },
+    { "type": "craft_item", "item": "minecraft:bow", "count": 1, "hint_key": "title.rpgsystems.ranger.hint.4" }
   ]
 }

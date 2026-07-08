@@ -1,7 +1,7 @@
 {
   "hidden": true,
-  "name": "{color:#e6e6fa}{shake:1.0}Skeleton Slayer{/shake}{/color}",
-  "description": "Bones break the same as anything else.",
+  "name_key": "title.rpgsystems.skeleton_slayer",
+  "description_key": "title.rpgsystems.skeleton_slayer.desc",
   "bonuses": [
     {
       "damage_bonus": [

@@ -17,23 +17,21 @@ public final class PartyDataProvider {
     public static List<PartySource> getAvailableSourcesForPlayer(ServerPlayerEntity player) {
         List<PartySource> available = new ArrayList<>();
         boolean hasExternalMod = false;
-        
+
         if (FTBTeamsLoader.isEnabled()) {
             hasExternalMod = true;
-            FTBTeamsIntegration.FTBPartyData ftbData = FTBTeamsIntegration.getPartyDataForPlayer(player);
-            if (ftbData != null) {
+            if (FTBTeamsIntegration.getPartyInfoForPlayer(player) != null) {
                 available.add(PartySource.FTB_TEAMS);
             }
         }
-        
-        if (PartyAddonIntegration.isEnabled()) {
+
+        if (PartyAddonLoader.isEnabled()) {
             hasExternalMod = true;
-            PartyAddonIntegration.PartyAddonData partyData = PartyAddonIntegration.getPartyDataForPlayer(player);
-            if (partyData != null) {
+            if (PartyAddonIntegration.getPartyInfoForPlayer(player) != null) {
                 available.add(PartySource.PARTY_ADDON);
             }
         }
-        
+
         if (!hasExternalMod) {
             PartyPersistentState state = PartyPersistentState.get(player.getServer());
             Party party = state.getPartyByMember(player.getUuid());
@@ -76,29 +74,11 @@ public final class PartyDataProvider {
         return switch (source) {
             case FTB_TEAMS -> {
                 if (!FTBTeamsLoader.isEnabled()) yield null;
-                FTBTeamsIntegration.FTBPartyData ftbData = FTBTeamsIntegration.getPartyDataForPlayer(player);
-                if (ftbData == null) yield null;
-                yield new PartyInfo(
-                        ftbData.partyId,
-                        ftbData.partyName,
-                        ftbData.leaderUuid,
-                        ftbData.members,
-                        ftbData.settings,
-                        PartySource.FTB_TEAMS
-                );
+                yield FTBTeamsIntegration.getPartyInfoForPlayer(player);
             }
             case PARTY_ADDON -> {
-                if (!PartyAddonIntegration.isEnabled()) yield null;
-                PartyAddonIntegration.PartyAddonData partyData = PartyAddonIntegration.getPartyDataForPlayer(player);
-                if (partyData == null) yield null;
-                yield new PartyInfo(
-                        partyData.partyId,
-                        partyData.partyName,
-                        partyData.leaderUuid,
-                        partyData.members,
-                        partyData.settings,
-                        PartySource.PARTY_ADDON
-                );
+                if (!PartyAddonLoader.isEnabled()) yield null;
+                yield PartyAddonIntegration.getPartyInfoForPlayer(player);
             }
             case NATIVE -> {
                 PartyPersistentState state = PartyPersistentState.get(player.getServer());
@@ -133,30 +113,16 @@ public final class PartyDataProvider {
         // Player is offline - use cascade logic without preferences
         // First check FTBTeams
         if (FTBTeamsLoader.isEnabled()) {
-            FTBTeamsIntegration.FTBPartyData ftbData = FTBTeamsIntegration.getPartyDataForPlayerId(server, playerId);
-            if (ftbData != null) {
-                return new PartyInfo(
-                        ftbData.partyId,
-                        ftbData.partyName,
-                        ftbData.leaderUuid,
-                        ftbData.members,
-                        ftbData.settings,
-                        PartySource.FTB_TEAMS
-                );
+            PartyInfo ftbInfo = FTBTeamsIntegration.getPartyInfoForPlayerId(server, playerId);
+            if (ftbInfo != null) {
+                return ftbInfo;
             }
         }
 
-        if (PartyAddonIntegration.isEnabled()) {
-            PartyAddonIntegration.PartyAddonData partyData = PartyAddonIntegration.getPartyDataForPlayerId(server, playerId);
-            if (partyData != null) {
-                return new PartyInfo(
-                        partyData.partyId,
-                        partyData.partyName,
-                        partyData.leaderUuid,
-                        partyData.members,
-                        partyData.settings,
-                        PartySource.PARTY_ADDON
-                );
+        if (PartyAddonLoader.isEnabled()) {
+            PartyInfo addonInfo = PartyAddonIntegration.getPartyInfoForPlayerId(server, playerId);
+            if (addonInfo != null) {
+                return addonInfo;
             }
             // Player not in PartyAddon group, continue checking native
         }
@@ -185,7 +151,7 @@ public final class PartyDataProvider {
         }
 
         // Check PartyAddon - if both players are in the same group
-        if (PartyAddonIntegration.isEnabled()) {
+        if (PartyAddonLoader.isEnabled()) {
             if (PartyAddonIntegration.isInSameParty(player1, player2)) {
                 return true;
             }
@@ -208,17 +174,17 @@ public final class PartyDataProvider {
     public static UUID getPartyIdForPlayerId(MinecraftServer server, UUID playerId) {
         // Check FTBTeams first
         if (FTBTeamsLoader.isEnabled()) {
-            FTBTeamsIntegration.FTBPartyData ftbData = FTBTeamsIntegration.getPartyDataForPlayerId(server, playerId);
-            if (ftbData != null) {
-                return ftbData.partyId;
+            PartyInfo ftbInfo = FTBTeamsIntegration.getPartyInfoForPlayerId(server, playerId);
+            if (ftbInfo != null) {
+                return ftbInfo.id;
             }
         }
 
         // Check PartyAddon
-        if (PartyAddonIntegration.isEnabled()) {
-            PartyAddonIntegration.PartyAddonData partyData = PartyAddonIntegration.getPartyDataForPlayerId(server, playerId);
-            if (partyData != null) {
-                return partyData.partyId;
+        if (PartyAddonLoader.isEnabled()) {
+            PartyInfo addonInfo = PartyAddonIntegration.getPartyInfoForPlayerId(server, playerId);
+            if (addonInfo != null) {
+                return addonInfo.id;
             }
         }
 
@@ -237,7 +203,7 @@ public final class PartyDataProvider {
         }
 
         // Try PartyAddon
-        if (PartyAddonIntegration.isEnabled()) {
+        if (PartyAddonLoader.isEnabled()) {
             List<UUID> members = PartyAddonIntegration.getPartyMembers(server, partyId);
             if (!members.isEmpty()) {
                 return members;
@@ -255,7 +221,7 @@ public final class PartyDataProvider {
     @Nullable
     public static Party getPartyById(MinecraftServer server, UUID partyId) {
         // External mods don't use native Party objects
-        if (FTBTeamsLoader.isEnabled() || PartyAddonIntegration.isEnabled()) {
+        if (FTBTeamsLoader.isEnabled() || PartyAddonLoader.isEnabled()) {
             // Check if this partyId belongs to an external mod - if so, return null
             // since we can't convert their data to a native Party object
         }
@@ -276,7 +242,7 @@ public final class PartyDataProvider {
         }
 
         // Check PartyAddon
-        if (PartyAddonIntegration.isEnabled()) {
+        if (PartyAddonLoader.isEnabled()) {
             UUID playerPartyId = PartyAddonIntegration.getPartyIdForPlayer(player);
             if (partyId.equals(playerPartyId)) {
                 return true;

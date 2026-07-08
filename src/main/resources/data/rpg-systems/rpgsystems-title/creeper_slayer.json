@@ -1,7 +1,7 @@
 {
   "hidden": true,
-  "name": "{gradient:#2ecc71,#1abc9c}{wiggle:amp=1.0,speed=7.0}Creeper Slayer{/wiggle}{/gradient}",
-  "description": "Hiss no more.",
+  "name_key": "title.rpgsystems.creeper_slayer",
+  "description_key": "title.rpgsystems.creeper_slayer.desc",
   "bonuses": [
     {
       "damage_bonus": [

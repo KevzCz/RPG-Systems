@@ -1,6 +1,6 @@
 {
-  "name": "{gradient:#7b68ee,#00e5ff}{wiggle:amp=0.7,speed=5.5}Arcane Adept{/wiggle}{/gradient}",
-  "description": "Tools, tomes, and tempered minds.",
+  "name_key": "title.rpgsystems.arcane_adept",
+  "description_key": "title.rpgsystems.arcane_adept.desc",
   "bonuses": [
     {
       "attribute": [
@@ -12,8 +12,8 @@
     }
   ],
   "conditions": [
-    { "type": "reach_level_xp", "level": 25, "hint": "Reach player level 25." },
-    { "type": "obtain_item", "item": "minecraft:enchanting_table", "count": 1, "hint": "Obtain an Enchanting Table." },
-    { "type": "advancement", "advancement": "minecraft:story/enchant_item", "hint": "Get the “Enchanter” advancement." }
+    { "type": "reach_level_xp", "level": 25, "hint_key": "title.rpgsystems.arcane_adept.hint.1" },
+    { "type": "obtain_item", "item": "minecraft:enchanting_table", "count": 1, "hint_key": "title.rpgsystems.arcane_adept.hint.2" },
+    { "type": "advancement", "advancement": "minecraft:story/enchant_item", "hint_key": "title.rpgsystems.arcane_adept.hint.3" }
   ]
 }

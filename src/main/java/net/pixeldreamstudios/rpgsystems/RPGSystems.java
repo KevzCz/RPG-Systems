@@ -10,8 +10,6 @@ import net.minecraft.server.command.ServerCommandSource;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
-import net.partyaddon.access.GroupManagerAccess;
-import net.partyaddon.group.GroupManager;
 import net.pixeldreamstudios.rpgsystems.compat.CriticalStrikeCompat;
 import net.pixeldreamstudios.rpgsystems.compat.KevsLibraryCritCompat;
 import net.pixeldreamstudios.rpgsystems.compat.showbuild.ShowBuildCompatNetServer;
@@ -27,7 +25,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.List;
-import java.util.UUID;
 
 import static net.minecraft.server.command.CommandManager.literal;
 
@@ -109,41 +106,23 @@ public class RPGSystems implements ModInitializer {
 		player.sendMessage(Text.literal("  FTBTeams loaded: " + FabricLoader.getInstance().isModLoaded("ftbteams")).formatted(Formatting.GRAY));
 		player.sendMessage(Text.literal("  FTBTeams enabled: " + FTBTeamsLoader.isEnabled()).formatted(Formatting.GRAY));
 		player.sendMessage(Text.literal("  PartyAddon loaded: " + FabricLoader.getInstance().isModLoaded("partyaddon")).formatted(Formatting.GRAY));
-		player.sendMessage(Text.literal("  PartyAddon enabled: " + PartyAddonIntegration.isEnabled()).formatted(Formatting.GRAY));
+		player.sendMessage(Text.literal("  PartyAddon enabled: " + PartyAddonLoader.isEnabled()).formatted(Formatting.GRAY));
 
 		if (FTBTeamsLoader.isEnabled()) {
 			player.sendMessage(Text.literal("FTB Teams Data:").formatted(Formatting.YELLOW));
-			FTBTeamsIntegration.FTBPartyData ftbData = FTBTeamsIntegration.getPartyDataForPlayer(player);
+			PartyDataProvider.PartyInfo ftbData = FTBTeamsIntegration.getPartyInfoForPlayer(player);
 			if (ftbData != null) {
-				player.sendMessage(Text.literal("  Party: " + ftbData.partyName).formatted(Formatting.GREEN));
+				player.sendMessage(Text.literal("  Party: " + ftbData.name).formatted(Formatting.GREEN));
 				player.sendMessage(Text.literal("  Members: " + ftbData.members.size()).formatted(Formatting.GRAY));
 			} else {
 				player.sendMessage(Text.literal("  Not in FTB team").formatted(Formatting.RED));
 			}
 		}
 
-		if (FabricLoader.getInstance().isModLoaded("partyaddon")) {
+		if (PartyAddonLoader.isEnabled()) {
 			player.sendMessage(Text.literal("PartyAddon Data:").formatted(Formatting.YELLOW));
-			try {
-				GroupManager gm = ((GroupManagerAccess) player).getGroupManager();
-				UUID leaderId = gm.getGroupLeaderId();
-				List<UUID> members = gm.getGroupPlayerIdList();
-
-				player.sendMessage(Text.literal("  GroupManager: " + (gm != null ? "exists" : "NULL")).formatted(Formatting.GRAY));
-				player.sendMessage(Text.literal("  leaderId: " + leaderId).formatted(leaderId != null ? Formatting.GREEN : Formatting.RED));
-				player.sendMessage(Text.literal("  memberList: " + (members != null ? members.toString() : "NULL")).formatted(Formatting.GRAY));
-				player.sendMessage(Text.literal("  memberCount: " + (members != null ? members.size() : 0)).formatted(Formatting.GRAY));
-
-				if (PartyAddonIntegration.isEnabled()) {
-					PartyAddonIntegration.PartyAddonData paData = PartyAddonIntegration.getPartyDataForPlayer(player);
-					if (paData != null) {
-						player.sendMessage(Text.literal("  RPGSystems sees party: YES").formatted(Formatting.GREEN));
-					} else {
-						player.sendMessage(Text.literal("  RPGSystems sees party: NO").formatted(Formatting.RED));
-					}
-				}
-			} catch (Exception e) {
-				player.sendMessage(Text.literal("  Error: " + e.getMessage()).formatted(Formatting.RED));
+			for (Text line : PartyAddonIntegration.debugLines(player)) {
+				player.sendMessage(line);
 			}
 		}
 

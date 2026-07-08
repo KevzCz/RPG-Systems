@@ -4,6 +4,8 @@ import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.text.Text;
+import net.minecraft.util.Formatting;
 import net.partyaddon.access.GroupManagerAccess;
 import net.partyaddon.group.GroupManager;
 import net.pixeldreamstudios.rpgsystems.RPGSystems;
@@ -61,6 +63,45 @@ public final class PartyAddonIntegration {
         } catch (Exception e) {
             RPGSystems.LOGGER.error("[PartyAddon Integration] Error during sync callback for {}", player.getName().getString(), e);
         }
+    }
+
+    @Nullable
+    public static PartyDataProvider.PartyInfo getPartyInfoForPlayer(ServerPlayerEntity player) {
+        PartyAddonData data = getPartyDataForPlayer(player);
+        if (data == null) return null;
+        return new PartyDataProvider.PartyInfo(
+                data.partyId, data.partyName, data.leaderUuid,
+                data.members, data.settings, PartyDataProvider.PartySource.PARTY_ADDON);
+    }
+
+    @Nullable
+    public static PartyDataProvider.PartyInfo getPartyInfoForPlayerId(MinecraftServer server, UUID playerId) {
+        PartyAddonData data = getPartyDataForPlayerId(server, playerId);
+        if (data == null) return null;
+        return new PartyDataProvider.PartyInfo(
+                data.partyId, data.partyName, data.leaderUuid,
+                data.members, data.settings, PartyDataProvider.PartySource.PARTY_ADDON);
+    }
+
+    public static List<Text> debugLines(ServerPlayerEntity player) {
+        List<Text> lines = new ArrayList<>();
+        try {
+            GroupManager gm = ((GroupManagerAccess) player).getGroupManager();
+            UUID leaderId = gm.getGroupLeaderId();
+            List<UUID> members = gm.getGroupPlayerIdList();
+
+            lines.add(Text.literal("  GroupManager: exists").formatted(Formatting.GRAY));
+            lines.add(Text.literal("  leaderId: " + leaderId).formatted(leaderId != null ? Formatting.GREEN : Formatting.RED));
+            lines.add(Text.literal("  memberList: " + (members != null ? members.toString() : "NULL")).formatted(Formatting.GRAY));
+            lines.add(Text.literal("  memberCount: " + (members != null ? members.size() : 0)).formatted(Formatting.GRAY));
+
+            PartyAddonData paData = getPartyDataForPlayer(player);
+            lines.add(Text.literal("  RPGSystems sees party: " + (paData != null ? "YES" : "NO"))
+                    .formatted(paData != null ? Formatting.GREEN : Formatting.RED));
+        } catch (Exception e) {
+            lines.add(Text.literal("  Error: " + e.getMessage()).formatted(Formatting.RED));
+        }
+        return lines;
     }
 
     @Nullable

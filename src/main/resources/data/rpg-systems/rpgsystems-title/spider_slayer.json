@@ -1,7 +1,7 @@
 {
   "hidden": true,
-  "name": "{color:#ff69b4}{pulse:1.2}Spider Slayer{/pulse}{/color}",
-  "description": "No more eight-legged ambushes.",
+  "name_key": "title.rpgsystems.spider_slayer",
+  "description_key": "title.rpgsystems.spider_slayer.desc",
   "bonuses": [
     {
       "damage_bonus": [

@@ -1,7 +1,7 @@
 {
   "hidden": true,
-  "name": "{gradient:#c86dd7,#9a5cff}{wiggle:amp=1.0,speed=6.5}Witch Hunter{/wiggle}{/gradient}",
-  "description": "Brews won’t save them.",
+  "name_key": "title.rpgsystems.witch_hunter",
+  "description_key": "title.rpgsystems.witch_hunter.desc",
   "bonuses": [
     {
       "damage_bonus": [

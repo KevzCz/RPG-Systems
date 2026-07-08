@@ -38,6 +38,24 @@ public final class FTBTeamsIntegration {
     }
 
     @Nullable
+    public static PartyDataProvider.PartyInfo getPartyInfoForPlayer(ServerPlayerEntity player) {
+        FTBPartyData data = getPartyDataForPlayer(player);
+        if (data == null) return null;
+        return new PartyDataProvider.PartyInfo(
+                data.partyId, data.partyName, data.leaderUuid,
+                data.members, data.settings, PartyDataProvider.PartySource.FTB_TEAMS);
+    }
+
+    @Nullable
+    public static PartyDataProvider.PartyInfo getPartyInfoForPlayerId(MinecraftServer server, UUID playerId) {
+        FTBPartyData data = getPartyDataForPlayerId(server, playerId);
+        if (data == null) return null;
+        return new PartyDataProvider.PartyInfo(
+                data.partyId, data.partyName, data.leaderUuid,
+                data.members, data.settings, PartyDataProvider.PartySource.FTB_TEAMS);
+    }
+
+    @Nullable
     public static FTBPartyData getPartyDataForPlayer(ServerPlayerEntity player) {
         if (!isEnabled()) return null;
 

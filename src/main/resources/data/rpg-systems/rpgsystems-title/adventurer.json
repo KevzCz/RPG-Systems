@@ -1,6 +1,6 @@
 {
-  "name": "{gradient:#ff8c00,#ffd700}{wiggle:amp=1.0,speed=6.0}Adventurer{/wiggle}{/gradient}",
-  "description": "Travel far and best foes.",
+  "name_key": "title.rpgsystems.adventurer",
+  "description_key": "title.rpgsystems.adventurer.desc",
   "bonuses": [
     {
       "attribute": [
@@ -10,11 +10,11 @@
     }
   ],
   "conditions": [
-    { "type": "walk_blocks", "distance": 500, "hint": "Walk 500 blocks." },
-    { "type": "kill_mobs", "entity_type": "minecraft:skeleton", "count": 5, "hint": "Defeat 5 Skeletons." },
-    { "type": "kill_mobs", "entity_type": "minecraft:zombie", "count": 5, "hint": "Defeat 5 Zombies." },
-    { "type": "kill_mobs", "entity_type": "minecraft:creeper", "count": 5, "hint": "Defeat 5 Creepers." },
-    { "type": "kill_mobs", "entity_type": "minecraft:spider", "count": 5, "hint": "Defeat 5 Spiders." },
-    { "type": "kill_mobs", "entity_type": "minecraft:ender_dragon", "count": 5, "hint": "Defeat 5 Spiders." }
+    { "type": "walk_blocks", "distance": 500, "hint_key": "title.rpgsystems.adventurer.hint.1" },
+    { "type": "kill_mobs", "entity_type": "minecraft:skeleton", "count": 5, "hint_key": "title.rpgsystems.adventurer.hint.2" },
+    { "type": "kill_mobs", "entity_type": "minecraft:zombie", "count": 5, "hint_key": "title.rpgsystems.adventurer.hint.3" },
+    { "type": "kill_mobs", "entity_type": "minecraft:creeper", "count": 5, "hint_key": "title.rpgsystems.adventurer.hint.4" },
+    { "type": "kill_mobs", "entity_type": "minecraft:spider", "count": 5, "hint_key": "title.rpgsystems.adventurer.hint.5" },
+    { "type": "kill_mobs", "entity_type": "minecraft:ender_dragon", "count": 5, "hint_key": "title.rpgsystems.adventurer.hint.6" }
   ]
 }

@@ -1,6 +1,6 @@
 {
-  "name": "{color:#87ceeb}{bounce:amp=1.0,speed=4.0}Defender{/bounce}{/color}",
-  "description": "Stand your ground when the bells toll.",
+  "name_key": "title.rpgsystems.defender",
+  "description_key": "title.rpgsystems.defender.desc",
   "bonuses": [
     {
       "attribute": [
@@ -10,6 +10,6 @@
     }
   ],
   "conditions": [
-    { "type": "advancement", "advancement": "minecraft:adventure/hero_of_the_village", "hint": "Earn Hero of the Village." }
+    { "type": "advancement", "advancement": "minecraft:adventure/hero_of_the_village", "hint_key": "title.rpgsystems.defender.hint.1" }
   ]
 }

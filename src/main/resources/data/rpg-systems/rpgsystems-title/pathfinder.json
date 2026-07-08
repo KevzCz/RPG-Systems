@@ -1,6 +1,6 @@
 {
-  "name": "{gradient:#00b3ff,#00ffaa}{pulse:1.1}Pathfinder{/pulse}{/gradient}",
-  "description": "Blaze trails across the world.",
+  "name_key": "title.rpgsystems.pathfinder",
+  "description_key": "title.rpgsystems.pathfinder.desc",
   "bonuses": [
     {
       "attribute": [
@@ -9,6 +9,6 @@
     }
   ],
   "conditions": [
-    { "type": "walk_blocks", "distance": 1000, "hint": "Walk 1,000 blocks." }
+    { "type": "walk_blocks", "distance": 1000, "hint_key": "title.rpgsystems.pathfinder.hint.1" }
   ]
 }
