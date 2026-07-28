@@ -155,7 +155,8 @@ tasks.matching { it.name.startsWith("modrinth") }.configureEach {
 ext.CURSEFORGE_ENVIRONMENT_IDS = ["Client": 9638, "Server": 9639]
 
 gradle.taskGraph.whenReady {
-    rootProject.subprojects.each { sub ->
+
+    rootProject.allprojects.each { sub ->
         sub.tasks.matching { it.getClass().name.contains("CurseUploadTask") }.each { task ->
             task.actions.clear()
             task.doLast {
