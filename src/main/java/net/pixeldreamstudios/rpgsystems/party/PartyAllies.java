@@ -44,6 +44,14 @@ public final class PartyAllies {
             }
         }
 
+        if (VanillaTeamsLoader.isEnabled()) {
+            PartyDataProvider.PartyInfo pa = VanillaTeamsIntegration.getPartyInfoForPlayerId(server, a);
+            PartyDataProvider.PartyInfo pb = VanillaTeamsIntegration.getPartyInfoForPlayerId(server, b);
+            if (pa != null && pb != null && pa.id.equals(pb.id)) {
+                return true;
+            }
+        }
+
         // Check native party system
         var state = PartyPersistentState.get(server);
         var pa = state.getPartyByMember(a);

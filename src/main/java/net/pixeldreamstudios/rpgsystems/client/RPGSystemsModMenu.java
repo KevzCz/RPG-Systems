@@ -25,6 +25,7 @@ public final class RPGSystemsModMenu implements ModMenuApi {
         private CheckboxWidget partyLogToConsole;
         private CheckboxWidget useFTBTeams;
         private CheckboxWidget usePartyAddon;
+        private CheckboxWidget useVanillaTeams;
         private int restartWarningY = -1;
 
         private ReadOnlyConfigScreen(Screen parent) {
@@ -63,16 +64,27 @@ public final class RPGSystemsModMenu implements ModMenuApi {
             this.useFTBTeams = CheckboxWidget.builder(Text.literal("Use FTB Teams Integration"), this.textRenderer)
                     .pos(centerX - w/2, y).checked(cfg.party.useFTBTeams)
                     .callback((checkbox, checked) -> {
-                        RPGSystemsConfig.get().party.useFTBTeams = checked;
-                        RPGSystemsConfig.save();
+                        RPGSystemsConfig.selectPartySource(checked
+                                ? RPGSystemsConfig.PartySourceToggle.FTB_TEAMS : null);
+                        this.client.setScreen(new ReadOnlyConfigScreen(this.parent));
                     }).build();
             y += 24;
 
             this.usePartyAddon = CheckboxWidget.builder(Text.literal("Use Party Addon Integration"), this.textRenderer)
                     .pos(centerX - w/2, y).checked(cfg.party.usePartyAddon)
                     .callback((checkbox, checked) -> {
-                        RPGSystemsConfig.get().party.usePartyAddon = checked;
-                        RPGSystemsConfig.save();
+                        RPGSystemsConfig.selectPartySource(checked
+                                ? RPGSystemsConfig.PartySourceToggle.PARTY_ADDON : null);
+                        this.client.setScreen(new ReadOnlyConfigScreen(this.parent));
+                    }).build();
+            y += 24;
+
+            this.useVanillaTeams = CheckboxWidget.builder(Text.literal("Use Vanilla Teams Integration"), this.textRenderer)
+                    .pos(centerX - w/2, y).checked(cfg.party.useVanillaTeams)
+                    .callback((checkbox, checked) -> {
+                        RPGSystemsConfig.selectPartySource(checked
+                                ? RPGSystemsConfig.PartySourceToggle.VANILLA_TEAMS : null);
+                        this.client.setScreen(new ReadOnlyConfigScreen(this.parent));
                     }).build();
             y += 12;
             this.restartWarningY = y;
@@ -84,6 +96,7 @@ public final class RPGSystemsModMenu implements ModMenuApi {
             this.addDrawableChild(this.partyLogToConsole);
             this.addDrawableChild(this.useFTBTeams);
             this.addDrawableChild(this.usePartyAddon);
+            this.addDrawableChild(this.useVanillaTeams);
 
             this.addDrawableChild(ButtonWidget.builder(Text.literal("Client Options…"),
                             b -> this.client.setScreen(new ClientConfigsScreen(this)))

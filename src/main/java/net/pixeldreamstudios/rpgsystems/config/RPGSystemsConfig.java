@@ -23,6 +23,7 @@ public final class RPGSystemsConfig {
         public boolean logChatToConsole = true;
         public boolean useFTBTeams = false;
         public boolean usePartyAddon = false;
+        public boolean useVanillaTeams = false;
     }
 
     private static final Gson GSON = new GsonBuilder()
@@ -99,9 +100,32 @@ public final class RPGSystemsConfig {
         if (loaded.party == null) {
             loaded.party = defaults.party;
         } else {
+            normalizePartySources(loaded.party);
         }
 
         return loaded;
+    }
+
+    private static boolean normalizePartySources(Party party) {
+        if (party == null) return false;
+        boolean changed = false;
+        if (party.useFTBTeams) {
+            if (party.usePartyAddon)   { party.usePartyAddon = false;   changed = true; }
+            if (party.useVanillaTeams) { party.useVanillaTeams = false; changed = true; }
+        } else if (party.usePartyAddon) {
+            if (party.useVanillaTeams) { party.useVanillaTeams = false; changed = true; }
+        }
+        return changed;
+    }
+
+    public enum PartySourceToggle { FTB_TEAMS, PARTY_ADDON, VANILLA_TEAMS }
+
+    public static synchronized void selectPartySource(PartySourceToggle source) {
+        Party p = get().party;
+        p.useFTBTeams    = source == PartySourceToggle.FTB_TEAMS;
+        p.usePartyAddon  = source == PartySourceToggle.PARTY_ADDON;
+        p.useVanillaTeams = source == PartySourceToggle.VANILLA_TEAMS;
+        save();
     }
 
     public static synchronized void save() {

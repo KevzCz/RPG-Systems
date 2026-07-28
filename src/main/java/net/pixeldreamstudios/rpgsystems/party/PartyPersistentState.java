@@ -29,7 +29,10 @@ public final class PartyPersistentState extends PersistentState {
 
     private final Map<UUID, PartySettings> ftbPartySettings = new HashMap<>();
     private final Map<UUID, PartySettings> partyAddonSettings = new HashMap<>();
+    private final Map<UUID, PartySettings> vanillaTeamSettings = new HashMap<>();
+    private final Map<UUID, UUID> vanillaLeaders = new HashMap<>();
     private final Map<UUID, PartyDataProvider.PartySource> playerSourcePreferences = new HashMap<>();
+    private final Map<String, UUID> nameToUuid = new HashMap<>();
 
     public static PartyPersistentState get(MinecraftServer server) {
         PersistentStateManager mgr = server.getWorld(World.OVERWORLD).getPersistentStateManager();
@@ -97,6 +100,20 @@ public final class PartyPersistentState extends PersistentState {
             s.partyAddonSettings.put(partyId, settings);
         }
 
+        NbtList vanillaSettings = nbt.getList("VanillaTeamSettings", NbtElement.COMPOUND_TYPE);
+        for (int i = 0; i < vanillaSettings.size(); i++) {
+            NbtCompound row = vanillaSettings.getCompound(i);
+            UUID partyId = row.getUuid("PartyId");
+            PartySettings settings = PartySettings.fromNbt(row.getCompound("Settings"));
+            s.vanillaTeamSettings.put(partyId, settings);
+        }
+
+        NbtList vanillaLeadersList = nbt.getList("VanillaLeaders", NbtElement.COMPOUND_TYPE);
+        for (int i = 0; i < vanillaLeadersList.size(); i++) {
+            NbtCompound row = vanillaLeadersList.getCompound(i);
+            s.vanillaLeaders.put(row.getUuid("PartyId"), row.getUuid("Leader"));
+        }
+
         NbtList sourcePrefs = nbt.getList("PlayerSourcePreferences", NbtElement.COMPOUND_TYPE);
         for (int i = 0; i < sourcePrefs.size(); i++) {
             NbtCompound row = sourcePrefs.getCompound(i);
@@ -106,6 +123,16 @@ public final class PartyPersistentState extends PersistentState {
                 PartyDataProvider.PartySource source = PartyDataProvider.PartySource.valueOf(sourceName);
                 s.playerSourcePreferences.put(playerId, source);
             } catch (IllegalArgumentException ignored) {}
+        }
+
+        NbtList nameCache = nbt.getList("NameToUuid", NbtElement.COMPOUND_TYPE);
+        for (int i = 0; i < nameCache.size(); i++) {
+            NbtCompound row = nameCache.getCompound(i);
+            String name = row.getString("N");
+            UUID id = row.getUuid("U");
+            if (name != null && !name.isBlank()) {
+                s.nameToUuid.put(name.toLowerCase(Locale.ROOT), id);
+            }
         }
 
         return s;
@@ -191,6 +218,24 @@ public final class PartyPersistentState extends PersistentState {
         }
         nbt.put("PartyAddonSettings", partyAddonSettingsList);
 
+        NbtList vanillaSettings = new NbtList();
+        for (Map.Entry<UUID, PartySettings> e : vanillaTeamSettings.entrySet()) {
+            NbtCompound row = new NbtCompound();
+            row.putUuid("PartyId", e.getKey());
+            row.put("Settings", e.getValue().toNbt());
+            vanillaSettings.add(row);
+        }
+        nbt.put("VanillaTeamSettings", vanillaSettings);
+
+        NbtList vanillaLeadersList = new NbtList();
+        for (Map.Entry<UUID, UUID> e : vanillaLeaders.entrySet()) {
+            NbtCompound row = new NbtCompound();
+            row.putUuid("PartyId", e.getKey());
+            row.putUuid("Leader", e.getValue());
+            vanillaLeadersList.add(row);
+        }
+        nbt.put("VanillaLeaders", vanillaLeadersList);
+
         NbtList sourcePrefs = new NbtList();
         for (Map.Entry<UUID, PartyDataProvider.PartySource> e : playerSourcePreferences.entrySet()) {
             NbtCompound row = new NbtCompound();
@@ -199,6 +244,15 @@ public final class PartyPersistentState extends PersistentState {
             sourcePrefs.add(row);
         }
         nbt.put("PlayerSourcePreferences", sourcePrefs);
+
+        NbtList nameCache = new NbtList();
+        for (Map.Entry<String, UUID> e : nameToUuid.entrySet()) {
+            NbtCompound row = new NbtCompound();
+            row.putString("N", e.getKey());
+            row.putUuid("U", e.getValue());
+            nameCache.add(row);
+        }
+        nbt.put("NameToUuid", nameCache);
 
         return nbt;
     }
@@ -490,6 +544,70 @@ public final class PartyPersistentState extends PersistentState {
 
     public boolean hasPartyAddonPartySettings(UUID partyId) {
         return partyAddonSettings.containsKey(partyId);
+    }
+
+    public PartySettings getVanillaTeamSettings(UUID partyId) {
+        return vanillaTeamSettings.computeIfAbsent(partyId, id -> {
+            PartySettings s = new PartySettings();
+            s.allowHelpfulNonMembers = false;
+            s.ignorePartyCollision = true;
+            markDirty();
+            return s;
+        });
+    }
+
+    public void updateVanillaTeamSettings(UUID partyId, PartySettings settings) {
+        vanillaTeamSettings.put(partyId, settings);
+        markDirty();
+    }
+
+    public void removeVanillaTeamSettings(UUID partyId) {
+        boolean changed = vanillaTeamSettings.remove(partyId) != null;
+        changed |= vanillaLeaders.remove(partyId) != null;
+        if (changed) markDirty();
+    }
+
+    public boolean hasVanillaTeamSettings(UUID partyId) {
+        return vanillaTeamSettings.containsKey(partyId);
+    }
+
+    public UUID getVanillaLeader(UUID partyId) {
+        return vanillaLeaders.get(partyId);
+    }
+
+    public void setVanillaLeader(UUID partyId, UUID leader) {
+        if (leader == null) {
+            if (vanillaLeaders.remove(partyId) != null) markDirty();
+        } else if (!leader.equals(vanillaLeaders.put(partyId, leader))) {
+            markDirty();
+        }
+    }
+
+    public void recordIdentity(UUID uuid, String name) {
+        if (uuid == null || name == null || name.isBlank()) return;
+        boolean changed = false;
+
+        String prevName = lastKnownNames.put(uuid, name);
+        if (!name.equals(prevName)) changed = true;
+
+        String key = name.toLowerCase(Locale.ROOT);
+        UUID prevId = nameToUuid.put(key, uuid);
+        if (!uuid.equals(prevId)) changed = true;
+
+        if (prevName != null && !prevName.equalsIgnoreCase(name)) {
+            String prevKey = prevName.toLowerCase(Locale.ROOT);
+            if (uuid.equals(nameToUuid.get(prevKey))) {
+                nameToUuid.remove(prevKey);
+                changed = true;
+            }
+        }
+
+        if (changed) markDirty();
+    }
+
+    public UUID resolveCachedName(String name) {
+        if (name == null || name.isBlank()) return null;
+        return nameToUuid.get(name.toLowerCase(Locale.ROOT));
     }
 
     public PartyDataProvider.PartySource getPlayerSourcePreference(UUID playerId) {

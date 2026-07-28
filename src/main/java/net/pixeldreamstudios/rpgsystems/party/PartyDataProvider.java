@@ -11,7 +11,8 @@ public final class PartyDataProvider {
     public enum PartySource {
         NATIVE,
         FTB_TEAMS,
-        PARTY_ADDON
+        PARTY_ADDON,
+        VANILLA
     }
 
     public static List<PartySource> getAvailableSourcesForPlayer(ServerPlayerEntity player) {
@@ -29,6 +30,13 @@ public final class PartyDataProvider {
             hasExternalMod = true;
             if (PartyAddonIntegration.getPartyInfoForPlayer(player) != null) {
                 available.add(PartySource.PARTY_ADDON);
+            }
+        }
+
+        if (VanillaTeamsLoader.isEnabled()) {
+            hasExternalMod = true;
+            if (VanillaTeamsIntegration.getPartyInfoForPlayer(player) != null) {
+                available.add(PartySource.VANILLA);
             }
         }
 
@@ -60,7 +68,7 @@ public final class PartyDataProvider {
             return preference;
         }
         
-        // Otherwise use the first available (priority: FTB_TEAMS > PARTY_ADDON > NATIVE)
+        // Otherwise use the first available (priority: FTB_TEAMS > PARTY_ADDON > VANILLA > NATIVE)
         return available.get(0);
     }
 
@@ -79,6 +87,10 @@ public final class PartyDataProvider {
             case PARTY_ADDON -> {
                 if (!PartyAddonLoader.isEnabled()) yield null;
                 yield PartyAddonIntegration.getPartyInfoForPlayer(player);
+            }
+            case VANILLA -> {
+                if (!VanillaTeamsLoader.isEnabled()) yield null;
+                yield VanillaTeamsIntegration.getPartyInfoForPlayer(player);
             }
             case NATIVE -> {
                 PartyPersistentState state = PartyPersistentState.get(player.getServer());
@@ -127,6 +139,13 @@ public final class PartyDataProvider {
             // Player not in PartyAddon group, continue checking native
         }
 
+        if (VanillaTeamsLoader.isEnabled()) {
+            PartyInfo vanillaInfo = VanillaTeamsIntegration.getPartyInfoForPlayerId(server, playerId);
+            if (vanillaInfo != null) {
+                return vanillaInfo;
+            }
+        }
+
         PartyPersistentState state = PartyPersistentState.get(server);
         Party party = state.getPartyByMember(playerId);
         if (party == null) return null;
@@ -156,6 +175,12 @@ public final class PartyDataProvider {
                 return true;
             }
             // Not in same PartyAddon group - check native
+        }
+
+        if (VanillaTeamsLoader.isEnabled()) {
+            if (VanillaTeamsIntegration.isInSameParty(player1, player2)) {
+                return true;
+            }
         }
 
         // Check native party system
@@ -188,6 +213,13 @@ public final class PartyDataProvider {
             }
         }
 
+        if (VanillaTeamsLoader.isEnabled()) {
+            PartyInfo vanillaInfo = VanillaTeamsIntegration.getPartyInfoForPlayerId(server, playerId);
+            if (vanillaInfo != null) {
+                return vanillaInfo.id;
+            }
+        }
+
         PartyPersistentState state = PartyPersistentState.get(server);
         Party party = state.getPartyByMember(playerId);
         return party != null ? party.id : null;
@@ -210,6 +242,13 @@ public final class PartyDataProvider {
             }
         }
 
+        if (VanillaTeamsLoader.isEnabled()) {
+            List<UUID> members = VanillaTeamsIntegration.getPartyMembers(server, partyId);
+            if (!members.isEmpty()) {
+                return members;
+            }
+        }
+
         // Fall back to native
         PartyPersistentState state = PartyPersistentState.get(server);
         Party party = state.getParty(partyId);
@@ -221,7 +260,7 @@ public final class PartyDataProvider {
     @Nullable
     public static Party getPartyById(MinecraftServer server, UUID partyId) {
         // External mods don't use native Party objects
-        if (FTBTeamsLoader.isEnabled() || PartyAddonLoader.isEnabled()) {
+        if (FTBTeamsLoader.isEnabled() || PartyAddonLoader.isEnabled() || VanillaTeamsLoader.isEnabled()) {
             // Check if this partyId belongs to an external mod - if so, return null
             // since we can't convert their data to a native Party object
         }
@@ -244,6 +283,13 @@ public final class PartyDataProvider {
         // Check PartyAddon
         if (PartyAddonLoader.isEnabled()) {
             UUID playerPartyId = PartyAddonIntegration.getPartyIdForPlayer(player);
+            if (partyId.equals(playerPartyId)) {
+                return true;
+            }
+        }
+
+        if (VanillaTeamsLoader.isEnabled()) {
+            UUID playerPartyId = VanillaTeamsIntegration.getPartyIdForPlayer(player);
             if (partyId.equals(playerPartyId)) {
                 return true;
             }

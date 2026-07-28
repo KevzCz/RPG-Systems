@@ -43,6 +43,10 @@ public final class PartyCommands {
         return null;
     }
 
+    private static boolean vanillaMode() {
+        return VanillaTeamsLoader.isEnabled();
+    }
+
     private static int showExternalSystemMessage(CommandContext<ServerCommandSource> ctx) {
         String system = getActiveExternalSystem();
         if (system != null) {
@@ -161,6 +165,7 @@ public final class PartyCommands {
 
         p.leader = targetUuid;
         state.markDirty();
+        VanillaTeamSync.reconcile(server, p);
 
         String txt = "Leadership transferred to " + targetName + ".";
         long now = System.currentTimeMillis();
@@ -212,6 +217,9 @@ public final class PartyCommands {
             return 0;
         }
 
+        VanillaTeamSync.removeMember(server, p.id, targetUuid);
+        VanillaTeamSync.reconcile(server, p);
+
         ServerPlayerEntity targetOnline = server.getPlayerManager().getPlayer(targetUuid);
         if (targetOnline != null) {
             PartyNet.sendRosterWipeTo(targetOnline);
@@ -246,6 +254,8 @@ public final class PartyCommands {
 
         String finalName = (name == null || name.isBlank()) ? defaultPartyName(self) : name;
         Party created = state.createParty(self.getUuid(), finalName);
+        state.rememberName(self.getUuid(), self.getName().getString());
+        VanillaTeamSync.reconcile(self.getServer(), created);
         self.sendMessage(Text.literal("Party created: " + displayName(created)));
         PartyNet.sendRosterTo(self.getServer(), self, created);
         return 1;
@@ -281,6 +291,7 @@ public final class PartyCommands {
             return 0;
         }
 
+        VanillaTeamSync.updateDisplayName(self.getServer(), state.getPartyByMember(self.getUuid()));
         PartyNet.broadcastRoster(self.getServer(), state.getPartyByMember(self.getUuid()));
         self.sendMessage(Text.literal("Renamed party to " + desired + "."));
         return 1;
@@ -298,6 +309,8 @@ public final class PartyCommands {
         Party p = state.getPartyByMember(self.getUuid());
         if (p == null) {
             p = state.createParty(self.getUuid(), defaultPartyName(self));
+            state.rememberName(self.getUuid(), self.getName().getString());
+            VanillaTeamSync.reconcile(self.getServer(), p);
             PartyNet.sendRosterTo(self.getServer(), self, p);
         }
         if (!p.leader.equals(self.getUuid())) {
@@ -338,6 +351,8 @@ public final class PartyCommands {
 
         Party p = state.getPartyByMember(self.getUuid());
         if (p != null) {
+            state.rememberName(self.getUuid(), self.getName().getString());
+            VanillaTeamSync.reconcile(self.getServer(), p);
             ServerPlayerEntity leader = self.getServer().getPlayerManager().getPlayer(p.leader);
             if (leader != null) {
                 String partyName = displayName(p);
@@ -380,6 +395,8 @@ public final class PartyCommands {
         }
         Party p = state.getPartyByMember(self.getUuid());
         if (p != null) {
+            state.rememberName(self.getUuid(), self.getName().getString());
+            VanillaTeamSync.reconcile(self.getServer(), p);
             ServerPlayNetworking.send(self, new PartyInvitePayloads.InviteJoinConfirmed(displayName(p)));
             self.sendMessage(Text.literal("Joined " + displayName(p)));
 
@@ -462,11 +479,15 @@ public final class PartyCommands {
 
         otherMembers.remove(self.getUuid());
 
+        UUID partyId = p.id;
         boolean ok = state.leave(self.getUuid());
         if (!ok) return 0;
 
+        VanillaTeamSync.removeMember(server, partyId, self.getUuid());
+
         if (isLeader && otherMembers.isEmpty()) {
             // Was a solo leader — party is now disbanded
+            VanillaTeamSync.remove(server, partyId);
             self.sendMessage(Text.literal("You left and the party was disbanded."));
         } else if (isLeader) {
             // Leadership was transferred to another member
@@ -489,12 +510,16 @@ public final class PartyCommands {
                     sp.sendMessage(Text.literal(promoteMsg));
                 }
             }
-            if (remaining != null) PartyNet.broadcastRoster(server, remaining);
+            if (remaining != null) {
+                VanillaTeamSync.reconcile(server, remaining);
+                PartyNet.broadcastRoster(server, remaining);
+            }
             self.sendMessage(Text.literal("You left the party."));
         } else {
             UUID anyRemaining = otherMembers.stream().findFirst().orElse(null);
             Party remaining = state.getPartyByMember(anyRemaining);
             if (remaining != null) {
+                VanillaTeamSync.reconcile(server, remaining);
                 String name = self.getName().getString();
                 for (UUID u : remaining.members) {
                     ServerPlayerEntity sp = server.getPlayerManager().getPlayer(u);
@@ -526,8 +551,11 @@ public final class PartyCommands {
         Set<UUID> inviteTargets = state.targetsInvitedBy(p.id);
         Set<UUID> reqs = state.joinRequestsOf(p.id);
         Set<UUID> members = Set.copyOf(p.members);
+        UUID partyId = p.id;
         boolean ok = state.disband(self.getUuid());
         if (!ok) return 0;
+
+        VanillaTeamSync.remove(server, partyId);
         for (UUID t : inviteTargets) {
             ServerPlayerEntity target = server.getPlayerManager().getPlayer(t);
             if (target != null) {
@@ -592,6 +620,8 @@ public final class PartyCommands {
         }
         Party p = state.getPartyByMember(leader.getUuid());
         if (p != null) {
+            state.rememberName(requester.getUuid(), requester.getName().getString());
+            VanillaTeamSync.reconcile(leader.getServer(), p);
             PartyNet.sendJoinReqRemoved(leader, p.id, requester.getUuid());
             ServerPlayerEntity req = leader.getServer().getPlayerManager().getPlayer(requester.getUuid());
             if (req != null) {
@@ -653,6 +683,9 @@ public final class PartyCommands {
             leader.sendMessage(Text.literal(target.getName().getString() + " is not in your party."));
             return 0;
         }
+
+        VanillaTeamSync.removeMember(server, p.id, target.getUuid());
+        VanillaTeamSync.reconcile(server, p);
 
         PartyNet.sendRosterWipeTo(target);
         target.sendMessage(Text.literal("You were kicked from " + displayName(p) + "."));

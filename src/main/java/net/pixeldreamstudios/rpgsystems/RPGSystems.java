@@ -48,6 +48,8 @@ public class RPGSystems implements ModInitializer {
 			LOGGER.info("PartyAddon not found, skipping integration");
 		}
 
+		VanillaTeamsLoader.tryInitialize();
+
 		if (RPGSystemsConfig.get().systems.party) {
 			PartyNet.initCommon();
 		}
@@ -101,12 +103,14 @@ public class RPGSystems implements ModInitializer {
 		player.sendMessage(Text.literal("Config:").formatted(Formatting.YELLOW));
 		player.sendMessage(Text.literal("  useFTBTeams: " + RPGSystemsConfig.get().party.useFTBTeams).formatted(Formatting.GRAY));
 		player.sendMessage(Text.literal("  usePartyAddon: " + RPGSystemsConfig.get().party.usePartyAddon).formatted(Formatting.GRAY));
+		player.sendMessage(Text.literal("  useVanillaTeams: " + RPGSystemsConfig.get().party.useVanillaTeams).formatted(Formatting.GRAY));
 
 		player.sendMessage(Text.literal("Integration Status:").formatted(Formatting.YELLOW));
 		player.sendMessage(Text.literal("  FTBTeams loaded: " + FabricLoader.getInstance().isModLoaded("ftbteams")).formatted(Formatting.GRAY));
 		player.sendMessage(Text.literal("  FTBTeams enabled: " + FTBTeamsLoader.isEnabled()).formatted(Formatting.GRAY));
 		player.sendMessage(Text.literal("  PartyAddon loaded: " + FabricLoader.getInstance().isModLoaded("partyaddon")).formatted(Formatting.GRAY));
 		player.sendMessage(Text.literal("  PartyAddon enabled: " + PartyAddonLoader.isEnabled()).formatted(Formatting.GRAY));
+		player.sendMessage(Text.literal("  VanillaTeams enabled: " + VanillaTeamsLoader.isEnabled()).formatted(Formatting.GRAY));
 
 		if (FTBTeamsLoader.isEnabled()) {
 			player.sendMessage(Text.literal("FTB Teams Data:").formatted(Formatting.YELLOW));
@@ -123,6 +127,17 @@ public class RPGSystems implements ModInitializer {
 			player.sendMessage(Text.literal("PartyAddon Data:").formatted(Formatting.YELLOW));
 			for (Text line : PartyAddonIntegration.debugLines(player)) {
 				player.sendMessage(line);
+			}
+		}
+
+		if (VanillaTeamsLoader.isEnabled()) {
+			player.sendMessage(Text.literal("Vanilla Teams Data:").formatted(Formatting.YELLOW));
+			PartyDataProvider.PartyInfo vanillaData = VanillaTeamsIntegration.getPartyInfoForPlayer(player);
+			if (vanillaData != null) {
+				player.sendMessage(Text.literal("  Party: " + vanillaData.name).formatted(Formatting.GREEN));
+				player.sendMessage(Text.literal("  Members: " + vanillaData.members.size()).formatted(Formatting.GRAY));
+			} else {
+				player.sendMessage(Text.literal("  Not in a vanilla team party").formatted(Formatting.RED));
 			}
 		}
 

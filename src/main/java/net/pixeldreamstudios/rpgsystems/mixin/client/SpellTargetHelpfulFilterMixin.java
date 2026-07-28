@@ -3,6 +3,7 @@ package net.pixeldreamstudios.rpgsystems.mixin.client;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import net.minecraft.entity.Entity;
+import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.registry.entry.RegistryEntry;
 import net.pixeldreamstudios.rpgsystems.party.PartyAllies;
@@ -24,7 +25,7 @@ import java.util.UUID;
 public abstract class SpellTargetHelpfulFilterMixin {
 
     @Inject(method = "findTargets", at = @At("RETURN"), cancellable = true)
-    private static void rpgsystems$restrictHelpfulTargets(PlayerEntity caster,
+    private static void rpgsystems$restrictHelpfulTargets(LivingEntity caster,
                                                           RegistryEntry<Spell> spellEntry,
                                                           SpellTarget.SearchResult prev,
                                                           boolean filterInvalidTargets,
@@ -46,7 +47,14 @@ public abstract class SpellTargetHelpfulFilterMixin {
         SpellTarget.SearchResult result = cir.getReturnValue();
         if (result == null || result.entities() == null || result.entities().isEmpty()) return;
 
-        UUID casterUuid = caster.getUuid();
+        UUID casterUuid;
+        if (caster instanceof PlayerEntity) {
+            casterUuid = caster.getUuid();
+        } else {
+            casterUuid = PartyAllies.owningPlayerUuid(caster);
+            if (casterUuid == null) return;
+        }
+
         List<Entity> filtered = new ArrayList<>(result.entities().size());
 
         for (Entity e : result.entities()) {

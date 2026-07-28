@@ -7,6 +7,7 @@ import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.fabricmc.loader.api.FabricLoader;
+import net.minecraft.scoreboard.Team;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.text.Text;
@@ -64,19 +65,18 @@ public final class PartyNet {
     private static int tickCounter = 0;
     public static boolean PERSIST_PARTIES_ON_DISCONNECT = true;
     
-    // Track last known party state per player for change detection
     private static final Map<UUID, PartyStateSnapshot> lastKnownPartyState = new HashMap<>();
     
     private record PartyStateSnapshot(UUID partyId, PartyDataProvider.PartySource source, int memberCount) {}
 
-    /**
-     * Checks if any external party mod integration is enabled (FTBTeams or PartyAddon)
-     */
     public static boolean isExternalPartyModEnabled() {
         if (FTBTeamsLoader.isEnabled()) {
             return true;
         }
-        return PartyAddonLoader.isEnabled();
+        if (PartyAddonLoader.isEnabled()) {
+            return true;
+        }
+        return VanillaTeamsLoader.isEnabled();
     }
 
     private static boolean handleExternalCollisionSetting(MinecraftServer server, ServerPlayerEntity player, boolean ignore) {
@@ -145,6 +145,10 @@ public final class PartyNet {
         }
         if (PartyAddonLoader.isEnabled()) {
             PartyDataProvider.PartyInfo info = PartyAddonIntegration.getPartyInfoForPlayer(player);
+            if (info != null) return info;
+        }
+        if (VanillaTeamsLoader.isEnabled()) {
+            PartyDataProvider.PartyInfo info = VanillaTeamsIntegration.getPartyInfoForPlayer(player);
             return info;
         }
         return null;
@@ -157,6 +161,11 @@ public final class PartyNet {
             }
             case PARTY_ADDON -> {
                 if (PartyAddonLoader.isEnabled()) PartyAddonIntegration.updatePartySettings(server, info.id, info.settings);
+            }
+            case VANILLA -> {
+                if (VanillaTeamsLoader.isEnabled()) {
+                    PartyPersistentState.get(server).updateVanillaTeamSettings(info.id, info.settings);
+                }
             }
             default -> { }
         }
@@ -395,6 +404,12 @@ public final class PartyNet {
             ServerPlayerEntity player = handler.player;
             PartyPersistentState state = PartyPersistentState.get(server);
             state.rememberName(player.getUuid(), player.getName().getString());
+            state.recordIdentity(player.getUuid(), player.getGameProfile().getName());
+
+            if (VanillaTeamsLoader.isEnabled()) {
+                Team team = VanillaTeamsIntegration.getTeamForPlayer(server, player);
+                if (team != null) VanillaTeamsIntegration.refreshIdentitiesFor(server, team);
+            }
 
             // Send available party sources to client
             List<PartyDataProvider.PartySource> availableSources = PartyDataProvider.getAvailableSourcesForPlayer(player);
@@ -688,6 +703,7 @@ public final class PartyNet {
                         String sourceLabel = switch (partyInfo.source) {
                             case FTB_TEAMS -> " [FTB Teams]";
                             case PARTY_ADDON -> " [Party Addon]";
+                            case VANILLA -> " [Vanilla Teams]";
                             case NATIVE -> "";
                         };
                         String info = "Party: " + partyInfo.name + sourceLabel + " | Leader: " + leaderName + " | Members: " + partyInfo.members.size() + " (" + online + " online)";

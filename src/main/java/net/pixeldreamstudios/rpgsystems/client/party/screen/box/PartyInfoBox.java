@@ -70,7 +70,6 @@ public final class PartyInfoBox implements PartyBox {
     private int settingsPanelGearX = -1, settingsPanelGearY = -1;
     private static final int SETTINGS_GEAR_SIZE = 12;
 
-    // Source toggle button tracking
     private int sourceToggleX = -1, sourceToggleY = -1, sourceToggleW = 0, sourceToggleH = 0;
 
     @Override
@@ -111,6 +110,7 @@ public final class PartyInfoBox implements PartyBox {
             String sourceLabel = switch (currentSource) {
                 case FTB_TEAMS -> "FTB Teams";
                 case PARTY_ADDON -> "PartyAddon";
+                case VANILLA -> "Vanilla Teams";
                 case NATIVE -> "Native";
             };
             String displayLabel = "\u25C0 " + sourceLabel + " \u25B6";
@@ -143,7 +143,6 @@ public final class PartyInfoBox implements PartyBox {
         int divY = partyY + scaledFontH + 2;
         ctx.drawTexture(DIVIDER, divX, divY, 0, 0, divW, dividerH + 3, divW, dividerH + 3);
 
-        // Leave button is always at a fixed position to the left of the gear, preventing overlap
         int btnX = x + w - (GEAR_W + GEAR_PAD) - BTN_GAP - BTN_W;
         int leaderTextY = divY + dividerH + 2 + 5;
         int btnY = leaderTextY + (scaledFontH - BTN_H) / 2;
@@ -213,13 +212,13 @@ public final class PartyInfoBox implements PartyBox {
             int titleTextX = bx + innerPad;
             drawScaledText(ctx, tr, Text.translatable("party.rpgsystems.settings").getString(), titleTextX, by + innerPad, 0xFFFFFFFF, SETTINGS_TEXT_SCALE);
             
-            // Show current source badge below title when multiple sources available
             int sourceBadgeOffset = 0;
             if (ClientPartyHudData.hasMultipleSources()) {
                 PartyDataProvider.PartySource currentSource = ClientPartyHudData.getCurrentSource();
                 String sourceKey = switch (currentSource) {
                     case FTB_TEAMS -> "party.rpgsystems.source.ftb_teams";
                     case PARTY_ADDON -> "party.rpgsystems.source.party_addon";
+                    case VANILLA -> "party.rpgsystems.source.vanilla";
                     case NATIVE -> "party.rpgsystems.source.native";
                 };
                 String sourceText = Text.translatable(sourceKey).getString();
@@ -271,7 +270,6 @@ public final class PartyInfoBox implements PartyBox {
     public boolean mouseClicked(double mouseX, double mouseY, int button,
                                 int canvasX, int canvasY, int canvasW, int canvasH, TextRenderer tr) {
 
-        // Handle source toggle click
         if (sourceToggleW > 0 && sourceToggleH > 0 &&
                 mouseX >= sourceToggleX && mouseX < sourceToggleX + sourceToggleW &&
                 mouseY >= sourceToggleY && mouseY < sourceToggleY + sourceToggleH) {
