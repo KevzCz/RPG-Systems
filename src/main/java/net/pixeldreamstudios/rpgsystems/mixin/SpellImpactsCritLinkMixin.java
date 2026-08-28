@@ -1,7 +1,7 @@
 package net.pixeldreamstudios.rpgsystems.mixin;
 
 import net.minecraft.entity.damage.DamageSource;
-import net.spell_engine.internals.SpellHelper;
+import net.spell_engine.internals.impact.SpellImpacts;
 import net.pixeldreamstudios.rpgsystems.util.DamageCritLinks;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Pseudo;
@@ -12,8 +12,8 @@ import org.spongepowered.asm.mixin.injection.ModifyArg;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 @Pseudo
-@Mixin(value = SpellHelper.class, remap = false)
-public abstract class SpellHelperCritLinkMixin {
+@Mixin(value = SpellImpacts.class, remap = false)
+public abstract class SpellImpactsCritLinkMixin {
     @Unique private static final ThreadLocal<Boolean> RPG_CRIT_FLAG =
             ThreadLocal.withInitial(() -> Boolean.FALSE);
 

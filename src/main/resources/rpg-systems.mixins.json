@@ -24,7 +24,7 @@
 		"LivingEntityDamageBonusMixin",
 		"ProjectileIgnoreAlliesMixin",
 		"LivingEntityLastRawDamageMixin",
-		"SpellHelperCritLinkMixin",
+		"SpellImpactsCritLinkMixin",
 		"PlayerEntityCritLinkMixin",
 		"EntityCollisionServerMixin",
 		"pet.MobEntityPetMixin",

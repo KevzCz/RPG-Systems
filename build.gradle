@@ -1,5 +1,5 @@
 plugins {
-    id "me.shedaniel.unified-publishing" version "0.1.+"
+    id "me.modmuss50.mod-publish-plugin" version "2.1.1"
 	id 'fabric-loom' version "${loom_version}"
 	id 'maven-publish'
 }
@@ -45,7 +45,7 @@ dependencies {
 	mappings "net.fabricmc:yarn:${project.yarn_mappings}:v2"
 	modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
 
-	modImplementation("maven.modrinth:spell-engine:1.9.13+1.21.1-fabric")
+	modImplementation("maven.modrinth:spell-engine:1.10.3+1.21.1-fabric")
 	modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
 	modImplementation("com.terraformersmc:modmenu:11.0.3")
 	modCompileOnly("io.wispforest:accessories-fabric:${project.accessories_version}+1.21.1")
@@ -115,74 +115,70 @@ publishing {
 	}
 }
 
-unifiedPublishing {
-    project {
-        gameVersions = ["1.21.1"]
-        gameLoaders = ["fabric"]
+publishMods {
+    // The per-task dryRun is wired from this and finalized in the task constructor, so it
+    // has to be set here. Keyed off the requested task names so publishModsDry rehearses
+    // while a plain publishMods still uploads for real.
+    dryRun = gradle.startParameter.taskNames.any { it.contains("publishModsDry") }
 
-        mainPublication tasks.remapJar
-        displayName = "RPG Systems [${project.name.toUpperCase()}] [${rootProject.minecraft_version}] - [${project.version}]"
+    file = tasks.remapJar.archiveFile
+    displayName = "RPG Systems [FABRIC] [${rootProject.minecraft_version}] - [${project.version}]"
+    type = STABLE
+    modLoaders.add("fabric")
 
-        releaseType = "release"
+    def changelogFile = rootProject.file("CHANGELOG.md")
+    def changelogText = changelogFile.exists() ? changelogFile.text : ""
+    changelog = changelogText.trim().isEmpty() ? "No changelog provided." : changelogText
 
-        def changelogFile = rootProject.file("CHANGELOG.md")
-        def changelogText = changelogFile.exists() ? changelogFile.text : ""
-        changelog = changelogText.trim().isEmpty() ? "No changelog provided." : changelogText
+    curseforge {
+        projectId = "1337672"
+        accessToken = providers.gradleProperty("cfToken")
+            .orElse(providers.environmentVariable("CF_TOKEN"))
+        minecraftVersions.add("1.21.1")
+        javaVersions.add(JavaVersion.VERSION_21)
+        clientRequired = true
+        serverRequired = true
+    }
 
-        var cfToken = project.findProperty("cfToken") ?: System.getenv("CF_TOKEN")
-        if (cfToken != null) {
-            curseforge {
-                token = cfToken
-                id = "1337672"
-                gameVersions = ["1.21.1", "Java 21"]
-            }
-        }
-
-        var mrToken = project.findProperty("modrinthToken") ?: System.getenv("MODRINTH_TOKEN")
-        if (mrToken != null) {
-            modrinth {
-                token = mrToken
-                id = "tnPjKnoo"
-            }
-        }
+    modrinth {
+        projectId = "tnPjKnoo"
+        accessToken = providers.gradleProperty("modrinthToken")
+            .orElse(providers.environmentVariable("MODRINTH_TOKEN"))
+        minecraftVersions.add("1.21.1")
     }
 }
 
-tasks.matching { it.name.startsWith("modrinth") }.configureEach {
+// Offline rehearsal: validates the config, writes the jar out and logs the display name,
+// version and changelog — without contacting either platform. Replaces the old plugin's
+// publishUnifiedToLocal.
+//
+// The plugin hardcodes its own build/publishMods/<task>/ output and finalizes that path in
+// the task constructor, so it cannot be redirected. The jars are collected into
+// build/unified-dry/ afterwards instead, giving one predictable place to look.
+tasks.register("publishModsDry", Copy) {
+    group = "upload"
+    description = "Dry run of publishMods — writes to build/unified-dry/ instead of uploading."
+
+    def publishTasks = tasks.withType(me.modmuss50.mpp.PublishModTask)
+    dependsOn publishTasks
+
+    from(publishTasks.collect { it.dryRunDirectory }) {
+        include "**/*.jar"
+    }
+    into rootProject.layout.buildDirectory.dir("unified-dry")
+    duplicatesStrategy = DuplicatesStrategy.INCLUDE
+}
+
+// Gradle's built-in "publishing" group also holds the Maven publication tasks, which do
+// not upload anywhere. Moving the mod-publishing tasks into their own group keeps the two
+// kinds of "publish" apart in the IDE's task tree.
+tasks.named("publishMods") { group = "upload" }
+tasks.withType(me.modmuss50.mpp.PublishModTask).configureEach {
     group = "upload"
 }
 
-ext.CURSEFORGE_ENVIRONMENT_IDS = ["Client": 9638, "Server": 9639]
 
-gradle.taskGraph.whenReady {
 
-    rootProject.allprojects.each { sub ->
-        sub.tasks.matching { it.getClass().name.contains("CurseUploadTask") }.each { task ->
-            task.actions.clear()
-            task.doLast {
-                def loader = task.getClass().getClassLoader()
-                def versions = Class.forName("com.matthewprenger.cursegradle.CurseVersions", true, loader)
-                def util = Class.forName("com.matthewprenger.cursegradle.Util", true, loader)
-                def artifact = task.mainArtifact
 
-                artifact.resolve(task.project)
-                versions.initialize(task.apiKey)
 
-                def field = versions.getDeclaredField("gameVersions")
-                field.setAccessible(true)
-                def nameToId = field.get(null)
-                rootProject.CURSEFORGE_ENVIRONMENT_IDS.each { name, id -> nameToId.put(name, id) }
 
-                def tags = new ArrayList(artifact.gameVersionStrings)
-                tags.addAll(rootProject.CURSEFORGE_ENVIRONMENT_IDS.keySet())
-
-                def resolved = artifact.getClass().getDeclaredField("gameVersions")
-                resolved.setAccessible(true)
-                resolved.set(artifact, versions.resolveGameVersion(tags))
-
-                task.uploadFile(util.gson.toJson(artifact), artifact.artifact as File)
-                task.logger.lifecycle("Uploaded ${artifact.artifact.name} to CurseForge with tags ${tags}")
-            }
-        }
-    }
-}

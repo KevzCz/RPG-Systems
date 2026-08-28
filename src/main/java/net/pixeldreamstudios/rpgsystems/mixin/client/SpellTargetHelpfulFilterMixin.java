@@ -8,7 +8,7 @@ import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.registry.entry.RegistryEntry;
 import net.pixeldreamstudios.rpgsystems.party.PartyAllies;
 import net.spell_engine.api.spell.Spell;
-import net.spell_engine.internals.SpellHelper;
+import net.spell_engine.internals.target.SpellIntents;
 import net.spell_engine.internals.target.SpellTarget;
 import net.pixeldreamstudios.rpgsystems.client.party.ClientPartyHudData;
 import org.spongepowered.asm.mixin.Mixin;
@@ -24,19 +24,24 @@ import java.util.UUID;
 @Mixin(SpellTarget.class)
 public abstract class SpellTargetHelpfulFilterMixin {
 
-    @Inject(method = "findTargets", at = @At("RETURN"), cancellable = true)
+    @Inject(
+            method = "findTargets(Lnet/minecraft/entity/LivingEntity;Lnet/minecraft/registry/entry/RegistryEntry;Lnet/spell_engine/internals/target/SpellTarget$SearchResult;ZF)Lnet/spell_engine/internals/target/SpellTarget$SearchResult;",
+            at = @At("RETURN"),
+            cancellable = true
+    )
     private static void rpgsystems$restrictHelpfulTargets(LivingEntity caster,
                                                           RegistryEntry<Spell> spellEntry,
                                                           SpellTarget.SearchResult prev,
                                                           boolean filterInvalidTargets,
+                                                          float range,
                                                           CallbackInfoReturnable<SpellTarget.SearchResult> cir) {
         Spell spell = (spellEntry == null) ? null : spellEntry.value();
         if (spell == null || spell.impacts == null) return;
 
-        boolean helpful = SpellHelper.deliveryIntent(spell).map(i -> i == SpellTarget.Intent.HELPFUL).orElse(false);
+        boolean helpful = SpellIntents.deliveryIntent(spell).map(i -> i == SpellTarget.Intent.HELPFUL).orElse(false);
         if (!helpful) {
             for (Spell.Impact impact : spell.impacts) {
-                if (SpellHelper.impactIntent(impact.action) == SpellTarget.Intent.HELPFUL) { helpful = true; break; }
+                if (SpellIntents.impactIntent(impact.action) == SpellTarget.Intent.HELPFUL) { helpful = true; break; }
             }
         }
         if (!helpful) return;
