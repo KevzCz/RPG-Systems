@@ -5,7 +5,6 @@ import net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.event.player.UseBlockCallback;
 import net.fabricmc.fabric.api.event.player.UseEntityCallback;
-import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.advancement.AdvancementEntry;
 import net.minecraft.block.Block;
 import net.minecraft.entity.Entity;
@@ -37,6 +36,8 @@ import net.minecraft.world.gen.StructureAccessor;
 import net.minecraft.world.gen.structure.Structure;
 import net.pixeldreamstudios.rpgsystems.accessor.LivingEntityRawDamageAccess;
 import net.pixeldreamstudios.rpgsystems.api.TitleApi;
+import net.pixeldreamstudios.rpgsystems.compat.PuffishSkillsCompat;
+import net.pixeldreamstudios.rpgsystems.compat.RpgDialogueCompat;
 import net.pixeldreamstudios.rpgsystems.network.TitleNet;
 import net.puffish.skillsmod.SkillsMod;
 
@@ -51,6 +52,7 @@ public final class TitleConditionEvents {
     private static final Map<UUID, Vec3d> LAST_POS = new HashMap<>();
     private static final Map<UUID, RegistryKey<World>> LAST_DIM = new HashMap<>();
     private static final int INVENTORY_CHECK_INTERVAL = 20;
+    private static final String WILDCARD = "*";
     private static int tickCounter = 0;
     public static void register() {
         ServerTickEvents.START_SERVER_TICK.register(TitleConditionEvents::onServerTick);
@@ -292,6 +294,61 @@ public final class TitleConditionEvents {
         checkCompletionAndGrant(server, player, state, pt);
     }
 
+
+    public static void onErrandSettled(ServerPlayerEntity player, RpgDialogueCompat.ErrandInfo info) {
+        MinecraftServer server = player.getServer();
+        if (server == null) return;
+
+        TitlesPersistentState state = TitlesPersistentState.get(server);
+        TitlesPersistentState.PlayerTitles pt = state.getOrCreate(player.getUuid());
+        boolean changed = false;
+
+        for (Map.Entry<Identifier, Title> e : snapshotTitleEntries()) {
+            Identifier id = e.getKey();
+            Title t = e.getValue();
+            if (isAlreadyUnlocked(pt, id)) continue;
+
+            for (int idx = 0; idx < t.conditions.size(); idx++) {
+                Title.Condition c = t.conditions.get(idx);
+                if (c.type != Title.Condition.Type.ERRANDS_COMPLETED) continue;
+                if (!matchesErrand(c, info)) continue;
+                incrementProgress(pt, id, idx, 1L);
+                state.markDirty();
+                changed = true;
+            }
+        }
+
+        if (changed) TitleNet.syncProgressTo(server, player);
+        checkCompletionAndGrant(server, player, state, pt);
+    }
+
+    private static boolean matchesErrand(Title.Condition c, RpgDialogueCompat.ErrandInfo info) {
+        if (c.filter.errand().isPresent() && !matchesId(c.filter.errand().get(), info.errand())) return false;
+        if (c.filter.kind().isPresent()
+                && info.kind().map(k -> !matchesId(c.filter.kind().get(), k)).orElse(true)) return false;
+        if (c.filter.profession().isPresent()
+                && info.professions().stream().noneMatch(p -> matchesId(c.filter.profession().get(), p))) return false;
+        return true;
+    }
+
+    private static boolean matchesId(String pattern, Identifier id) {
+        String spec = pattern.trim();
+        if (spec.endsWith(WILDCARD)) {
+            return id.toString().startsWith(spec.substring(0, spec.length() - WILDCARD.length()));
+        }
+        if (spec.indexOf(':') < 0) return id.getPath().equals(spec);
+        return id.equals(Identifier.tryParse(spec));
+    }
+
+    private static boolean updateFlagCondition(TitlesPersistentState state, TitlesPersistentState.PlayerTitles pt,
+                                               Identifier titleId, int idx, boolean met) {
+        if (!met) return false;
+        NbtCompound tag = pt.progress.get(titleId.toString());
+        if (tag != null && tag.getBoolean("done_" + idx)) return false;
+        markDone(pt, titleId, idx);
+        state.markDirty();
+        return true;
+    }
 
     private static boolean onDimensionChanged(MinecraftServer server, ServerPlayerEntity player, TitlesPersistentState state, TitlesPersistentState.PlayerTitles pt, RegistryKey<World> curDim) {
         boolean changed = false;
@@ -581,6 +638,27 @@ public final class TitleConditionEvents {
                     if (changed) state.markDirty();
                 }
 
+                if (c.type == Title.Condition.Type.DIALOGUE_COMPLETED && c.filter.dialogue().isPresent()) {
+                    changed |= updateFlagCondition(state, pt, id, idx,
+                            RpgDialogueCompat.dialogueCompleted(player, c.filter.dialogue().get()));
+                }
+
+                if (c.type == Title.Condition.Type.VILLAGE_STANDING && c.filter.standing().isPresent()) {
+                    changed |= updateFlagCondition(state, pt, id, idx,
+                            RpgDialogueCompat.standingAtLeast(player, c.filter.standing().get()));
+                }
+
+                if (c.type == Title.Condition.Type.CATEGORY_UNLOCKED && c.filter.category().isPresent()) {
+                    changed |= updateFlagCondition(state, pt, id, idx,
+                            PuffishSkillsCompat.categoryUnlocked(player, c.filter.category().get()));
+                }
+
+                if (c.type == Title.Condition.Type.SKILL_UNLOCKED
+                        && c.filter.category().isPresent() && c.filter.skill().isPresent()) {
+                    changed |= updateFlagCondition(state, pt, id, idx,
+                            PuffishSkillsCompat.skillUnlocked(player, c.filter.category().get(), c.filter.skill().get()));
+                }
+
                 if (c.type == Title.Condition.Type.MINE_BLOCKS) {
                     int minedTotal = 0;
                     if (c.block.isPresent()) {
@@ -635,13 +713,15 @@ public final class TitleConditionEvents {
         long current = tag == null ? 0L : tag.getLong("c" + idx);
         return switch (c.type) {
             case OBTAIN_ITEM, ADVANCEMENT, REACH_LEVEL, REACH_LEVEL_XP, REACH_LEVEL_PUFFERFISH,
-                    VISIT_BIOME, ENTER_DIMENSION, INTERACT_BLOCK, INTERACT_ENTITY, CHECK_ATTRIBUTE, FIND_STRUCTURE
+                    VISIT_BIOME, ENTER_DIMENSION, INTERACT_BLOCK, INTERACT_ENTITY, CHECK_ATTRIBUTE, FIND_STRUCTURE,
+                    DIALOGUE_COMPLETED, VILLAGE_STANDING, SKILL_UNLOCKED, CATEGORY_UNLOCKED
                     -> tag != null && tag.getBoolean("done_" + idx);
             case KILL_MOBS -> current >= Math.max(1, c.count);
             case WALK_BLOCKS -> current >= Math.max(1, c.distance);
             case CRAFT_ITEM -> current >= Math.max(1, c.count);
             case MINE_BLOCKS -> current >= Math.max(1, c.count);
             case DEAL_DAMAGE_TOTAL, DEAL_DAMAGE_MAX -> current >= Math.max(1, c.count);
+            case ERRANDS_COMPLETED -> current >= Math.max(1, c.count);
 
         };
     }
@@ -661,12 +741,8 @@ public final class TitleConditionEvents {
         return pt.unlocked.contains(titleId.toString());
     }
 
-    private static boolean puffishLoaded() {
-        return FabricLoader.getInstance().isModLoaded("puffish_skills");
-    }
-
     private static int computeTotalSkillsLevel(ServerPlayerEntity player) {
-        if (!puffishLoaded()) return -1;
+        if (!PuffishSkillsCompat.isLoaded()) return -1;
         try {
             SkillsMod mod = SkillsMod.getInstance();
             if (mod == null) return -1;

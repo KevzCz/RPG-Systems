@@ -92,7 +92,8 @@ public final class TitleCommands {
             boolean met = false;
             switch (c.type) {
                 case OBTAIN_ITEM, ADVANCEMENT, REACH_LEVEL, REACH_LEVEL_XP, REACH_LEVEL_PUFFERFISH,
-                        VISIT_BIOME, ENTER_DIMENSION, INTERACT_BLOCK, INTERACT_ENTITY, CHECK_ATTRIBUTE, FIND_STRUCTURE -> {
+                        VISIT_BIOME, ENTER_DIMENSION, INTERACT_BLOCK, INTERACT_ENTITY, CHECK_ATTRIBUTE, FIND_STRUCTURE,
+                        DIALOGUE_COMPLETED, VILLAGE_STANDING, SKILL_UNLOCKED, CATEGORY_UNLOCKED -> {
                     met = dn;
                 }
                 case KILL_MOBS ->      met = cur >= Math.max(1, c.count);
@@ -100,6 +101,7 @@ public final class TitleCommands {
                 case CRAFT_ITEM ->     met = cur >= Math.max(1, c.count);
                 case MINE_BLOCKS ->    met = cur >= Math.max(1, c.count);
                 case DEAL_DAMAGE_TOTAL, DEAL_DAMAGE_MAX -> met = cur >= Math.max(1, c.count);
+                case ERRANDS_COMPLETED -> met = cur >= Math.max(1, c.count);
             }
 
             allMet &= met;
@@ -108,9 +110,13 @@ public final class TitleCommands {
                 case WALK_BLOCKS -> String.valueOf(Math.max(1, c.distance));
                 case REACH_LEVEL, REACH_LEVEL_XP, REACH_LEVEL_PUFFERFISH -> String.valueOf(Math.max(1, c.level));
                 case CHECK_ATTRIBUTE -> "≥ " + c.minValue;
+                case VILLAGE_STANDING -> c.filter.standing().orElse("");
+                case DIALOGUE_COMPLETED -> c.filter.dialogue().map(Identifier::toString).orElse("");
+                case SKILL_UNLOCKED -> c.filter.skill().orElse("");
+                case CATEGORY_UNLOCKED -> c.filter.category().map(Identifier::toString).orElse("");
                 case ADVANCEMENT, VISIT_BIOME, ENTER_DIMENSION, FIND_STRUCTURE,
                         INTERACT_BLOCK, INTERACT_ENTITY, OBTAIN_ITEM, CRAFT_ITEM,
-                        MINE_BLOCKS, KILL_MOBS, DEAL_DAMAGE_TOTAL, DEAL_DAMAGE_MAX -> String.valueOf(Math.max(1, c.count));
+                        MINE_BLOCKS, KILL_MOBS, DEAL_DAMAGE_TOTAL, DEAL_DAMAGE_MAX, ERRANDS_COMPLETED -> String.valueOf(Math.max(1, c.count));
             };
 
             String line = String.format(

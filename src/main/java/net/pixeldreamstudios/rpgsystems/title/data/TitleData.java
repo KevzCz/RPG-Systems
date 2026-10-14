@@ -48,7 +48,12 @@ public record TitleData(
         FIND_STRUCTURE,
         DEAL_DAMAGE_TOTAL,
         DEAL_DAMAGE_MAX,
-        CHECK_ATTRIBUTE;
+        CHECK_ATTRIBUTE,
+        ERRANDS_COMPLETED,
+        DIALOGUE_COMPLETED,
+        VILLAGE_STANDING,
+        SKILL_UNLOCKED,
+        CATEGORY_UNLOCKED;
 
         public static final Codec<ConditionType> CODEC = Codec.STRING.xmap(
                 s -> {
@@ -162,7 +167,8 @@ public record TitleData(
             Optional<Identifier> structure,
             Optional<Identifier> attribute,
             Optional<Double> min,
-            Optional<Identifier> entityTag
+            Optional<Identifier> entityTag,
+            ConditionFilter filter
     ) {
         private static final MapCodec<Pair<Optional<String>, Optional<String>>> HINT_AND_KEY =
                 RecordCodecBuilder.mapCodec(inst -> inst.group(
@@ -198,7 +204,7 @@ public record TitleData(
                 Identifier.CODEC.optionalFieldOf("structure").forGetter(Condition::structure),
                 Identifier.CODEC.optionalFieldOf("attribute").forGetter(Condition::attribute),
                 Codec.DOUBLE.optionalFieldOf("min").forGetter(Condition::min),
-                ENTITY_TYPE_OR_TAG.forGetter(c -> Pair.of(c.entityType(), c.entityTag()))
+                Codec.mapPair(ENTITY_TYPE_OR_TAG, ConditionFilter.MAP_CODEC).forGetter(c -> Pair.of(Pair.of(c.entityType(), c.entityTag()), c.filter()))
         ).apply(i,
                 (ConditionType type,
                  Optional<Identifier> item,
@@ -215,11 +221,11 @@ public record TitleData(
                  Optional<Identifier> structure,
                  Optional<Identifier> attribute,
                  Optional<Double> min,
-                 Pair<Optional<Identifier>, Optional<Identifier>> typeOrTag) ->
+                 Pair<Pair<Optional<Identifier>, Optional<Identifier>>, ConditionFilter> tagAndFilter) ->
                         new Condition(
                                 type,
                                 item,
-                                typeOrTag.getFirst(),
+                                tagAndFilter.getFirst().getFirst(),
                                 advancement,
                                 distance,
                                 count,
@@ -235,7 +241,8 @@ public record TitleData(
                                 structure,
                                 attribute,
                                 min,
-                                typeOrTag.getSecond()
+                                tagAndFilter.getFirst().getSecond(),
+                                tagAndFilter.getSecond()
                         )));
     }
 

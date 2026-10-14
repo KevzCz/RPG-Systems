@@ -201,6 +201,11 @@ public final class TitleNet {
                                 case DEAL_DAMAGE_TOTAL      -> Title.Condition.Type.DEAL_DAMAGE_TOTAL;
                                 case DEAL_DAMAGE_MAX        -> Title.Condition.Type.DEAL_DAMAGE_MAX;
                                 case CHECK_ATTRIBUTE        -> Title.Condition.Type.CHECK_ATTRIBUTE;
+                                case ERRANDS_COMPLETED      -> Title.Condition.Type.ERRANDS_COMPLETED;
+                                case DIALOGUE_COMPLETED     -> Title.Condition.Type.DIALOGUE_COMPLETED;
+                                case VILLAGE_STANDING       -> Title.Condition.Type.VILLAGE_STANDING;
+                                case SKILL_UNLOCKED         -> Title.Condition.Type.SKILL_UNLOCKED;
+                                case CATEGORY_UNLOCKED      -> Title.Condition.Type.CATEGORY_UNLOCKED;
                             };
 
                             b.addCondition(new Title.Condition(
@@ -210,7 +215,7 @@ public final class TitleNet {
                                     cd.entitySpec(), cd.nbtQuery(), cd.level(),
                                     cd.block(), cd.biome(), cd.dimension(),
                                     cd.structure(), cd.attribute(), cd.min(),
-                                    cd.entityTag()
+                                    cd.entityTag(), cd.filter()
                             ));
                         }
 
@@ -368,6 +373,11 @@ public final class TitleNet {
                     case DEAL_DAMAGE_TOTAL     -> TitlePayloads.SyncDefinitions.CondType.DEAL_DAMAGE_TOTAL;
                     case DEAL_DAMAGE_MAX       -> TitlePayloads.SyncDefinitions.CondType.DEAL_DAMAGE_MAX;
                     case CHECK_ATTRIBUTE       -> TitlePayloads.SyncDefinitions.CondType.CHECK_ATTRIBUTE;
+                    case ERRANDS_COMPLETED     -> TitlePayloads.SyncDefinitions.CondType.ERRANDS_COMPLETED;
+                    case DIALOGUE_COMPLETED    -> TitlePayloads.SyncDefinitions.CondType.DIALOGUE_COMPLETED;
+                    case VILLAGE_STANDING      -> TitlePayloads.SyncDefinitions.CondType.VILLAGE_STANDING;
+                    case SKILL_UNLOCKED        -> TitlePayloads.SyncDefinitions.CondType.SKILL_UNLOCKED;
+                    case CATEGORY_UNLOCKED     -> TitlePayloads.SyncDefinitions.CondType.CATEGORY_UNLOCKED;
                 };
 
                 cdefs.add(new TitlePayloads.SyncDefinitions.ConditionDef(
@@ -375,7 +385,7 @@ public final class TitleNet {
                         c.distance, c.count, c.hint.map(Text::getString), c.hidden,
                         c.entitySpec, c.nbtQuery, c.level, c.block, c.biome, c.dimension,
                         c.structure, c.attributeId, c.minValue,
-                        c.entityTagId
+                        c.entityTagId, c.filter
                 ));
             }
 

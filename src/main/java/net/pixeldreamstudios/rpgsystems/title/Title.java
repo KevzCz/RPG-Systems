@@ -5,6 +5,7 @@ import net.minecraft.entity.attribute.EntityAttributeModifier;
 import net.minecraft.registry.entry.RegistryEntry;
 import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
+import net.pixeldreamstudios.rpgsystems.title.data.ConditionFilter;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -134,7 +135,12 @@ public final class Title {
             FIND_STRUCTURE,
             DEAL_DAMAGE_TOTAL,
             DEAL_DAMAGE_MAX,
-            CHECK_ATTRIBUTE
+            CHECK_ATTRIBUTE,
+            ERRANDS_COMPLETED,
+            DIALOGUE_COMPLETED,
+            VILLAGE_STANDING,
+            SKILL_UNLOCKED,
+            CATEGORY_UNLOCKED
         }
 
         public final Type type;
@@ -155,6 +161,7 @@ public final class Title {
         public final Optional<Identifier> attributeId;
         public final Optional<Identifier> entityTagId;
         public final double minValue;
+        public final ConditionFilter filter;
 
         public Condition(Type type,
                          Optional<Identifier> item,
@@ -173,7 +180,8 @@ public final class Title {
                          Optional<Identifier> structure,
                          Optional<Identifier> attributeId,
                          double minValue,
-                         Optional<Identifier> entityTagId){
+                         Optional<Identifier> entityTagId,
+                         ConditionFilter filter){
             this.type = type;
             this.item = item;
             this.entityType = entityType;
@@ -192,6 +200,7 @@ public final class Title {
             this.attributeId = attributeId;
             this.minValue = minValue;
             this.entityTagId = entityTagId;
+            this.filter = filter;
         }
     }
 

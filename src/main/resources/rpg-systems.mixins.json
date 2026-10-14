@@ -32,7 +32,8 @@
 		"pet.TameableEntityPetHookMixin",
 		"ftbteams.AbstractTeamMixin",
 		"ftbteams.PartyTeamInviteMixin",
-		"partyaddon.PartyAddonSyncMixin"
+		"partyaddon.PartyAddonSyncMixin",
+		"compat.ErrandLogMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

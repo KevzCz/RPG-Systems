@@ -1404,9 +1404,62 @@ public final class TitleDescriptionBox {
                             .append(Text.literal(" (now: " + cur + ")"));
                     out.add(CondLine.text(line, c.hint.orElse(null), color, reached, c));
                 }
+                case ERRANDS_COMPLETED -> {
+                    int target = Math.max(1, c.count);
+                    boolean reached = cur >= target || doneFlag;
+                    int color = reached ? COLOR_DONE : COLOR_TODO;
+                    MutableText line = Text.literal("Complete " + target + " ");
+                    line.append(Text.literal(c.filter.kind().map(k -> toTitleCase(idPath(k)) + " ").orElse("")));
+                    line.append(Text.literal(target == 1 ? "errand" : "errands"));
+                    c.filter.errand().ifPresent(e -> line.append(Text.literal(": " + toTitleCase(idPath(e)))));
+                    c.filter.profession().ifPresent(p -> line.append(Text.literal(" for a " + toTitleCase(idPath(p)))));
+                    line.append(Text.literal(" (" + Math.min(cur, target) + "/" + target + ")"));
+                    out.add(CondLine.text(line, c.hint.orElse(null), color, reached, c));
+                }
+                case DIALOGUE_COMPLETED -> {
+                    boolean reached = doneFlag;
+                    int color = reached ? COLOR_DONE : COLOR_TODO;
+                    MutableText line = Text.literal("Finish the conversation ")
+                            .append(Text.literal(c.filter.dialogue().map(d -> toTitleCase(d.getPath())).orElse("")))
+                            .append(Text.literal(" (" + (reached ? 1 : 0) + "/1)"));
+                    out.add(CondLine.text(line, c.hint.orElse(null), color, reached, c));
+                }
+                case VILLAGE_STANDING -> {
+                    boolean reached = doneFlag;
+                    int color = reached ? COLOR_DONE : COLOR_TODO;
+                    MutableText line = Text.literal("Be ")
+                            .append(Text.literal(c.filter.standing().map(s -> toTitleCase(s.toLowerCase(Locale.ROOT))).orElse("")))
+                            .append(Text.literal(" in a village"))
+                            .append(Text.literal(" (" + (reached ? 1 : 0) + "/1)"));
+                    out.add(CondLine.text(line, c.hint.orElse(null), color, reached, c));
+                }
+                case SKILL_UNLOCKED -> {
+                    boolean reached = doneFlag;
+                    int color = reached ? COLOR_DONE : COLOR_TODO;
+                    MutableText line = Text.literal("Unlock the skill ")
+                            .append(Text.literal(c.filter.skill().map(TitleDescriptionBox::toTitleCase).orElse("")))
+                            .append(Text.literal(c.filter.category().map(k -> " in " + toTitleCase(k.getPath())).orElse("")))
+                            .append(Text.literal(" (" + (reached ? 1 : 0) + "/1)"));
+                    out.add(CondLine.text(line, c.hint.orElse(null), color, reached, c));
+                }
+                case CATEGORY_UNLOCKED -> {
+                    boolean reached = doneFlag;
+                    int color = reached ? COLOR_DONE : COLOR_TODO;
+                    MutableText line = Text.literal("Unlock the ")
+                            .append(Text.literal(c.filter.category().map(k -> toTitleCase(k.getPath())).orElse("")))
+                            .append(Text.literal(" skill tree"))
+                            .append(Text.literal(" (" + (reached ? 1 : 0) + "/1)"));
+                    out.add(CondLine.text(line, c.hint.orElse(null), color, reached, c));
+                }
             }
         }
         return out;
+    }
+
+    private static String idPath(String spec) {
+        String s = spec.endsWith("*") ? spec.substring(0, spec.length() - 1) : spec;
+        int colon = s.indexOf(':');
+        return colon >= 0 ? s.substring(colon + 1) : s;
     }
 
 
@@ -1442,10 +1495,11 @@ public final class TitleDescriptionBox {
                 int target = Math.max(1, c.level);
                 return Text.literal("(" + Math.min(cur, target) + "/" + target + ")");
             }
-            case ADVANCEMENT, VISIT_BIOME, ENTER_DIMENSION, FIND_STRUCTURE -> {
+            case ADVANCEMENT, VISIT_BIOME, ENTER_DIMENSION, FIND_STRUCTURE,
+                    DIALOGUE_COMPLETED, VILLAGE_STANDING, SKILL_UNLOCKED, CATEGORY_UNLOCKED -> {
                 return Text.literal("(" + (doneFlag ? 1 : 0) + "/1)");
             }
-            case DEAL_DAMAGE_TOTAL -> {
+            case DEAL_DAMAGE_TOTAL, ERRANDS_COMPLETED -> {
                 long target = Math.max(1, c.count);
                 return Text.literal("(" + Math.min(cur, target) + "/" + target + ")");
             }

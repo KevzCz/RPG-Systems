@@ -122,6 +122,11 @@ public final class TitlesDataReloader extends JsonDataLoader implements Identifi
                         case DEAL_DAMAGE_TOTAL -> Title.Condition.Type.DEAL_DAMAGE_TOTAL;
                         case DEAL_DAMAGE_MAX -> Title.Condition.Type.DEAL_DAMAGE_MAX;
                         case CHECK_ATTRIBUTE -> Title.Condition.Type.CHECK_ATTRIBUTE;
+                        case ERRANDS_COMPLETED -> Title.Condition.Type.ERRANDS_COMPLETED;
+                        case DIALOGUE_COMPLETED -> Title.Condition.Type.DIALOGUE_COMPLETED;
+                        case VILLAGE_STANDING -> Title.Condition.Type.VILLAGE_STANDING;
+                        case SKILL_UNLOCKED -> Title.Condition.Type.SKILL_UNLOCKED;
+                        case CATEGORY_UNLOCKED -> Title.Condition.Type.CATEGORY_UNLOCKED;
                     };
 
                     b.addCondition(new Title.Condition(
@@ -142,7 +147,8 @@ public final class TitlesDataReloader extends JsonDataLoader implements Identifi
                             jc.structure(),
                             jc.attribute(),
                             jc.min().orElse(0.0),
-                            jc.entityTag()
+                            jc.entityTag(),
+                            jc.filter()
                     ));
                 }
 

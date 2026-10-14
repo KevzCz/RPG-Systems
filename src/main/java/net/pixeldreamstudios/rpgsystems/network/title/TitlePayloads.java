@@ -8,6 +8,7 @@ import net.minecraft.network.codec.PacketCodecs;
 import net.minecraft.network.packet.CustomPayload;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.Uuids;
+import net.pixeldreamstudios.rpgsystems.title.data.ConditionFilter;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -41,6 +42,24 @@ public final class TitlePayloads {
             wrap(Identifier.PACKET_CODEC);
     private static final PacketCodec<RegistryByteBuf, Optional<Identifier>> OPT_ID =
             wrap(PacketCodecs.optional(Identifier.PACKET_CODEC));
+
+    private static final PacketCodec<RegistryByteBuf, ConditionFilter> FILTER_CODEC = new PacketCodec<>() {
+        @Override
+        public ConditionFilter decode(RegistryByteBuf buf) {
+            return new ConditionFilter(OPT_STRING.decode(buf), OPT_STRING.decode(buf), OPT_STRING.decode(buf),
+                    OPT_ID.decode(buf), OPT_STRING.decode(buf), OPT_ID.decode(buf), OPT_STRING.decode(buf));
+        }
+        @Override
+        public void encode(RegistryByteBuf buf, ConditionFilter v) {
+            OPT_STRING.encode(buf, v.errand());
+            OPT_STRING.encode(buf, v.kind());
+            OPT_STRING.encode(buf, v.profession());
+            OPT_ID.encode(buf, v.dialogue());
+            OPT_STRING.encode(buf, v.standing());
+            OPT_ID.encode(buf, v.category());
+            OPT_STRING.encode(buf, v.skill());
+        }
+    };
 
     private static final PacketCodec<RegistryByteBuf, UUID> UUID_CODEC = new PacketCodec<RegistryByteBuf, UUID>() {
         @Override public UUID decode(RegistryByteBuf buf) { return Uuids.PACKET_CODEC.decode(buf); }
@@ -101,7 +120,12 @@ public final class TitlePayloads {
             FIND_STRUCTURE,
             DEAL_DAMAGE_TOTAL,
             DEAL_DAMAGE_MAX,
-            CHECK_ATTRIBUTE
+            CHECK_ATTRIBUTE,
+            ERRANDS_COMPLETED,
+            DIALOGUE_COMPLETED,
+            VILLAGE_STANDING,
+            SKILL_UNLOCKED,
+            CATEGORY_UNLOCKED
         }
 
         private static final PacketCodec<RegistryByteBuf, CondType> COND_TYPE_CODEC = new PacketCodec<>() {
@@ -127,7 +151,8 @@ public final class TitlePayloads {
                 Optional<Identifier> structure,
                 Optional<Identifier> attribute,
                 double min,
-                Optional<Identifier> entityTag
+                Optional<Identifier> entityTag,
+                ConditionFilter filter
         ) {
             public static final PacketCodec<RegistryByteBuf, ConditionDef> CODEC = new PacketCodec<>() {
                 @Override
@@ -150,7 +175,8 @@ public final class TitlePayloads {
                     Optional<Identifier> attribute = OPT_ID.decode(buf);
                     double min = DOUBLE.decode(buf);
                     Optional<Identifier> entityTag = OPT_ID.decode(buf);
-                    return new ConditionDef(type, item, entityType, advancement, distance, count, hint, hidden, entitySpec, nbtQuery, level, block, biome, dimension, structure, attribute, min, entityTag);
+                    ConditionFilter filter = FILTER_CODEC.decode(buf);
+                    return new ConditionDef(type, item, entityType, advancement, distance, count, hint, hidden, entitySpec, nbtQuery, level, block, biome, dimension, structure, attribute, min, entityTag, filter);
                 }
                 @Override
                 public void encode(RegistryByteBuf buf, ConditionDef v) {
@@ -172,6 +198,7 @@ public final class TitlePayloads {
                     OPT_ID.encode(buf, v.attribute);
                     DOUBLE.encode(buf, v.min);
                     OPT_ID.encode(buf, v.entityTag);
+                    FILTER_CODEC.encode(buf, v.filter);
                 }
             };
         }
